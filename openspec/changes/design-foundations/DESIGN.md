@@ -19,7 +19,8 @@ Confirmed with Mike, 2026-07-23.
 - **One additional accent layer**, reserved only for a gap in Obsidian's own semantic vocabulary.
   Exactly one gap exists today: distinguishing a **paused** timer from a **running** one — Obsidian has `--text-error`/`--text-success`/`--text-warning`/`--interactive-accent`, but nothing that reads as "in progress but held."
   - Resolution: use Obsidian's own extended palette variable, `--color-orange` (documented, most built-in and community themes define it), rather than a hand-picked brand hue — this keeps the "accent layer" inside Obsidian's own vocabulary instead of introducing anything genuinely custom.
-    Verify it resolves against the plugin's target Obsidian version (1.13.1 per `package.json`) during flow-gu1.19.6; if undefined, fall back to `--text-warning`.
+    Verified (flow-gu1.19.14, 2026-07-24) against the e2e-launched Obsidian instance (app 1.12.7 — the `obsidian` devDependency pins `1.13.1` for types only, the actual e2e app is older; re-verify if that pin is ever bumped): `--color-orange` resolves in both bundled themes (light `#ec7500`, dark `#e9973f`), and is byte-identical to `--text-warning` in both — Obsidian's own default theme currently aliases the two, so the documented fallback is presently redundant, not a hedge against a real gap.
+    Keep the fallback anyway: it protects against a community theme that defines one without the other.
   - This is the *only* place a non-Obsidian **color** value is used (the countdown font-size multiplier below is a separate, non-color departure — see Open Questions).
     If a future surface turns up a second real color gap, extend this section deliberately — don't accumulate more accents by default.
 
@@ -55,7 +56,7 @@ Maps Obsidian's UI font-size variables onto the hierarchy `design.md` already es
 
 | Role | Obsidian variable | Applies to |
 | :-- | :-- | :-- |
-| Countdown (largest, dominant) | `--font-ui-large`, scaled up — Obsidian's own "large" is tuned for UI chrome, not a hero countdown; likely needs a plugin-defined multiplier (see Open Questions) | #1 header |
+| Countdown (largest, dominant) | `--routine-flow-countdown-size: calc(var(--font-ui-large) * 1.8)` — confirmed (flow-gu1.19.14): raw `--font-ui-large` (20px) is only 1.33x `--font-ui-medium` (15px), too close to read as dominant; the 1.8x multiplier (36px) gives a clear 2.4x hierarchy over the phase label (see Open Questions) | #1 header |
 | Phase label / status | `--font-ui-medium` | #1 header secondary line |
 | Body / field text | `--font-ui-small` | modal fields (#6, #7), settings (#8) |
 | Secondary / muted metadata | `--font-ui-smaller` | queue item metadata, descriptions |
@@ -123,6 +124,10 @@ This constrains implementation, not just color choice:
 
 ## Open Questions
 
-- Whether `--color-orange` is actually defined for the plugin's target Obsidian version and in commonly-used community themes, or whether the `--text-warning` fallback ends up being the practical default — resolve during flow-gu1.19.6 by checking a running instance, not by assumption here.
-- Countdown font size: `--font-ui-large` may be too close to the phase-label size to read as clearly dominant; may need a plugin-defined multiplier (e.g. `--routine-flow-countdown-size: calc(var(--font-ui-large) * 1.8);`) rather than a fixed literal.
-  Flag for flow-gu1.19.8 (the timer-panel trial mockup) to validate visually before locking in.
+- **Resolved** (flow-gu1.19.14, 2026-07-24): whether `--color-orange` is actually defined for the plugin's target Obsidian version.
+  Confirmed defined against the e2e-launched instance (app 1.12.7) in both bundled themes — see the Decision section above.
+  Still unverified: commonly-used community themes (not installed in the e2e/dev vault); treat as a residual risk covered by the documented `--text-warning` fallback, not blocking.
+- **Resolved** (flow-gu1.19.14, 2026-07-24): countdown font size needs the multiplier.
+  Measured `--font-ui-large` at 20px vs. `--font-ui-medium` at 15px — only a 1.33x ratio, too close to read as clearly dominant.
+  `calc(var(--font-ui-large) * 1.8)` measures 36px, a 2.4x ratio over the phase label.
+  Lock in `--routine-flow-countdown-size: calc(var(--font-ui-large) * 1.8)` for flow-gu1.19.8's mockup; the numeric hierarchy check is done, only the visual pass at flow-gu1.19.8 remains.
