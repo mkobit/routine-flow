@@ -14,6 +14,7 @@ import type { MutableTaskSourceRegistry } from './timer/task-source-registry'
 import { PomodoroTimerView } from './views/timer-view'
 import { ObsidianWriteBackPromptPort } from './views/write-back-modal'
 import { PomodoroStatusBarItem } from './views/status-bar'
+import { PomodoroSidePanelView, SIDE_PANEL_VIEW_TYPE } from './views/side-panel-view'
 
 /** Surfaces a dispatched hook's failed FileMutation applications — mirrors the reporting main.ts's old write-back subscriber did inline. */
 function reportFailedHookApplications(applications: readonly HookEventApplication[]): void {
@@ -81,6 +82,14 @@ export default class PomodoroPlugin extends Plugin {
       },
     )
 
+    this.registerView(SIDE_PANEL_VIEW_TYPE, leaf => new PomodoroSidePanelView(leaf, this))
+    this.addRibbonIcon('timer', 'Open routine panel', () => void this.activateView())
+    this.addCommand({
+      id: 'open-routine-panel',
+      name: 'Open routine panel',
+      callback: () => void this.activateView(),
+    })
+
     this.addSettingTab(new PomodoroSettingTab(this.app, this))
 
     this.statusBarItem = new PomodoroStatusBarItem(this)
@@ -90,6 +99,20 @@ export default class PomodoroPlugin extends Plugin {
   onunload() {
     this.ticker.stop()
     this.statusBarItem.unload()
+  }
+
+  private async activateView(): Promise<void> {
+    const existing = this.app.workspace.getLeavesOfType(SIDE_PANEL_VIEW_TYPE)[0]
+    if (existing !== undefined) {
+      await this.app.workspace.revealLeaf(existing)
+      return
+    }
+    const leaf = this.app.workspace.getRightLeaf(false)
+    if (leaf === null) {
+      return
+    }
+    await leaf.setViewState({ type: SIDE_PANEL_VIEW_TYPE, active: true })
+    await this.app.workspace.revealLeaf(leaf)
   }
 
   async loadSettings() {
