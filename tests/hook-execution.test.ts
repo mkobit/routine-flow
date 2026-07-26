@@ -486,6 +486,39 @@ describe('EngineStore hook firing', () => {
     expect(applications.map(a => a.event)).toEqual(['onExit', 'onEnter'])
   })
 
+  test('a dispatch issued while a prior one is suspended mid-hook is queued, not applied until the prior one settles', async () => {
+    let resolveExit: (mutations: readonly FileMutation[]) => void = () => {}
+    const exitPromise = new Promise<readonly FileMutation[]>((resolve) => {
+      resolveExit = resolve
+    })
+    const registry = createFakeRegistry({
+      exit: () => exitPromise,
+      enter: async () => [],
+    })
+    const graph = buildGraph({
+      focus: { onExit: hookRef('exit') },
+      break: { onEnter: hookRef('enter') },
+    })
+    const store = new EngineStore(graph, { hookRegistry: registry, port: createFakePort() })
+    await store.dispatch({ type: 'start' })
+
+    const firstDispatch = store.dispatch({ type: 'advance-phase' })
+    await Promise.resolve() // let it reach and suspend at `await hook(...)`
+    expect(store.getState().status).toBe('stopped') // advance-phase's own reducer already committed
+
+    const secondDispatch = store.dispatch({ type: 'pause' })
+    await Promise.resolve()
+    await Promise.resolve()
+
+    expect(store.getState().status).toBe('stopped') // 'pause' is queued behind the suspended dispatch, not yet applied
+
+    resolveExit([])
+    await firstDispatch
+    await secondDispatch
+
+    expect(store.getState().status).toBe('paused')
+  })
+
   test('a failing onExit mutation does not suppress the paired onEnter hook', async () => {
     const enterSpy = mock(async (_context: HookContext): Promise<readonly FileMutation[]> => [])
     const registry = createFakeRegistry({

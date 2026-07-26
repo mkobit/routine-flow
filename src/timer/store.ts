@@ -79,6 +79,7 @@ export class EngineStore {
   private graph: PhaseGraph
   private listeners: ((state: EngineState) => void)[] = []
   private readonly deps: EngineDeps
+  private pendingDispatch: Promise<unknown> = Promise.resolve()
 
   constructor(graph: PhaseGraph, deps: EngineDeps = {}) {
     this.graph = graph
@@ -97,7 +98,23 @@ export class EngineStore {
     }
   }
 
-  public async dispatch(action: EngineAction): Promise<readonly HookEventApplication[]> {
+  /**
+   * Chains onto a private pending-promise so a call's reducer-apply-hooks
+   * sequence fully completes (including any awaited hook) before the next
+   * queued call starts its own reducer against this.state -- every real
+   * call site fires dispatch fire-and-forget (ticker tick, button click),
+   * so overlapping calls are the norm, not an edge case. Swallowing the
+   * chained promise's rejection keeps the queue from wedging permanently
+   * after one failed call; the original rejection still propagates to this
+   * call's own caller via the returned promise.
+   */
+  public dispatch(action: EngineAction): Promise<readonly HookEventApplication[]> {
+    const result = this.pendingDispatch.then(() => this.runDispatch(action))
+    this.pendingDispatch = result.then(() => undefined, () => undefined)
+    return result
+  }
+
+  private async runDispatch(action: EngineAction): Promise<readonly HookEventApplication[]> {
     this.syncQueueExhausted()
 
     const prevState = this.state
