@@ -51,7 +51,7 @@ When `advance-phase` is dispatched against a `'running'` or `'paused'` state (a 
 - **THEN** `EngineStore` fires no `onEnter`, `onComplete`, `onSkip`, or `onExit` event
 
 ### Requirement: Resolved hooks are invoked with a synthesized HookContext
-For each fired event whose phase declares a non-null `HookReference` for that event, `EngineStore` SHALL resolve the hook via the configured `HookRegistry` and, if resolution succeeds, invoke it with a `HookContext` whose `phase` is the firing phase, whose `activeFilePath` is the engine state's current `activeFilePath` at the moment the event fired, and whose `instance`/`session` are freshly constructed for that call (not read from persisted state).
+For each fired event whose phase declares a non-null `HookReference` for that event, `EngineStore` SHALL resolve the hook via the configured `HookRegistry` and, if resolution succeeds, invoke it with a `HookContext` whose `phase` is the firing phase, whose `activeFilePath` is the engine state's current `activeFilePath` at the moment the event fired, and whose `instance`/`session` are read from `EngineState`'s tracked `session`/`currentInstance`/`history` — keyed by the event's `phaseInstanceId` — not freshly constructed for that call.
 
 #### Scenario: A declared and resolvable hook is invoked
 - **WHEN** an `onEnter` event fires for a phase whose `onEnter` field is a `HookReference` naming a hook registered in the configured `HookRegistry`
@@ -64,6 +64,14 @@ For each fired event whose phase declares a non-null `HookReference` for that ev
 #### Scenario: HookContext carries the engine's current active file path
 - **WHEN** a hook is invoked for an event fired while `EngineState.activeFilePath` is a non-null file path
 - **THEN** the `HookContext` passed to that hook has `activeFilePath` equal to that same file path
+
+#### Scenario: onEnter's HookContext reflects the just-opened currentInstance
+- **WHEN** an `onEnter` event fires
+- **THEN** the `HookContext.instance` passed to its hook is the same `PhaseInstance` value stored at `nextState.session.currentInstance`, not a newly constructed value
+
+#### Scenario: onComplete/onSkip/onExit's HookContext reflects the just-closed history entry
+- **WHEN** an `onComplete`, `onSkip`, or `onExit` event fires
+- **THEN** the `HookContext.instance` passed to its hook is the entry in `nextState.session.history` matching the event's `phaseInstanceId`
 
 ### Requirement: An unresolved hook name is silently skipped
 When a fired event's phase declares a `HookReference` whose `name` does not resolve via the configured `HookRegistry` (`resolve` returns `undefined`), `EngineStore` SHALL skip invoking a hook for that event without throwing and without blocking any other fired event in the same dispatch.

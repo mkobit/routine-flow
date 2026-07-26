@@ -74,12 +74,13 @@ function buildContext(phase: Phase, activeFilePath: string | null): HookContext 
     instance: {
       id: PhaseInstanceIdSchema.parse(crypto.randomUUID()),
       phaseId: phase.id,
+      phaseDisplayName: phase.label,
+      phaseKind: phase.kind,
       plannedDuration: phase.duration,
       actualDuration: Temporal.Duration.from({ seconds: 0 }),
       startedAt: now,
       endedAt: now,
       endReason: 'completed',
-      activeItem: null,
       itemsTouched: [],
       mutationsApplied: [],
     },
@@ -88,6 +89,7 @@ function buildContext(phase: Phase, activeFilePath: string | null): HookContext 
       phaseGraphId: PhaseGraphIdSchema.parse('test'),
       startedAt: now,
       endedAt: now,
+      currentInstance: null,
       history: [],
     },
   }

@@ -16,10 +16,8 @@ export interface HookContext {
   readonly instance: PhaseInstance
   readonly session: Session
   /**
-   * The engine's current active file path. Distinct from
-   * `instance.activeItem` (a richer TaskQueueItem — TaskSource itself now
-   * resolves for real via base-query-task-source, but the reducer doesn't
-   * populate activeItem from it yet; hardcoded null until flow-c08).
+   * The engine's current active file path. Distinct from `instance.itemsTouched`'s tail (a richer
+   * ItemTouch snapshot) -- this is just the raw path, unconditionally present whenever one is set.
    */
   readonly activeFilePath: string | null
 }
