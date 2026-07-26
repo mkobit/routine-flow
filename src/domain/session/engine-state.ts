@@ -2,6 +2,7 @@ import { z } from 'zod'
 import type { Temporal } from 'temporal-polyfill'
 import type { PhaseId } from '../phase/phase'
 import type { PhaseGraphId } from '../phase/phase-graph'
+import type { Session } from './session'
 
 /**
  * Whether the engine's ticker is running, paused, or stopped. `'completed'` is
@@ -26,10 +27,9 @@ export type EngineStatus = z.infer<typeof EngineStatusSchema>
  * this field before each dispatch (see EngineStore.dispatch), and
  * resolveNextPhaseId just reads it back off state, same as phaseVisitCounts.
  *
- * Deliberately does NOT embed a `Session`/`PhaseInstance` history yet — that
- * bookkeeping (itemsTouched, mutationsApplied, endReason) only means
- * something once Hook/CompletionPolicy execution and a FileMutation-apply
- * mechanism exist, which are follow-up work, not this pass.
+ * `session` is `null` whenever no PhaseGraph traversal is currently open (matching
+ * initialEngineState's fresh/reset state), and holds the real, engine-maintained
+ * Session/PhaseInstance history once `start` opens one.
  */
 export interface EngineState {
   readonly status: EngineStatus
@@ -43,4 +43,5 @@ export interface EngineState {
   readonly phaseVisitCounts: Readonly<Record<PhaseId, number>>
   /** Whether the current phase's TaskSource queue is known to be empty. False when there's no taskSourceId, or its TaskSource isn't registered yet. */
   readonly queueExhausted: boolean
+  readonly session: Session | null
 }

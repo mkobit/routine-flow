@@ -220,6 +220,37 @@ describe('EngineStore queueExhausted sync', () => {
   })
 })
 
+describe('EngineStore item-touch snapshotting', () => {
+  test('activating a queue item appends a lightweight snapshot to itemsTouched', async () => {
+    const item = buildQueueItem('rep-1')
+    const { registry } = createFakeTaskSourceRegistry([item])
+    const store = new EngineStore(buildQueueExhaustedGraph(), { taskSourceRegistry: registry })
+
+    await store.dispatch({ type: 'start' })
+    await store.dispatch({ type: 'set-active-file', filePath: 'rep-1.md' })
+
+    expect(store.getState().session?.currentInstance?.itemsTouched).toEqual([
+      { id: item.id, sourcePath: item.sourcePath, displayName: item.displayName },
+    ])
+  })
+
+  test('a later change to that item\'s mutable fields doesn\'t alter the recorded snapshot', async () => {
+    const item = buildQueueItem('rep-1')
+    const { registry, setItems } = createFakeTaskSourceRegistry([item])
+    const store = new EngineStore(buildQueueExhaustedGraph(), { taskSourceRegistry: registry })
+
+    await store.dispatch({ type: 'start' })
+    await store.dispatch({ type: 'set-active-file', filePath: 'rep-1.md' })
+
+    setItems([{ ...item, cycleStatus: 'done', timeSpent: Temporal.Duration.from({ seconds: 60 }) }])
+    await store.dispatch({ type: 'tick' }) // any later dispatch re-runs syncItemTouch against the mutated item
+
+    expect(store.getState().session?.currentInstance?.itemsTouched).toEqual([
+      { id: item.id, sourcePath: item.sourcePath, displayName: item.displayName },
+    ])
+  })
+})
+
 describe('POMODORO_PHASE_GRAPH write-back wiring', () => {
   test('every phase declares onComplete naming the write-back hook', () => {
     for (const phase of POMODORO_PHASE_GRAPH.phases) {
@@ -284,6 +315,7 @@ describe('EngineStore hook invocation isolation', () => {
     }
     const graph = buildIsolationGraph({ onExit: hookRef('exit'), onEnter: hookRef('enter') })
     const store = new EngineStore(graph, { hookRegistry: registry, port: createNoopPort() })
+    await store.dispatch({ type: 'start' })
 
     const applications = await store.dispatch({ type: 'advance-phase' })
 
@@ -299,6 +331,7 @@ describe('EngineStore hook invocation isolation', () => {
     }
     const graph = buildIsolationGraph({ onExit: hookRef('exit'), onEnter: hookRef('enter') })
     const store = new EngineStore(graph, { hookRegistry: registry, port: createNoopPort() })
+    await store.dispatch({ type: 'start' })
 
     const applications = await store.dispatch({ type: 'advance-phase' })
 
@@ -313,6 +346,7 @@ describe('EngineStore hook invocation isolation', () => {
     const registry: HookRegistry = { resolve: name => (name === 'exit' ? throwingExit : undefined) }
     const graph = buildIsolationGraph({ onExit: hookRef('exit') })
     const store = new EngineStore(graph, { hookRegistry: registry, port: createNoopPort() })
+    await store.dispatch({ type: 'start' })
 
     const applications = await store.dispatch({ type: 'advance-phase' })
 

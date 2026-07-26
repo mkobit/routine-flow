@@ -49,7 +49,7 @@
 
 #### Scenario: Reducer output is a deterministic function of its now input
 - **WHEN** `engineReducer` is called twice with identical `state`/`graph`/`deps` but an action differing only in its `now` value
-- **THEN** the two resulting states' opened/closed instance timestamps differ only by that `now` difference, with no other divergence between the two results
+- **THEN** the two resulting states' opened/closed instance timestamps differ only by that `now` difference, with no other divergence between the two results besides freshly-minted `PhaseInstanceId`/`SessionId` values, which are expected to differ per call regardless of `now`
 
 ### Requirement: PhaseInstance snapshots phase identity, surviving later config edits
 A closed `PhaseInstance` SHALL carry `phaseDisplayName`/`phaseKind` reflecting the firing `Phase`'s `label`/`kind` as of when the instance was created for it, alongside the existing `plannedDuration` snapshot — unaffected by the `Phase` being renamed, re-kinded, or deleted afterward.

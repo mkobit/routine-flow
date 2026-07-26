@@ -130,8 +130,12 @@ describe('EngineStore hook firing', () => {
     })
     const graph = buildGraph({ focus: { onExit: hookRef('exit') }, break: { onEnter: hookRef('enter') } })
     const store = new EngineStore(graph, { hookRegistry: registry, port: createFakePort() })
+    await store.dispatch({ type: 'start' }) // running, focus
+    await store.dispatch({ type: 'advance-phase' }) // focus -> break, status: stopped
+    await store.dispatch({ type: 'advance-phase' }) // break -> focus, status: stopped
+    tracker.reset()
 
-    const applications = await store.dispatch({ type: 'advance-phase' })
+    const applications = await store.dispatch({ type: 'advance-phase' }) // focus -> break, dispatched from 'stopped'
 
     expect(tracker.calls()).toEqual(['onExit', 'onEnter'])
     expect(applications.map(a => a.event)).toEqual(['onExit', 'onEnter'])
@@ -404,6 +408,7 @@ describe('EngineStore hook firing', () => {
     const registry = createFakeRegistry({ enter: hookSpy })
     const graph = buildGraph({ break: { onEnter: hookRef('enter') } })
     const store = new EngineStore(graph, { hookRegistry: registry, port: createFakePort() })
+    await store.dispatch({ type: 'start' })
 
     await store.dispatch({ type: 'advance-phase' })
 
@@ -416,6 +421,7 @@ describe('EngineStore hook firing', () => {
     const resolveSpy = mock((_name: string) => undefined)
     const graph = buildGraph()
     const store = new EngineStore(graph, { hookRegistry: { resolve: resolveSpy }, port: createFakePort() })
+    await store.dispatch({ type: 'start' })
 
     await store.dispatch({ type: 'advance-phase' })
 
@@ -430,6 +436,7 @@ describe('EngineStore hook firing', () => {
       break: { onEnter: hookRef('enter') },
     })
     const store = new EngineStore(graph, { hookRegistry: registry, port: createFakePort() })
+    await store.dispatch({ type: 'start' })
 
     const applications = await store.dispatch({ type: 'advance-phase' })
 
@@ -442,6 +449,7 @@ describe('EngineStore hook firing', () => {
     const graph = buildGraph({ break: { onEnter: hookRef('enter') } })
     const port = createFakePort()
     const store = new EngineStore(graph, { hookRegistry: registry, port })
+    await store.dispatch({ type: 'start' })
 
     await store.dispatch({ type: 'advance-phase' })
 
@@ -471,6 +479,7 @@ describe('EngineStore hook firing', () => {
     })
     const port = createFakePort()
     const store = new EngineStore(graph, { hookRegistry: registry, port })
+    await store.dispatch({ type: 'start' })
 
     const dispatchPromise = store.dispatch({ type: 'advance-phase' })
     await Promise.resolve() // let the dispatch loop reach and suspend at `await hook(...)`
@@ -531,6 +540,7 @@ describe('EngineStore hook firing', () => {
     })
     const port = createFakePort({ appendText: new Error('vault write failed') })
     const store = new EngineStore(graph, { hookRegistry: registry, port })
+    await store.dispatch({ type: 'start' })
 
     const applications = await store.dispatch({ type: 'advance-phase' })
 
@@ -565,10 +575,68 @@ describe('EngineStore hook firing', () => {
     })
     const port = createFakePort({ appendText: new Error('boom') })
     const store = new EngineStore(graph, { hookRegistry: registry, port })
+    await store.dispatch({ type: 'start' })
 
     const applications = await store.dispatch({ type: 'advance-phase' })
 
     expect(applications).toHaveLength(2)
     expect(applications.every(a => a.outcome.stage === 'applied' && a.outcome.result.success === false)).toBe(true)
+  })
+})
+
+describe('HookContext instance/session sourcing', () => {
+  test('onEnter\'s HookContext reflects the just-opened currentInstance', async () => {
+    let seenInstance: HookContext['instance'] | undefined
+    const registry = createFakeRegistry({
+      enter: async (context) => {
+        seenInstance = context.instance
+        return []
+      },
+    })
+    const graph = buildGraph({ break: { onEnter: hookRef('enter') } })
+    const store = new EngineStore(graph, { hookRegistry: registry, port: createFakePort() })
+    await store.dispatch({ type: 'start' })
+
+    await store.dispatch({ type: 'advance-phase' })
+
+    expect(seenInstance).toEqual(store.getState().session?.currentInstance ?? undefined)
+    expect(seenInstance?.endedAt).toBeNull()
+  })
+
+  test('onComplete/onSkip/onExit\'s HookContext reflects the just-closed history entry', async () => {
+    let seenInstance: HookContext['instance'] | undefined
+    const registry = createFakeRegistry({
+      exit: async (context) => {
+        seenInstance = context.instance
+        return []
+      },
+    })
+    const graph = buildGraph({ focus: { onExit: hookRef('exit') } })
+    const store = new EngineStore(graph, { hookRegistry: registry, port: createFakePort() })
+    await store.dispatch({ type: 'start' })
+
+    await store.dispatch({ type: 'advance-phase' })
+
+    expect(seenInstance).toEqual(store.getState().session?.history.at(-1))
+    expect(seenInstance?.endReason).toBe('skipped')
+    expect(seenInstance?.endedAt).not.toBeNull()
+  })
+
+  test('a stop-abandoned onExit\'s HookContext.session has endedAt stamped, even though EngineState.session has already reset to null', async () => {
+    let seenSession: HookContext['session'] | undefined
+    const registry = createFakeRegistry({
+      exit: async (context) => {
+        seenSession = context.session
+        return []
+      },
+    })
+    const graph = buildGraph({ focus: { onExit: hookRef('exit') } })
+    const store = new EngineStore(graph, { hookRegistry: registry, port: createFakePort() })
+    await store.dispatch({ type: 'start' })
+
+    await store.dispatch({ type: 'stop' })
+
+    expect(store.getState().session).toBeNull()
+    expect(seenSession?.endedAt).not.toBeNull()
   })
 })
