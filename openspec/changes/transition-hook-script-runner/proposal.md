@@ -1,0 +1,33 @@
+## Why
+
+Every Hook (`onEnter`/`onComplete`/`onSkip`/`onExit`) and every `TransitionCondition` `'custom'` predicate must be hand-typed TypeScript compiled into the plugin bundle — exactly one Hook exists anywhere (write-back), and zero predicates. A user or an agent acting on their behalf cannot add new phase-lifecycle behavior (a log line on completion, a streak counter, a rest-day skip rule) without forking and rebuilding the plugin. This lets both resolve to vault-authored code/config instead.
+
+## What Changes
+
+- Adds a settings-tab "scripts folder" setting: any `.js` file placed there becomes selectable by name in a new list of script-to-event bindings (one binding = one script + one or more of `onEnter`/`onComplete`/`onSkip`/`onExit`).
+- Each binding requires a one-time bind-time confirmation (review the script, confirm trust) before it's enabled — no per-firing prompt afterward.
+- A bound script executes inside a Web Worker (no Node integration) as `(context) => Promise<FileMutation[]>` — the existing `Hook` contract, unchanged.
+- `HookContext` gains pre-resolved, read-only frontmatter for one context-implied path only (the active file's note, via `EngineState.activeFilePath` — `Phase` has no note/file-path field of its own, so there is no second "phase's own note" to resolve) — resolved synchronously on the main thread before the Worker spawns, not via a runtime read bridge.
+- **BREAKING** (internal contract, no shipped callers yet): `HookContext`'s `Session`/`PhaseInstance`-derived `Temporal` values are serialized to plain ISO strings across the Worker boundary and rehydrated inside it — anything holding a raw `HookContext` and expecting live `Temporal.Instant`/`Duration` objects to survive a `postMessage` needs its own rehydration step.
+- `EngineStore.dispatch`'s hook-invocation loop gets a per-invocation `try`/`catch` (plus the Worker's own timeout) so one throwing or hanging script no longer aborts every later hook event's mutations in the same dispatch.
+- Adds a settings-tab list of named `'custom'` predicates, each a small formula string (comparisons, `if(cond, then, else)`, boolean operators — modeled on Obsidian Bases' own formula grammar) evaluated synchronously in-process against `fromPhaseId`/`visitCounts` — no file, no Worker, no isolation machinery.
+- Does not widen `Predicate`'s inputs beyond `fromPhaseId`/`visitCounts` — vault-state-dependent predicates (e.g. `isRestDay`) remain out of reach until a follow-up change adds a pre-resolved snapshot input, tracked separately.
+
+## Capabilities
+
+### New Capabilities
+- `script-hook-source`: settings-tab scripts-folder configuration, the script-to-event binding list, and the bind-time confirmation gate — how a vault-authored script becomes a name a `HookRegistry` can resolve.
+- `script-hook-worker-execution`: Worker spawn/terminate/timeout per invocation, the `HookContext` Temporal-serialization boundary, context-implied-path frontmatter enrichment, and the declarative `FileMutation[]` return contract.
+- `predicate-expression-grammar`: the restricted formula grammar, its in-repo interpreter, and the settings-tab name+formula registration into a `PredicateRegistry`.
+
+### Modified Capabilities
+- `hook-execution`: adds a requirement that a hook invocation which throws or whose returned promise rejects does not stop remaining hook events in the same dispatch from being resolved and invoked (today, only a failed `applyMutations` result is isolated this way — an invocation-level failure currently propagates out of `EngineStore.dispatch` and aborts the loop).
+
+## Impact
+
+- `src/timer/store.ts` (`EngineStore.dispatch`'s hook loop — per-invocation error isolation).
+- `src/domain/hook/hook.ts` (`HookContext` gains enrichment fields; no change to `Hook`'s own type).
+- New: a Worker entry module (script execution sandbox), a Temporal serialize/rehydrate boundary module, a script-hook registry (settings-backed, mutable, plugin-scoped — distinct from today's load-once `HookRegistry`/`PredicateRegistry` pattern), a predicate-expression parser/interpreter, and settings-tab UI for both the script-binding list and the predicate list.
+- `src/settings.ts` / `PomodoroSettingTab` (new configuration surfaces).
+- `main.ts` (wiring the new registries in place of the current static resolve-only objects).
+- No change to `src/domain/hook/predicate.ts`'s `Predicate` type signature in this change.
