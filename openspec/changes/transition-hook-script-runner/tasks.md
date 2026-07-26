@@ -1,9 +1,9 @@
 ## 1. Hook-invocation error isolation (independent, lands first)
 
-- [ ] 1.1 In `src/timer/store.ts`'s `EngineStore.dispatch` hook loop, wrap each `await hook(...)` call in its own `try`/`catch` so a throw/rejection is captured per-event rather than propagating out of `dispatch`
-- [ ] 1.2 Extend `HookEventApplication` (or an equivalent per-event result shape) so a caught invocation failure is distinguishable from a successful (possibly empty) `FileMutation[]` result, without changing `dispatch`'s "never rejects" contract
-- [ ] 1.3 Update `main.ts`'s `reportFailedHookApplications` (or add an equivalent) to surface an invocation-failure entry via `Notice`, distinct from today's mutation-application failure message
-- [ ] 1.4 Add `tests/store.test.ts` scenarios: a throwing `onExit` hook doesn't suppress a same-dispatch `onEnter` hook; a rejecting hook's promise doesn't suppress a later event's hook; `dispatch`'s resolved result reflects the failure without throwing
+- [x] 1.1 In `src/timer/store.ts`'s `EngineStore.dispatch` hook loop, wrap each `await hook(...)` call in its own `try`/`catch` so a throw/rejection is captured per-event rather than propagating out of `dispatch`
+- [x] 1.2 Extend `HookEventApplication` (or an equivalent per-event result shape) so a caught invocation failure is distinguishable from a successful (possibly empty) `FileMutation[]` result, without changing `dispatch`'s "never rejects" contract
+- [x] 1.3 Update `main.ts`'s `reportFailedHookApplications` (or add an equivalent) to surface an invocation-failure entry via `Notice`, distinct from today's mutation-application failure message
+- [x] 1.4 Add `tests/store.test.ts` scenarios: a throwing `onExit` hook doesn't suppress a same-dispatch `onEnter` hook; a rejecting hook's promise doesn't suppress a later event's hook; `dispatch`'s resolved result reflects the failure without throwing
 
 ## 2. Predicate expression grammar
 

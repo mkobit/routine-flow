@@ -16,11 +16,15 @@ import { ObsidianWriteBackPromptPort } from './views/write-back-modal'
 import { PomodoroStatusBarItem } from './views/status-bar'
 import { PomodoroSidePanelView, SIDE_PANEL_VIEW_TYPE } from './views/side-panel-view'
 
-/** Surfaces a dispatched hook's failed FileMutation applications — mirrors the reporting main.ts's old write-back subscriber did inline. */
+/** Surfaces a dispatched hook's invocation failures and failed FileMutation applications — mirrors the reporting main.ts's old write-back subscriber did inline. */
 function reportFailedHookApplications(applications: readonly HookEventApplication[]): void {
   for (const application of applications) {
-    if (!application.result.success) {
-      const { mutation, cause } = application.result
+    const { outcome } = application
+    if (outcome.stage === 'invocationFailed') {
+      new Notice(`Pomodoro: hook invocation failed (${application.event}) — ${describeCause(outcome.cause)}`)
+    }
+    else if (!outcome.result.success) {
+      const { mutation, cause } = outcome.result
       new Notice(`Pomodoro: write-back failed (${mutation.kind}) — ${describeCause(cause)}`)
     }
   }

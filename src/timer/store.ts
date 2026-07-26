@@ -3,18 +3,48 @@ import type { EngineAction } from './reducer'
 import type { EngineState } from '../domain/session/engine-state'
 import type { PhaseGraph } from '../domain/phase/phase-graph'
 import type { Phase } from '../domain/phase/phase'
-import type { HookEvent } from '../domain/hook/hook'
+import type { Hook, HookContext, HookEvent } from '../domain/hook/hook'
 import type { HookReference } from '../domain/hook/hook-reference'
 import { applyMutations } from '../domain/mutation/apply-mutations'
-import type { ApplyMutationsResult } from '../domain/mutation/apply-mutations'
+import type { ApplyMutationsResult, FileMutationPort } from '../domain/mutation/apply-mutations'
 import type { EngineDeps } from './engine-deps'
 import { findPhaseById } from './phase-graph'
+
+/**
+ * Outcome of invoking one resolved hook. 'invocationFailed' covers a hook
+ * that threw synchronously or whose returned promise rejected — distinct
+ * from 'applied', where the hook ran to completion and its (possibly empty)
+ * FileMutation[] went through applyMutations, which has its own independent
+ * success/failure outcome.
+ */
+export type HookInvocationOutcome
+  = | { readonly stage: 'applied', readonly result: ApplyMutationsResult }
+    | { readonly stage: 'invocationFailed', readonly cause: unknown }
 
 /** Result of resolving, invoking, and applying one fired hook event's mutations. */
 export interface HookEventApplication {
   readonly event: HookEvent
   readonly phase: Phase
-  readonly result: ApplyMutationsResult
+  readonly outcome: HookInvocationOutcome
+}
+
+/**
+ * Invokes one resolved hook and applies its mutations, catching an
+ * invocation-level throw/rejection so it can't propagate out of
+ * EngineStore.dispatch and abort later hook events in the same dispatch —
+ * user-authored (e.g. script-backed) hooks throw/hang far more often than
+ * the one vetted hand-typed hook this isolation was previously untested
+ * against.
+ */
+async function invokeHook(hook: Hook, port: FileMutationPort, context: HookContext): Promise<HookInvocationOutcome> {
+  try {
+    const mutations = await hook(context)
+    const result = await applyMutations(port, mutations)
+    return { stage: 'applied', result }
+  }
+  catch (cause) {
+    return { stage: 'invocationFailed', cause }
+  }
 }
 
 function hookReferenceFor(phase: Phase, event: HookEvent): HookReference | null {
@@ -89,9 +119,8 @@ export class EngineStore {
       if (hook === undefined) {
         continue
       }
-      const mutations = await hook(synthesizeHookContext(phase, event, endReason, nextState))
-      const result = await applyMutations(port, mutations)
-      applications = [...applications, { event, phase, result }]
+      const outcome = await invokeHook(hook, port, synthesizeHookContext(phase, event, endReason, nextState))
+      applications = [...applications, { event, phase, outcome }]
     }
     return applications
   }

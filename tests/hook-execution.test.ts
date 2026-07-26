@@ -504,9 +504,11 @@ describe('EngineStore hook firing', () => {
     expect(enterSpy).toHaveBeenCalledTimes(1)
     expect(applications).toHaveLength(2)
     expect(applications[0]?.event).toBe('onExit')
-    expect(applications[0]?.result.success).toBe(false)
+    expect(applications[0]?.outcome.stage).toBe('applied')
+    expect(applications[0]?.outcome.stage === 'applied' && applications[0].outcome.result.success).toBe(false)
     expect(applications[1]?.event).toBe('onEnter')
-    expect(applications[1]?.result.success).toBe(true)
+    expect(applications[1]?.outcome.stage).toBe('applied')
+    expect(applications[1]?.outcome.stage === 'applied' && applications[1].outcome.result.success).toBe(true)
   })
 
   test('dispatch without a HookRegistry/FileMutationPort transitions state without touching hooks', async () => {
@@ -534,6 +536,6 @@ describe('EngineStore hook firing', () => {
     const applications = await store.dispatch({ type: 'advance-phase' })
 
     expect(applications).toHaveLength(2)
-    expect(applications.every(a => a.result.success === false)).toBe(true)
+    expect(applications.every(a => a.outcome.stage === 'applied' && a.outcome.result.success === false)).toBe(true)
   })
 })
