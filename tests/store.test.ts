@@ -8,6 +8,10 @@ import { POMODORO_PHASE_GRAPH } from '../src/timer/phase-graph'
 import { WRITE_BACK_HOOK_NAME } from '../src/timer/write-back'
 import { TaskQueueItemIdSchema, TaskSourceIdSchema } from '../src/domain/queue/task-source'
 import type { TaskQueueItem, TaskSource, TaskSourceRegistry } from '../src/domain/queue/task-source'
+import { HookNameSchema, HookReferenceSchema } from '../src/domain/hook/hook-reference'
+import type { HookReference } from '../src/domain/hook/hook-reference'
+import type { Hook, HookRegistry } from '../src/domain/hook/hook'
+import type { FileMutationPort } from '../src/domain/mutation/apply-mutations'
 
 const phaseDefaults = {
   taskSourceId: null,
@@ -221,5 +225,101 @@ describe('POMODORO_PHASE_GRAPH write-back wiring', () => {
     for (const phase of POMODORO_PHASE_GRAPH.phases) {
       expect(phase.onComplete).toEqual({ name: WRITE_BACK_HOOK_NAME, params: {} })
     }
+  })
+})
+
+function hookRef(name: string): HookReference {
+  return HookReferenceSchema.parse({ name: HookNameSchema.parse(name), params: {} })
+}
+
+function createNoopPort(): FileMutationPort {
+  return {
+    writeFrontmatter: async () => {},
+    appendText: async () => {},
+    reorderQueueItem: async () => {},
+    changeQueueItemStatus: async () => {},
+  }
+}
+
+/** Two-phase (focus -> break) graph with configurable onExit/onEnter hook references, for exercising invocation-failure isolation. */
+function buildIsolationGraph(overrides: { onExit?: HookReference | null, onEnter?: HookReference | null } = {}): PhaseGraph {
+  return PhaseGraphSchema.parse({
+    id: 'isolation',
+    name: 'Isolation graph',
+    phases: [
+      PhaseSchema.parse({
+        ...phaseDefaults,
+        id: 'focus',
+        label: 'Focus',
+        kind: 'focus',
+        duration: Temporal.Duration.from({ seconds: 10 }),
+        logTarget: { kind: 'activeItem' },
+        onExit: overrides.onExit ?? null,
+      }),
+      PhaseSchema.parse({
+        ...phaseDefaults,
+        id: 'break',
+        label: 'Break',
+        kind: 'break',
+        duration: Temporal.Duration.from({ seconds: 5 }),
+        logTarget: { kind: 'activeItem' },
+        onEnter: overrides.onEnter ?? null,
+      }),
+    ],
+    transitions: [
+      { fromPhaseId: 'focus', toPhaseId: 'break', condition: { kind: 'always' } },
+      { fromPhaseId: 'break', toPhaseId: 'focus', condition: { kind: 'always' } },
+    ],
+  })
+}
+
+describe('EngineStore hook invocation isolation', () => {
+  test('a throwing onExit hook does not suppress the paired onEnter hook', async () => {
+    const enterHook: Hook = async () => []
+    const throwingExit: Hook = () => {
+      throw new Error('onExit blew up')
+    }
+    const registry: HookRegistry = {
+      resolve: name => (name === 'exit' ? throwingExit : name === 'enter' ? enterHook : undefined),
+    }
+    const graph = buildIsolationGraph({ onExit: hookRef('exit'), onEnter: hookRef('enter') })
+    const store = new EngineStore(graph, { hookRegistry: registry, port: createNoopPort() })
+
+    const applications = await store.dispatch({ type: 'advance-phase' })
+
+    expect(applications.map(a => a.event)).toEqual(['onExit', 'onEnter'])
+    expect(applications[1]?.outcome).toEqual({ stage: 'applied', result: { success: true } })
+  })
+
+  test('a rejecting hook promise does not suppress a later event\'s hook in the same dispatch', async () => {
+    const enterHook: Hook = async () => []
+    const rejectingExit: Hook = async () => Promise.reject(new Error('onExit rejected'))
+    const registry: HookRegistry = {
+      resolve: name => (name === 'exit' ? rejectingExit : name === 'enter' ? enterHook : undefined),
+    }
+    const graph = buildIsolationGraph({ onExit: hookRef('exit'), onEnter: hookRef('enter') })
+    const store = new EngineStore(graph, { hookRegistry: registry, port: createNoopPort() })
+
+    const applications = await store.dispatch({ type: 'advance-phase' })
+
+    expect(applications.map(a => a.event)).toEqual(['onExit', 'onEnter'])
+    expect(applications[1]?.outcome).toEqual({ stage: 'applied', result: { success: true } })
+  })
+
+  test('dispatch\'s resolved result reflects a hook invocation failure without throwing', async () => {
+    const throwingExit: Hook = () => {
+      throw new Error('boom')
+    }
+    const registry: HookRegistry = { resolve: name => (name === 'exit' ? throwingExit : undefined) }
+    const graph = buildIsolationGraph({ onExit: hookRef('exit') })
+    const store = new EngineStore(graph, { hookRegistry: registry, port: createNoopPort() })
+
+    const applications = await store.dispatch({ type: 'advance-phase' })
+
+    expect(applications).toHaveLength(1)
+    const exitApplication = applications[0]
+    expect(exitApplication?.event).toBe('onExit')
+    expect(exitApplication?.outcome.stage).toBe('invocationFailed')
+    expect(exitApplication?.outcome).toEqual({ stage: 'invocationFailed', cause: expect.any(Error) })
   })
 })
