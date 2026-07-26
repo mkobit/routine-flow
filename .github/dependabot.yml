@@ -4,7 +4,42 @@ updates:
     directory: "/"
     schedule:
       interval: "weekly"
+    open-pull-requests-limit: 25
+    labels:
+      - "dependencies"
+      - "javascript"
+    commit-message:
+      prefix: "deps"
+      include: "scope"
+    groups:
+      lint-tooling:
+        patterns:
+          - "eslint*"
+          - "@eslint/*"
+          - "@stylistic/eslint-plugin"
+          - "typescript-eslint"
+          - "globals"
+      build-tooling:
+        patterns:
+          - "typescript"
+          - "tslib"
+          - "esbuild"
+          - "ts-node"
+          - "jiti"
+          - "@types/*"
+      e2e-tooling:
+        patterns:
+          - "@playwright/test"
+          - "obsidian-launcher"
+          - "commander"
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
       interval: "weekly"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "github_actions"
+    commit-message:
+      prefix: "deps"
+      include: "scope"
