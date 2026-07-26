@@ -9,12 +9,12 @@
 
 Confirmed: string-formula interpreter (not a structured/dropdown-built config) — see design.md's Decisions section for the resolved rationale.
 
-- [ ] 2.1 Design and document the supported grammar precisely (comparison operators, `if(cond, then, else)`, boolean `and`/`or`/`not`, the exact set of `visitCounts`/`fromPhaseId`-derived values a formula can reference) as a comment/doc alongside the parser
-- [ ] 2.2 Implement a parser producing a small typed AST for the grammar, rejecting any syntax outside it (no assignment, no function definitions, no loops/recursion, no I/O), with identifier/member-access resolution restricted to a fixed whitelist (`fromPhaseId`, each phase id's own key under `visitCounts`) — explicitly rejecting prototype-chain references (`.constructor`, `.__proto__` or equivalent) at parse time, not just at evaluation time
-- [ ] 2.3 Implement a synchronous evaluator: AST + `(fromPhaseId, visitCounts)` -> `boolean`, matching `Predicate`'s existing signature exactly (`src/domain/hook/predicate.ts` — no type changes needed)
-- [ ] 2.4 Add a settings-tab section: a list of named formula-authored predicates (name + formula-string fields, add/edit/remove), each validated through the parser on save — an unparseable formula blocks saving with a shown error
-- [ ] 2.5 Wire a `MutableFormulaPredicateRegistry` (or fold into a single new mutable predicate registry) built from the settings list, implementing `PredicateRegistry`, replacing `main.ts`'s static `{ resolve: () => undefined }`
-- [ ] 2.6 Unit tests: grammar parse success/failure cases (including prototype-chain reference rejection); evaluator correctness against representative `visitCounts` fixtures; registry resolution by name; settings-tab validation rejects bad formulas at save time
+- [x] 2.1 Design and document the supported grammar precisely (comparison operators, `if(cond, then, else)`, boolean `and`/`or`/`not`, the exact set of `visitCounts`/`fromPhaseId`-derived values a formula can reference) as a comment/doc alongside the parser
+- [x] 2.2 Implement a parser producing a small typed AST for the grammar, rejecting any syntax outside it (no assignment, no function definitions, no loops/recursion, no I/O), with identifier/member-access resolution restricted to a fixed whitelist (`fromPhaseId`, each phase id's own key under `visitCounts`) — explicitly rejecting prototype-chain references (`.constructor`, `.__proto__` or equivalent) at parse time, not just at evaluation time
+- [x] 2.3 Implement a synchronous evaluator: AST + `(fromPhaseId, visitCounts)` -> `boolean`, matching `Predicate`'s existing signature exactly (`src/domain/hook/predicate.ts` — no type changes needed)
+- [x] 2.4 Add a settings-tab section: a list of named formula-authored predicates (name + formula-string fields, add/edit/remove), each validated through the parser on save — an unparseable formula blocks saving with a shown error
+- [x] 2.5 Wire a `MutableFormulaPredicateRegistry` (or fold into a single new mutable predicate registry) built from the settings list, implementing `PredicateRegistry`, replacing `main.ts`'s static `{ resolve: () => undefined }`
+- [x] 2.6 Unit tests: grammar parse success/failure cases (including prototype-chain reference rejection); evaluator correctness against representative `visitCounts` fixtures; registry resolution by name; settings-tab validation rejects bad formulas at save time
 
 ## 3. Script-hook Worker execution
 
