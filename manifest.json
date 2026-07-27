@@ -6,5 +6,5 @@
   "description": "Customizable Pomodoro timer with Obsidian Bases support.",
   "author": "mkobit",
   "authorUrl": "https://github.com/mkobit",
-  "isDesktopOnly": true
+  "isDesktopOnly": false
 }
