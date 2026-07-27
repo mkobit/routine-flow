@@ -80,8 +80,33 @@ describe('applyMutations', () => {
     expect(result.success).toBe(false)
     expect(result.success === false && result.mutation).toBe(reorderMutation)
     expect(result.success === false && result.cause).toBe(cause)
+    expect(result.success === false && result.appliedCount).toBe(1)
     expect(getOrder()).toEqual(['writeFrontmatter', 'reorderQueueItem'])
     expect(port.appendText).not.toHaveBeenCalled()
+  })
+
+  test('appliedCount is positional, not identity-based -- correct even when the same mutation object appears twice', async () => {
+    const cause = new Error('vault write failed')
+    let callCount = 0
+    const port: FileMutationPort = {
+      writeFrontmatter: mock(async () => {}),
+      appendText: mock(async () => {
+        callCount += 1
+        if (callCount === 2) {
+          throw cause
+        }
+      }),
+      reorderQueueItem: async () => {},
+      changeQueueItemStatus: async () => {},
+    }
+
+    // appendMutation appears twice, by reference -- the second occurrence is the one that fails.
+    const result = await applyMutations(port, [appendMutation, appendMutation, frontmatterMutation])
+
+    expect(result.success).toBe(false)
+    expect(result.success === false && result.mutation).toBe(appendMutation)
+    expect(result.success === false && result.appliedCount).toBe(1)
+    expect(port.writeFrontmatter).not.toHaveBeenCalled()
   })
 
   test('resolves with a success result and touches nothing for an empty mutation list', async () => {

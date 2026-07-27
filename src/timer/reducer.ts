@@ -2,10 +2,11 @@ import type { Temporal } from 'temporal-polyfill'
 import type { EngineState } from '../domain/session/engine-state'
 import type { Phase, PhaseId } from '../domain/phase/phase'
 import type { PhaseGraph } from '../domain/phase/phase-graph'
-import type { HookEvent } from '../domain/hook/hook'
+import type { HookEvent, HookInvocationOutcome } from '../domain/hook/hook'
 import type { PredicateRegistry } from '../domain/hook/predicate'
+import type { FileMutation } from '../domain/mutation/file-mutation'
 import { closePhaseInstance, openPhaseInstance, openSession } from '../domain/session/session'
-import type { ItemTouch, PhaseInstanceEndReason, PhaseInstanceId, Session } from '../domain/session/session'
+import type { ItemTouch, PhaseInstance, PhaseInstanceEndReason, PhaseInstanceHookFailure, PhaseInstanceId, Session } from '../domain/session/session'
 import { findPhaseById, resolveNextPhaseId } from './phase-graph'
 import type { EngineDeps } from './engine-deps'
 
@@ -22,6 +23,8 @@ export type EngineAction
     | { type: 'set-queue-exhausted', exhausted: boolean }
     /** Store-internal-only, mirroring set-queue-exhausted -- no external caller dispatches this directly. */
     | { type: 'record-item-touch', item: ItemTouch }
+    /** Store-internal-only, mirroring record-item-touch -- folds one fired event's hook outcome onto the PhaseInstance it fired for. */
+    | { type: 'record-hook-outcome', phaseInstanceId: PhaseInstanceId, event: HookEvent, outcome: HookInvocationOutcome }
 
 /**
  * What engineReducer actually receives. start/tick/finish-phase/advance-phase/stop -- the actions
@@ -42,6 +45,7 @@ export type StampedEngineAction
     | { type: 'set-active-file', filePath: string | null }
     | { type: 'set-queue-exhausted', exhausted: boolean }
     | { type: 'record-item-touch', item: ItemTouch }
+    | { type: 'record-hook-outcome', phaseInstanceId: PhaseInstanceId, event: HookEvent, outcome: HookInvocationOutcome }
 
 /**
  * Build the initial stopped state for a given phase graph, at its first
@@ -114,6 +118,8 @@ export function engineReducer(
         : { ...state, queueExhausted: action.exhausted }
     case 'record-item-touch':
       return recordItemTouch(state, action.item)
+    case 'record-hook-outcome':
+      return recordHookOutcome(state, action.phaseInstanceId, action.event, action.outcome)
   }
 }
 
@@ -276,6 +282,64 @@ function recordItemTouch(state: EngineState, item: ItemTouch): EngineState {
     session: {
       ...state.session,
       currentInstance: { ...instance, itemsTouched: [...instance.itemsTouched, item] },
+    },
+  }
+}
+
+/**
+ * Derives what a fired event's HookInvocationOutcome contributes to its PhaseInstance:
+ * the mutations that actually applied (the positional prefix before any failure -- see
+ * design.md Decision 6, ApplyMutationsResult.appliedCount), and/or a PhaseInstanceHookFailure
+ * when the hook itself threw/rejected or one of its mutations failed to apply.
+ */
+function outcomeDelta(event: HookEvent, outcome: HookInvocationOutcome): { readonly mutations: readonly FileMutation[], readonly failure: PhaseInstanceHookFailure | null } {
+  if (outcome.stage === 'invocationFailed') {
+    return { mutations: [], failure: { event, kind: 'invocationFailed', cause: outcome.cause } }
+  }
+  if (outcome.result.success) {
+    return { mutations: outcome.mutations, failure: null }
+  }
+  return {
+    mutations: outcome.mutations.slice(0, outcome.result.appliedCount),
+    failure: { event, kind: 'mutationFailed', mutation: outcome.result.mutation, cause: outcome.result.cause },
+  }
+}
+
+/**
+ * Folds one fired event's hook outcome onto the PhaseInstance identified by phaseInstanceId --
+ * checked against session.currentInstance, then session.history, unconditionally (not branching
+ * on event, since a manualClear-policy phase's onComplete targets currentInstance while every
+ * other onComplete/onSkip/onExit targets a history entry -- see design.md Decision 3). Appends
+ * (never replaces) onto the matched instance's mutationsApplied/hookFailures. A no-op when
+ * neither location holds a matching instance (e.g. a stop mid-phase already discarded the
+ * session before this hook settled) or when the delta is empty.
+ */
+function recordHookOutcome(state: EngineState, phaseInstanceId: PhaseInstanceId, event: HookEvent, outcome: HookInvocationOutcome): EngineState {
+  const session = state.session
+  if (session === null) {
+    return state
+  }
+  const { mutations, failure } = outcomeDelta(event, outcome)
+  if (mutations.length === 0 && failure === null) {
+    return state
+  }
+  const foldInstance = (instance: PhaseInstance): PhaseInstance => ({
+    ...instance,
+    mutationsApplied: [...instance.mutationsApplied, ...mutations],
+    hookFailures: failure === null ? instance.hookFailures : [...instance.hookFailures, failure],
+  })
+  if (session.currentInstance?.id === phaseInstanceId) {
+    return { ...state, session: { ...session, currentInstance: foldInstance(session.currentInstance) } }
+  }
+  const historyIndex = session.history.findIndex(instance => instance.id === phaseInstanceId)
+  if (historyIndex === -1) {
+    return state
+  }
+  return {
+    ...state,
+    session: {
+      ...session,
+      history: session.history.map((instance, index) => index === historyIndex ? foldInstance(instance) : instance),
     },
   }
 }
