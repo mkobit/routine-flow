@@ -6,23 +6,12 @@ import type { PhaseGraph } from '../domain/phase/phase-graph'
 import type { Phase } from '../domain/phase/phase'
 import { closePhaseInstance } from '../domain/session/session'
 import type { PhaseInstance, PhaseInstanceId, Session } from '../domain/session/session'
-import type { Hook, HookContext, HookEvent } from '../domain/hook/hook'
+import type { Hook, HookContext, HookEvent, HookInvocationOutcome } from '../domain/hook/hook'
 import type { HookReference } from '../domain/hook/hook-reference'
 import { applyMutations } from '../domain/mutation/apply-mutations'
-import type { ApplyMutationsResult, FileMutationPort } from '../domain/mutation/apply-mutations'
+import type { FileMutationPort } from '../domain/mutation/apply-mutations'
 import type { EngineDeps } from './engine-deps'
 import { findPhaseById } from './phase-graph'
-
-/**
- * Outcome of invoking one resolved hook. 'invocationFailed' covers a hook
- * that threw synchronously or whose returned promise rejected — distinct
- * from 'applied', where the hook ran to completion and its (possibly empty)
- * FileMutation[] went through applyMutations, which has its own independent
- * success/failure outcome.
- */
-export type HookInvocationOutcome
-  = | { readonly stage: 'applied', readonly result: ApplyMutationsResult }
-    | { readonly stage: 'invocationFailed', readonly cause: unknown }
 
 /** Result of resolving, invoking, and applying one fired hook event's mutations. */
 export interface HookEventApplication {
@@ -43,7 +32,7 @@ async function invokeHook(hook: Hook, port: FileMutationPort, context: HookConte
   try {
     const mutations = await hook(context)
     const result = await applyMutations(port, mutations)
-    return { stage: 'applied', result }
+    return { stage: 'applied', mutations, result }
   }
   catch (cause) {
     return { stage: 'invocationFailed', cause }
@@ -204,6 +193,7 @@ export class EngineStore {
         activeFilePath: this.state.activeFilePath,
       }
       const outcome = await invokeHook(hook, port, context)
+      this.applyState(engineReducer(this.state, { type: 'record-hook-outcome', phaseInstanceId, event, outcome }, this.graph, this.deps))
       applications = [...applications, { event, phase, outcome }]
     }
     return applications

@@ -22,7 +22,8 @@ export interface FileMutationPort {
  */
 export type ApplyMutationsResult
   = | { readonly success: true }
-    | { readonly success: false, readonly mutation: FileMutation, readonly cause: unknown }
+    /** `appliedCount` is how many leading mutations (by position, not identity) dispatched successfully before `mutation` failed -- lets a caller recover the successful prefix even if `mutations` contains the same FileMutation object more than once. */
+    | { readonly success: false, readonly mutation: FileMutation, readonly cause: unknown, readonly appliedCount: number }
 
 const dispatch = (port: FileMutationPort, mutation: FileMutation): Promise<void> =>
   mutation.kind === 'frontmatter'
@@ -32,6 +33,20 @@ const dispatch = (port: FileMutationPort, mutation: FileMutation): Promise<void>
       : mutation.kind === 'queueReorder'
         ? port.reorderQueueItem(mutation)
         : port.changeQueueItemStatus(mutation)
+
+const applyFrom = (
+  port: FileMutationPort,
+  mutations: readonly FileMutation[],
+  appliedCount: number,
+): Promise<ApplyMutationsResult> => {
+  const [mutation, ...rest] = mutations
+  return mutation === undefined
+    ? Promise.resolve({ success: true })
+    : dispatch(port, mutation).then(
+        (_dispatched: void) => applyFrom(port, rest, appliedCount + 1),
+        (cause: unknown) => ({ success: false, mutation, cause, appliedCount }),
+      )
+}
 
 /**
  * Dispatches each mutation to its matching FileMutationPort method,
@@ -43,12 +58,4 @@ const dispatch = (port: FileMutationPort, mutation: FileMutation): Promise<void>
 export const applyMutations = (
   port: FileMutationPort,
   mutations: readonly FileMutation[],
-): Promise<ApplyMutationsResult> => {
-  const [mutation, ...rest] = mutations
-  return mutation === undefined
-    ? Promise.resolve({ success: true })
-    : dispatch(port, mutation).then(
-        (_dispatched: void) => applyMutations(port, rest),
-        (cause: unknown) => ({ success: false, mutation, cause }),
-      )
-}
+): Promise<ApplyMutationsResult> => applyFrom(port, mutations, 0)

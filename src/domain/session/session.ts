@@ -4,6 +4,7 @@ import type { Phase, PhaseId, PhaseKind } from '../phase/phase'
 import type { PhaseGraphId } from '../phase/phase-graph'
 import type { TaskQueueItemId } from '../queue/task-source'
 import type { FileMutation } from '../mutation/file-mutation'
+import type { HookEvent } from '../hook/hook-reference'
 
 /** Identifier for a single traversal of a PhaseGraph. */
 export const SessionIdSchema = z.string().min(1).brand<'SessionId'>()
@@ -29,10 +30,27 @@ export interface ItemTouch {
 }
 
 /**
+ * One hook-invocation failure folded onto a PhaseInstance -- either the hook itself
+ * threw/rejected (`invocationFailed`), or it returned mutations but one failed to apply
+ * (`mutationFailed`, naming that mutation). `event` names which lifecycle moment
+ * (onEnter/onComplete/onSkip/onExit) produced it, since more than one event can fire for the
+ * same instance.
+ */
+export type PhaseInstanceHookFailure
+  = | { readonly event: HookEvent, readonly kind: 'invocationFailed', readonly cause: unknown }
+    | { readonly event: HookEvent, readonly kind: 'mutationFailed', readonly mutation: FileMutation, readonly cause: unknown }
+
+/**
  * A concrete occurrence of a Phase within a Session. `phaseDisplayName`/`phaseKind` are
  * snapshotted from the firing Phase at open time (alongside `plannedDuration`), so a closed
  * instance survives that Phase later being renamed, re-kinded, or deleted. The current active
  * item is the tail of `itemsTouched`, when non-empty — not separately tracked.
+ *
+ * `mutationsApplied`/`hookFailures` accumulate across every hook event fired for this instance
+ * (onEnter/onComplete/onSkip/onExit can each contribute), in firing order, folded on by
+ * EngineStore after each hook settles — see EngineStore.dispatch's hook-invocation loop. Both
+ * start empty and only ever grow; a mutation that failed to apply lands in `hookFailures`, not
+ * `mutationsApplied`.
  */
 export interface PhaseInstance {
   readonly id: PhaseInstanceId
@@ -46,6 +64,7 @@ export interface PhaseInstance {
   readonly endReason: PhaseInstanceEndReason | null
   readonly itemsTouched: readonly ItemTouch[]
   readonly mutationsApplied: readonly FileMutation[]
+  readonly hookFailures: readonly PhaseInstanceHookFailure[]
 }
 
 /**
@@ -76,6 +95,7 @@ export function openPhaseInstance(phase: Phase, now: Temporal.Instant): PhaseIns
     endReason: null,
     itemsTouched: [],
     mutationsApplied: [],
+    hookFailures: [],
   }
 }
 

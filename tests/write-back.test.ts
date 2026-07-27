@@ -83,6 +83,7 @@ function buildContext(phase: Phase, activeFilePath: string | null): HookContext 
       endReason: 'completed',
       itemsTouched: [],
       mutationsApplied: [],
+      hookFailures: [],
     },
     session: {
       id: SessionIdSchema.parse(crypto.randomUUID()),

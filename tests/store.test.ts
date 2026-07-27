@@ -12,6 +12,8 @@ import { HookNameSchema, HookReferenceSchema } from '../src/domain/hook/hook-ref
 import type { HookReference } from '../src/domain/hook/hook-reference'
 import type { Hook, HookRegistry } from '../src/domain/hook/hook'
 import type { FileMutationPort } from '../src/domain/mutation/apply-mutations'
+import { FileMutationSchema } from '../src/domain/mutation/file-mutation'
+import type { FileMutation } from '../src/domain/mutation/file-mutation'
 
 const phaseDefaults = {
   taskSourceId: null,
@@ -272,8 +274,8 @@ function createNoopPort(): FileMutationPort {
   }
 }
 
-/** Two-phase (focus -> break) graph with configurable onExit/onEnter hook references, for exercising invocation-failure isolation. */
-function buildIsolationGraph(overrides: { onExit?: HookReference | null, onEnter?: HookReference | null } = {}): PhaseGraph {
+/** Two-phase (focus -> break) graph with configurable onComplete/onExit/onEnter hook references, for exercising invocation-failure isolation and hook-outcome folding. */
+function buildIsolationGraph(overrides: { onComplete?: HookReference | null, onExit?: HookReference | null, onEnter?: HookReference | null } = {}): PhaseGraph {
   return PhaseGraphSchema.parse({
     id: 'isolation',
     name: 'Isolation graph',
@@ -285,6 +287,7 @@ function buildIsolationGraph(overrides: { onExit?: HookReference | null, onEnter
         kind: 'focus',
         duration: Temporal.Duration.from({ seconds: 10 }),
         logTarget: { kind: 'activeItem' },
+        onComplete: overrides.onComplete ?? null,
         onExit: overrides.onExit ?? null,
       }),
       PhaseSchema.parse({
@@ -320,7 +323,7 @@ describe('EngineStore hook invocation isolation', () => {
     const applications = await store.dispatch({ type: 'advance-phase' })
 
     expect(applications.map(a => a.event)).toEqual(['onExit', 'onEnter'])
-    expect(applications[1]?.outcome).toEqual({ stage: 'applied', result: { success: true } })
+    expect(applications[1]?.outcome).toEqual({ stage: 'applied', mutations: [], result: { success: true } })
   })
 
   test('a rejecting hook promise does not suppress a later event\'s hook in the same dispatch', async () => {
@@ -336,7 +339,7 @@ describe('EngineStore hook invocation isolation', () => {
     const applications = await store.dispatch({ type: 'advance-phase' })
 
     expect(applications.map(a => a.event)).toEqual(['onExit', 'onEnter'])
-    expect(applications[1]?.outcome).toEqual({ stage: 'applied', result: { success: true } })
+    expect(applications[1]?.outcome).toEqual({ stage: 'applied', mutations: [], result: { success: true } })
   })
 
   test('dispatch\'s resolved result reflects a hook invocation failure without throwing', async () => {
@@ -355,5 +358,154 @@ describe('EngineStore hook invocation isolation', () => {
     expect(exitApplication?.event).toBe('onExit')
     expect(exitApplication?.outcome.stage).toBe('invocationFailed')
     expect(exitApplication?.outcome).toEqual({ stage: 'invocationFailed', cause: expect.any(Error) })
+  })
+})
+
+function appendMutation(text: string): FileMutation {
+  return FileMutationSchema.parse({ kind: 'append', filePath: 'daily-note.md', text })
+}
+
+function frontmatterMutation(property: string): FileMutation {
+  return FileMutationSchema.parse({ kind: 'frontmatter', filePath: 'task.md', property, value: true })
+}
+
+/** A manualClear-policy focus phase (onComplete/onExit configurable) followed by a plain break phase. */
+function buildManualClearGraph(overrides: { onComplete?: HookReference | null, onExit?: HookReference | null } = {}): PhaseGraph {
+  return PhaseGraphSchema.parse({
+    id: 'manual-clear',
+    name: 'Manual clear graph',
+    phases: [
+      PhaseSchema.parse({
+        ...phaseDefaults,
+        id: 'focus',
+        label: 'Focus',
+        kind: 'focus',
+        duration: Temporal.Duration.from({ seconds: 10 }),
+        logTarget: { kind: 'activeItem' },
+        completionPolicy: { kind: 'manualClear' },
+        onComplete: overrides.onComplete ?? null,
+        onExit: overrides.onExit ?? null,
+      }),
+      PhaseSchema.parse({ ...phaseDefaults, id: 'break', label: 'Break', kind: 'break', duration: Temporal.Duration.from({ seconds: 5 }), logTarget: { kind: 'activeItem' } }),
+    ],
+    transitions: [
+      { fromPhaseId: 'focus', toPhaseId: 'break', condition: { kind: 'always' } },
+      { fromPhaseId: 'break', toPhaseId: 'focus', condition: { kind: 'always' } },
+    ],
+  })
+}
+
+describe('EngineStore hook-outcome folding', () => {
+  test('onEnter\'s outcome accumulates onto the newly-opened currentInstance', async () => {
+    const mutation = appendMutation('entered break')
+    const enterHook: Hook = async () => [mutation]
+    const registry: HookRegistry = { resolve: name => (name === 'enter' ? enterHook : undefined) }
+    const graph = buildIsolationGraph({ onEnter: hookRef('enter') })
+    const store = new EngineStore(graph, { hookRegistry: registry, port: createNoopPort() })
+    await store.dispatch({ type: 'start' })
+
+    await store.dispatch({ type: 'advance-phase' })
+
+    expect(store.getState().session?.currentInstance?.phaseId).toBe(PhaseIdSchema.parse('break'))
+    expect(store.getState().session?.currentInstance?.mutationsApplied).toEqual([mutation])
+  })
+
+  test('onComplete and onExit both firing in one dispatch accumulate onto the same closed instance, in firing order', async () => {
+    const completeMutation = appendMutation('completed focus')
+    const exitMutation = appendMutation('exited focus')
+    const completeHook: Hook = async () => [completeMutation]
+    const exitHook: Hook = async () => [exitMutation]
+    const registry: HookRegistry = {
+      resolve: name => (name === 'complete' ? completeHook : name === 'exit' ? exitHook : undefined),
+    }
+    const graph = buildIsolationGraph({ onComplete: hookRef('complete'), onExit: hookRef('exit') })
+    const store = new EngineStore(graph, { hookRegistry: registry, port: createNoopPort() })
+    await store.dispatch({ type: 'start' })
+
+    await store.dispatch({ type: 'finish-phase' })
+
+    const closed = store.getState().session?.history.at(-1)
+    expect(closed?.phaseId).toBe(PhaseIdSchema.parse('focus'))
+    expect(closed?.mutationsApplied).toEqual([completeMutation, exitMutation])
+  })
+
+  test('a manualClear phase\'s onComplete outcome lands on currentInstance, and its later onExit accumulates onto the same instance once closed', async () => {
+    const completeMutation = appendMutation('completed focus')
+    const exitMutation = appendMutation('exited focus')
+    const completeHook: Hook = async () => [completeMutation]
+    const exitHook: Hook = async () => [exitMutation]
+    const registry: HookRegistry = {
+      resolve: name => (name === 'complete' ? completeHook : name === 'exit' ? exitHook : undefined),
+    }
+    const graph = buildManualClearGraph({ onComplete: hookRef('complete'), onExit: hookRef('exit') })
+    const store = new EngineStore(graph, { hookRegistry: registry, port: createNoopPort() })
+    await store.dispatch({ type: 'start' })
+    const openInstanceId = store.getState().session?.currentInstance?.id
+
+    await store.dispatch({ type: 'finish-phase' })
+
+    // The instance is still open (manualClear halts, doesn't close) -- onComplete's outcome landed on currentInstance, not history.
+    expect(store.getState().status).toBe('completed')
+    expect(store.getState().session?.history).toEqual([])
+    expect(store.getState().session?.currentInstance?.id).toBe(openInstanceId)
+    expect(store.getState().session?.currentInstance?.mutationsApplied).toEqual([completeMutation])
+
+    await store.dispatch({ type: 'advance-phase' })
+
+    const closed = store.getState().session?.history.at(-1)
+    expect(closed?.id).toBe(openInstanceId)
+    expect(closed?.mutationsApplied).toEqual([completeMutation, exitMutation])
+  })
+
+  test('an invocationFailed outcome is recorded in hookFailures, leaving mutationsApplied unchanged', async () => {
+    const throwingExit: Hook = () => {
+      throw new Error('onExit blew up')
+    }
+    const registry: HookRegistry = { resolve: name => (name === 'exit' ? throwingExit : undefined) }
+    const graph = buildIsolationGraph({ onExit: hookRef('exit') })
+    const store = new EngineStore(graph, { hookRegistry: registry, port: createNoopPort() })
+    await store.dispatch({ type: 'start' })
+
+    await store.dispatch({ type: 'advance-phase' })
+
+    const closed = store.getState().session?.history.at(-1)
+    expect(closed?.mutationsApplied).toEqual([])
+    expect(closed?.hookFailures).toEqual([{ event: 'onExit', kind: 'invocationFailed', cause: expect.any(Error) }])
+  })
+
+  test('a partial mutation-apply failure records the successful prefix in mutationsApplied and the failure in hookFailures', async () => {
+    const succeeding = appendMutation('this one writes')
+    const failing = frontmatterMutation('pomodoros')
+    const exitHook: Hook = async () => [succeeding, failing]
+    const registry: HookRegistry = { resolve: name => (name === 'exit' ? exitHook : undefined) }
+    const graph = buildIsolationGraph({ onExit: hookRef('exit') })
+    const failingPort: FileMutationPort = {
+      ...createNoopPort(),
+      writeFrontmatter: async () => {
+        throw new Error('frontmatter write failed')
+      },
+    }
+    const store = new EngineStore(graph, { hookRegistry: registry, port: failingPort })
+    await store.dispatch({ type: 'start' })
+
+    await store.dispatch({ type: 'advance-phase' })
+
+    const closed = store.getState().session?.history.at(-1)
+    expect(closed?.mutationsApplied).toEqual([succeeding])
+    expect(closed?.hookFailures).toEqual([{ event: 'onExit', kind: 'mutationFailed', mutation: failing, cause: expect.any(Error) }])
+  })
+
+  test('a stop mid-phase\'s onExit outcome does not throw, and there is no PhaseInstance left to fold it onto', async () => {
+    const exitHook: Hook = async () => [appendMutation('exiting via stop')]
+    const registry: HookRegistry = { resolve: name => (name === 'exit' ? exitHook : undefined) }
+    const graph = buildIsolationGraph({ onExit: hookRef('exit') })
+    const store = new EngineStore(graph, { hookRegistry: registry, port: createNoopPort() })
+    await store.dispatch({ type: 'start' })
+
+    const applications = await store.dispatch({ type: 'stop' })
+
+    expect(applications.map(a => a.event)).toEqual(['onExit'])
+    expect(applications[0]?.outcome.stage).toBe('applied')
+    expect(store.getState().session).toBeNull()
   })
 })
