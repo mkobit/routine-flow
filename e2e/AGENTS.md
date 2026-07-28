@@ -1,6 +1,6 @@
 # End-to-end testing guidelines
 
-These instructions apply when editing or running end-to-end tests for the Pomodoro plugin.
+These instructions apply when editing or running end-to-end tests for the Routine Flow plugin.
 
 ## Playwright interactions
 

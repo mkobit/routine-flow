@@ -4,11 +4,11 @@
 TBD - created by archiving change per-base-routine-selection. Update Purpose after archive.
 ## Requirements
 ### Requirement: A Base view selects its routine via a routineFile ViewOption
-`PomodoroTimerView.getViewOptions()` SHALL include a `routineFile` option of Obsidian Bases' `FileOption` kind, letting the view reference a vault routine file.
+`RoutineTimerView.getViewOptions()` SHALL include a `routineFile` option of Obsidian Bases' `FileOption` kind, letting the view reference a vault routine file.
 
 #### Scenario: Unset routineFile falls back to the built-in default
 - **WHEN** a view's `routineFile` option is unset
-- **THEN** the view SHALL use `POMODORO_PHASE_GRAPH` as its routine
+- **THEN** the view SHALL use `DEFAULT_PHASE_GRAPH` as its routine
 
 #### Scenario: Set routineFile is parsed and used
 - **WHEN** a view's `routineFile` option references a valid routine file

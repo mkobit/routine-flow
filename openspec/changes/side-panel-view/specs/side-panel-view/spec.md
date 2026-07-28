@@ -4,7 +4,7 @@
 The system SHALL provide a workspace-wide side panel view that subscribes to the shared `EngineStore` and renders the currently active phase's label, remaining time, and status, without holding any timer state of its own.
 
 #### Scenario: Routine started from a Bases timer view appears in the panel
-- **WHEN** a routine is started from a `PomodoroTimerView` leaf while the side panel is open
+- **WHEN** a routine is started from a `RoutineTimerView` leaf while the side panel is open
 - **THEN** the side panel updates to show that routine's active phase, remaining time, and status without requiring the user to interact with the panel
 
 #### Scenario: Panel shows idle placeholder when nothing is active
@@ -53,9 +53,9 @@ The system SHALL render the active phase's task queue in the side panel when the
 The system SHALL let the user open or reveal the side panel via a ribbon icon and a command palette entry, both resolving to the same leaf if one already exists.
 
 #### Scenario: Opening via ribbon icon when no leaf exists
-- **WHEN** the user clicks the ribbon icon and no `pomodoro-side-panel` leaf currently exists in the workspace
+- **WHEN** the user clicks the ribbon icon and no `routine-side-panel` leaf currently exists in the workspace
 - **THEN** the system creates one in the right sidebar and reveals it
 
 #### Scenario: Opening via command reuses an existing leaf
-- **WHEN** the user runs the "Open routine panel" command and a `pomodoro-side-panel` leaf already exists
+- **WHEN** the user runs the "Open routine panel" command and a `routine-side-panel` leaf already exists
 - **THEN** the system reveals the existing leaf instead of creating a second one

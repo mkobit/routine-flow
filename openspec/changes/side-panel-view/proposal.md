@@ -7,8 +7,8 @@ flow-gu1.11 shipped the status-bar sub-surface (PR #94); this change delivers th
 
 ## What Changes
 
-- Add a new Obsidian `ItemView`, `PomodoroSidePanelView` (`src/views/side-panel-view.ts`), registered as view type `pomodoro-side-panel`.
-- It subscribes directly to the shared `EngineStore` (same pattern as `PomodoroStatusBarItem` and `PomodoroTimerView`) — no new state, no per-leaf routine binding, no possibility of disagreeing with other surfaces.
+- Add a new Obsidian `ItemView`, `RoutineSidePanelView` (`src/views/side-panel-view.ts`), registered as view type `routine-side-panel`.
+- It subscribes directly to the shared `EngineStore` (same pattern as `RoutineStatusBarItem` and `RoutineTimerView`) — no new state, no per-leaf routine binding, no possibility of disagreeing with other surfaces.
 - Renders phase header, transport controls (Pause/Resume/Done/Reset as applicable), and the active phase's task queue — closer to the Bases timer panel's fidelity than the status bar, but display+control only: it cannot start an arbitrary routine from a stopped state (no routine-picker UI).
 - Add a ribbon icon and a command palette entry ("Open routine panel"), both revealing/reusing the same leaf.
 - Functional shell only — no custom CSS, matching how the status-bar item shipped.

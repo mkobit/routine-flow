@@ -14,7 +14,7 @@ case 'tick':
 
 `completePhase` is the only path that can fire `onComplete` (via `deriveHookEvents`' `tick` branch) and the only path that consults `Phase.completionPolicy`. A duration-less phase never reaches it, so it never fires `onComplete` and its `completionPolicy` is unreachable dead config. The only exit for such a phase today is `advance-phase`, which `deriveHookEvents` unconditionally treats as an abandonment (`onSkip`) whenever the phase was `'running'`/`'paused'`.
 
-`PomodoroTimerView.render` (`src/views/timer-view.ts`) also has:
+`RoutineTimerView.render` (`src/views/timer-view.ts`) also has:
 
 ```ts
 const phase = findPhaseById(graph, state.currentPhaseId)
@@ -30,7 +30,7 @@ which returns before drawing the timer panel, controls, or queue panel at all wh
 **Goals:**
 - Give a duration-less phase a way to reach `completePhase` on a deliberate user action, so `onComplete` and `completionPolicy` become reachable for `manualClear`/`null`/`noOp` policies.
 - Keep the derivation rule reusing the existing `tick`-completion shape rather than inventing a parallel one.
-- Make a duration-less phase visible and operable in `PomodoroTimerView` (currently renders nothing).
+- Make a duration-less phase visible and operable in `RoutineTimerView` (currently renders nothing).
 
 **Non-Goals:**
 - Executing `queueCycle`/`futureDate` `CompletionPolicy` — `completePhase` keeps throwing for those (flow-gu1.25).
@@ -52,7 +52,7 @@ This is the natural-completion path already defined for a phase reaching its end
 **4. `deriveHookEvents` merges `finish-phase` into the existing `tick` branch** (`action.type === 'tick' || action.type === 'finish-phase'`) rather than adding a parallel branch.
 The branch's logic is a pure function of the state diff (did `status` become `'completed'`? did `currentPhaseId` change? neither?) — it doesn't depend on *why* `completePhase` was reached, only on what it produced. `finish-phase` always changes something (it's only meaningfully dispatched against a live phase, and `completePhase` always either halts or advances), so the branch's third case (`return []`, reached today when a timed `tick` doesn't cross zero) is simply unreachable for `finish-phase` — harmless to share.
 
-**5. `PomodoroTimerView`: replace the blanket early-return with a duration-aware render, add a "Done" button.**
+**5. `RoutineTimerView`: replace the blanket early-return with a duration-aware render, add a "Done" button.**
 Split the existing `if (!phase || state.remaining === null) { return }` into `if (!phase) { return }` (defensive, phase should always resolve) and a duration-aware header (`${phase.label}: ${mm}:${ss} (${status})` when `remaining` isn't `null`, `${phase.label} (${status})` when it is). Add a "Done" button next to the existing Pause/Start/Reset controls, shown when `isViewRoutineActive && state.status === 'running' && state.remaining === null`, dispatching `finish-phase` — gated the same way the existing Pause button is gated on `status === 'running'`.
 
 ## Risks / Trade-offs

@@ -4,7 +4,7 @@ Mike's 2026-07-04 manual testing of flow-gu1.8 first flagged the plugin's visual
 
 Two adjacent, already-filed beads bound this document's scope:
 - flow-gu1.61: `styles.css`'s current content (`.bases-echarts-*`, `.bases-chart-modal`) is dead CSS from an unrelated project (confirmed via grep — zero `echarts`/`chart` hits anywhere in `src/`). Every surface below is audited as if `styles.css` were empty; the dead rules are noise, not prior art.
-- flow-gu1.60: internal `Pomodoro*` naming (class names, `pomodoro-*` CSS classes, `pomodoro-*` frontmatter keys) is pervasive and some of it is persisted/user-facing (the Bases view-type string, frontmatter keys), so it can't be blindly renamed. This document uses the current, actual names throughout (e.g. `pomodoro-timer-panel`) — a future rename is that bead's job, not this one's.
+- flow-gu1.60: internal `Pomodoro*` naming (class names, `pomodoro-*` CSS classes, `pomodoro-*` frontmatter keys) is pervasive and some of it is persisted/user-facing (the Bases view-type string, frontmatter keys), so it can't be blindly renamed. This document used the then-current names throughout (e.g. `pomodoro-timer-panel`) — a future rename was that bead's job, not this one's. (2026-07-28: flow-gu1.60's rename has since landed; citations throughout this document have been updated to the new `Routine*`/`routine-*` names.)
 
 A `claude.ai/design` DesignSync project ("Routine Flow", projectId `f9c07593-4338-4513-bfc7-1c52557d97d5`) exists with one throwaway test component pushed. That track is paused pending a separate Stitch MCP evaluation and is untouched by this change.
 
@@ -18,42 +18,42 @@ A `claude.ai/design` DesignSync project ("Routine Flow", projectId `f9c07593-433
 
 **Non-Goals:**
 - Writing or proposing actual CSS, class names, colors, or spacing values.
-- Deciding the `Pomodoro*` → `Routine Flow` internal renaming (flow-gu1.60) — this document uses today's real names.
+- Deciding the `Pomodoro*` → `Routine Flow` internal renaming (flow-gu1.60) — this document originally used the pre-rename real names; citations were updated in place once that rename landed (2026-07-28), rather than left to drift stale.
 - Removing the dead `styles.css` content (flow-gu1.61) — noted as noise, not removed here.
 - Evaluating or configuring the Stitch MCP integration itself, or touching the DesignSync project.
 - Implementing any of flow-gu1.11/.56/.57/.59 — those remain unbuilt; this document describes what they'd need to communicate, not how to build them.
 
 ## Decisions
 
-This scoping pass settled on documenting 12 distinct surfaces/states — the six already tracked, five additional `PomodoroTimerView` rendering states worth calling out individually rather than folding into "the timer view," and one new modal. Each is numbered below with its current state and first-pass design direction. Surfaces are grouped by whether they exist in shipped code today (1-8) or are not-yet-built proposals (9-12).
+This scoping pass settled on documenting 12 distinct surfaces/states — the six already tracked, five additional `RoutineTimerView` rendering states worth calling out individually rather than folding into "the timer view," and one new modal. Each is numbered below with its current state and first-pass design direction. Surfaces are grouped by whether they exist in shipped code today (1-8) or are not-yet-built proposals (9-12).
 
 A companion document, `surface-model.md`, layers four analytical lenses on this same 12-surface inventory — taxonomy (surface type/primitive/lifecycle), relationships (concurrency, mutual exclusion, triggers/lifecycle, sequencing), jobs-to-be-done (why the user is there), and a grounded interactions inventory (every button/field/click target, with keyboard behavior) — using the same #1–#12 numbering and the same shipped-vs-proposed honesty convention. It also resolves this document's first Open Question (surface #9 vs. #1 design pass — see below). Read the two side by side.
 
 ### Surfaces that exist in `src/` today
 
 #### 1. Timer panel + controls + queue — normal/active state
-**Tracked by:** flow-gu1.20.1. **Where:** `src/views/timer-view.ts:108-171` (`.pomodoro-timer-panel`, `.pomodoro-controls`, `.pomodoro-queue`), rendered inside the Bases-embedded `PomodoroTimerView`.
+**Tracked by:** flow-gu1.20.1. **Where:** `src/views/timer-view.ts:108-171` (`.routine-timer-panel`, `.routine-controls`, `.routine-queue`), rendered inside the Bases-embedded `RoutineTimerView`.
 **Current state:** Unstyled. A `<h2>` header (`phase.label: mm:ss (status)`, line 109-118), a row of plain `<button>` elements with no layout container styling (Pause/Start, conditionally Done, always Reset — lines 127-142), and a `<ul>` of plain `<li><button></button></li>` queue rows (lines 161-171), one of which gets `.is-active-task` with no corresponding rule. No visual grouping, spacing, or hierarchy beyond default block/HTML flow.
 **Communicates:** Time remaining and phase identity (most important — this is a timer), current transport state (running/paused/stopped), and the current task queue with which item is active.
 **Hierarchy:** Countdown + phase label should dominate; transport controls are secondary but need to be immediately reachable; the queue is tertiary — useful for context, but shouldn't compete with the countdown for attention.
-**Design direction:** A clear typographic scale (large countdown, smaller phase/status text), a grouped control row (not three loose buttons), and a queue list where the active item is visually distinct (not just structurally marked via `.is-active-task`) from pending items. The queue's underlying data already carries `pomodoro-status`/`pomodoro-priority` per item (`src/timer/base-query-task-source.ts:20,23`) that today's rendering doesn't surface at all (`timer-view.ts:162-170` only renders `displayName`) — worth deciding whether a design pass exposes status/priority visually (e.g. a badge) or deliberately keeps the queue text-only.
+**Design direction:** A clear typographic scale (large countdown, smaller phase/status text), a grouped control row (not three loose buttons), and a queue list where the active item is visually distinct (not just structurally marked via `.is-active-task`) from pending items. The queue's underlying data already carries `routine-status`/`routine-priority` per item (`src/timer/base-query-task-source.ts:20,23`) that today's rendering doesn't surface at all (`timer-view.ts:162-170` only renders `displayName`) — worth deciding whether a design pass exposes status/priority visually (e.g. a badge) or deliberately keeps the queue text-only.
 
 #### 2. Timer panel — loading state
-**Tracked by:** flow-gu1.20.1 (not previously itemized by name). **Where:** `src/views/timer-view.ts:86-89`, class `pomodoro-routine-loading`.
+**Tracked by:** flow-gu1.20.1 (not previously itemized by name). **Where:** `src/views/timer-view.ts:86-89`, class `routine-loading`.
 **Current state:** A single unstyled `<p>Loading routine…</p>`; nothing else renders (early return at line 88).
 **Communicates:** The view is waiting on an async read of a configured routine file (`loadRoutineFile`, line 204) and is not yet interactive.
 **Hierarchy:** Single message, no competing content — but it replaces the entire panel, so it should read as "in progress," not "broken" or "empty."
 **Design direction:** A lightweight in-progress affordance (motion or icon, not just text) so it's visually distinct from the error and empty-queue states below, which also reduce to short strings today and are otherwise easy to confuse with each other.
 
 #### 3. Timer panel — error state
-**Tracked by:** flow-gu1.20.1 (not previously itemized by name). **Where:** `src/views/timer-view.ts:81-84`, class `pomodoro-routine-error`.
+**Tracked by:** flow-gu1.20.1 (not previously itemized by name). **Where:** `src/views/timer-view.ts:81-84`, class `routine-error`.
 **Current state:** A single unstyled `<p>Routine error: {message}</p>`; nothing else renders (early return at line 83). Reachable when a configured `routineFile` doesn't resolve to a vault file, or fails to parse as a valid routine (`resolveRoutineGraph`).
 **Communicates:** Something the user configured (a routine file reference) is broken, and what specifically is wrong (the raw error message).
 **Hierarchy:** The error message is the only content — it must be legible as an error (not mistakable for the loading or normal-state text) and ideally point toward a fix (the Bases view's `routineFile` option).
 **Design direction:** Obsidian's conventional error/warning visual language (icon + color drawing on theme error variables) rather than plain paragraph text, so it reads as "fix your configuration" at a glance, not as another status line.
 
 #### 4. Timer panel — inert state
-**Tracked by:** flow-gu1.20.1 (not previously itemized by name). **Where:** `src/views/timer-view.ts:120-122`, class `pomodoro-routine-inert`.
+**Tracked by:** flow-gu1.20.1 (not previously itemized by name). **Where:** `src/views/timer-view.ts:120-122`, class `routine-inert`.
 **Current state:** An unstyled `<p>` appended below the header, reading `"{active routine}" is currently active instead of this view's routine ("{this view's routine}").`. Shown when this Bases leaf's configured routine differs from whatever routine graph is globally active and running/paused (`isViewRoutineActive` false, `state.status !== 'stopped'`) — i.e., this specific view is a bystander to a routine running elsewhere.
 **Communicates:** "This isn't the routine that's actually running right now" — a disambiguation the current global-single-active-routine model (flow-gu1.23) makes necessary whenever more than one Bases leaf is open on different routines.
 **Hierarchy:** Subordinate to the header, but must be noticeable enough that a user doesn't mistake what the header is showing. Correction (2026-07-22, caught by adversarial review): the header does **not** show this leaf's own routine while inert — `phase`/`headerText` (`timer-view.ts:93-118`) are derived from `graph = this.plugin.store.getGraph()`, the globally *active* routine, never from `viewGraph` (this leaf's own configured routine). So an inert leaf displays the *other, actually-running* routine's live phase/countdown/queue, with this disclaimer paragraph appended below it — not a static snapshot of its own routine.
@@ -79,7 +79,7 @@ A companion document, `surface-model.md`, layers four analytical lenses on this 
 **Hierarchy:** The consequence ("progress will be lost") is the single most important fact; routine names are supporting detail.
 **Design direction:** Should read as a warning/confirmation (Obsidian's destructive-action button styling on "Replace," consistent with how Obsidian itself styles delete-type confirmations) rather than as a neutral form — currently "Replace" uses `.setCta()` (the same treatment WriteBackModal gives its neutral "Submit"), which doesn't distinguish "confirm a write" from "confirm losing progress."
 
-#### 8. PomodoroSettingTab — settings screen
+#### 8. RoutineFlowSettingTab — settings screen
 **Tracked by:** flow-gu1.58. **Where:** `src/settings.ts:25-41`.
 **Current state:** One `Setting` row (a text field for the write-back frontmatter property name, lines 29-40) — plain Obsidian settings-tab defaults; there's currently only one setting, so "layout" isn't yet a real problem, but this will need a direction before more settings land.
 **Communicates:** What the single existing setting controls and why (it already has a `.setDesc()` explaining it) — the design question is more about establishing a scalable pattern than fixing a currently-broken screen.
@@ -101,9 +101,9 @@ A companion document, `surface-model.md`, layers four analytical lenses on this 
 **Design direction:** Copy and timing brief: what wording distinguishes "focus complete, break starting" from "break complete, focus starting," whether/when the notification is actionable (e.g. a "start break" action button, OS-permitting), and whether it needs a permission-prompt UX pass (first use) distinct from the notification content itself.
 
 #### 11. In-app notifications (Obsidian Notice) on phase transitions
-**Tracked by:** flow-gu1.57. **Where:** nothing yet for phase transitions specifically. Two *existing* `Notice` call sites exist for a different trigger — error reporting, not phase transitions: `src/main.ts:22` (write-back mutation failure) and `src/main.ts:54` (hook dispatch failure), both plain default-styled `new Notice('Pomodoro: ...')` calls.
+**Tracked by:** flow-gu1.57. **Where:** nothing yet for phase transitions specifically. Two *existing* `Notice` call sites exist for a different trigger — error reporting, not phase transitions: `src/main.ts:22` (write-back mutation failure) and `src/main.ts:54` (hook dispatch failure), both plain default-styled `new Notice('Routine Flow: ...')` calls.
 **Communicates (proposed):** Same phase-transition information as surface #10, but for the in-app case (no OS permission needed, only visible while Obsidian is focused).
-**Design direction:** Copy/duration/actionability brief, same shape as surface #10's. Worth reconciling with the two existing error-toast call sites during implementation — both currently prefix copy with `Pomodoro:` (a naming detail flow-gu1.60's audit already tracks) and neither currently has any visual treatment beyond Obsidian's own `Notice` default, so a consistent in-app-notification copy/tone convention across "phase transitioned" and "something failed" toasts is worth deciding once, not twice.
+**Design direction:** Copy/duration/actionability brief, same shape as surface #10's. Worth reconciling with the two existing error-toast call sites during implementation — both currently prefix copy with `Routine Flow:` (flow-gu1.60's naming audit resolved the prefix's wording; consistency across surfaces is still this bead's call) and neither currently has any visual treatment beyond Obsidian's own `Notice` default, so a consistent in-app-notification copy/tone convention across "phase transitioned" and "something failed" toasts is worth deciding once, not twice.
 
 #### 12. In-app demo/onboarding
 **Tracked by:** flow-gu1.59. **Where:** nothing yet — `routine-flow-example-vault/` and `docs/examples/*.md` are dev-only fixtures, not shipped release assets (confirmed during flow-41m's submission-requirements audit; the three shipped assets are `main.js`/`manifest.json`/`styles.css`).
@@ -115,8 +115,8 @@ A companion document, `surface-model.md`, layers four analytical lenses on this 
 - **No ribbon icon:** no `addRibbonIcon` call anywhere in `src/`.
 - **No command palette entries:** no `addCommand` call anywhere in `src/`.
 - **No mobile-specific rendering:** no `isMobile`/`Platform` checks anywhere in `src/`; `styles.css`'s mobile media queries belong to the dead chartkit CSS (flow-gu1.61), not this plugin.
-- **Bases "add view" picker entry** (`src/main.ts:68-80`, `registerBasesView('pomodoro-timer', { name: 'Pomodoro Timer', icon: 'timer', ... })`): the name/icon shown when a user adds this view type to a Base is native Obsidian/Bases chrome — not a surface this plugin can restyle beyond the declared name string and Lucide icon name. Its `Pomodoro` naming overlaps flow-gu1.60's audit, not this design pass.
-- **Bases view-options configuration UI** (`PomodoroTimerView.getViewOptions`, `timer-view.ts:237-270`): the field list (focus/break property/value, routine file) is rendered entirely by Bases itself from the declared `BasesOptions[]` metadata — no custom styling surface exists here either.
+- **Bases "add view" picker entry** (`src/main.ts:68-80`, `registerBasesView('routine-timer', { name: 'Routine Timer', icon: 'timer', ... })`): the name/icon shown when a user adds this view type to a Base is native Obsidian/Bases chrome — not a surface this plugin can restyle beyond the declared name string and Lucide icon name. (Its naming used to overlap flow-gu1.60's audit; that rename has since landed.)
+- **Bases view-options configuration UI** (`RoutineTimerView.getViewOptions`, `timer-view.ts:237-270`): the field list (focus/break property/value, routine file) is rendered entirely by Bases itself from the declared `BasesOptions[]` metadata — no custom styling surface exists here either.
 
 ## Risks / Trade-offs
 

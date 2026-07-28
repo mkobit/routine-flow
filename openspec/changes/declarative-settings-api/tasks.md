@@ -5,7 +5,7 @@ Deferred (see proposal.md "Status"). All tasks below were completed once during 
 - [ ] 1.1 Bump `manifest.json` `minAppVersion` from `1.12.7` to `1.13.1` (or whatever the current stable floor is once 1.13.x ships)
 - [ ] 1.2 Bump `e2e/obsidian-version.json` `appVersion` to match; leave `installerVersion` as `"latest"` (obsidian-launcher resolves the compatible installer automatically — do not hardcode it to match `appVersion`, they're separate version tracks)
 
-## 2. Rewrite PomodoroSettingTab
+## 2. Rewrite RoutineFlowSettingTab
 
 - [ ] 2.1 ~~Add `getControlValue`/`setControlValue` overrides~~ — not needed: `PluginSettingTab`'s inherited defaults already read/write `this.plugin.settings[key]` and persist identically to `saveSettings()` (discovered during the 2026-07-27 pass; see design.md Decision 2 revision). `writeBackProperty` control just declares `key: 'writeBackProperty'` and relies on the inherited binding.
 - [ ] 2.2 Implement `getSettingDefinitions()` returning: the `writeBackProperty` text control, a `SettingDefinitionList` (heading "Custom predicates") built from `formulaPredicates`, and the add-predicate `render` row
