@@ -22,11 +22,11 @@ function reportFailedHookApplications(applications: readonly HookEventApplicatio
   for (const application of applications) {
     const { outcome } = application
     if (outcome.stage === 'invocationFailed') {
-      new Notice(`Pomodoro: hook invocation failed (${application.event}) — ${describeCause(outcome.cause)}`)
+      new Notice(`Routine Flow: hook invocation failed (${application.event}) — ${describeCause(outcome.cause)}`)
     }
     else if (!outcome.result.success) {
       const { mutation, cause } = outcome.result
-      new Notice(`Pomodoro: write-back failed (${mutation.kind}) — ${describeCause(cause)}`)
+      new Notice(`Routine Flow: write-back failed (${mutation.kind}) — ${describeCause(cause)}`)
     }
   }
 }
@@ -64,7 +64,7 @@ export default class PomodoroPlugin extends Plugin {
     })
     this.ticker = new TimerTicker((action) => {
       void this.store.dispatch(action).then(reportFailedHookApplications, (cause: unknown) => {
-        new Notice(`Pomodoro: hook dispatch failed — ${describeCause(cause)}`)
+        new Notice(`Routine Flow: hook dispatch failed — ${describeCause(cause)}`)
       })
     })
 
@@ -81,7 +81,7 @@ export default class PomodoroPlugin extends Plugin {
     this.registerBasesView(
       'pomodoro-timer',
       {
-        name: 'Pomodoro Timer',
+        name: 'Routine Timer',
         icon: 'timer',
         factory: (controller, containerEl) => new PomodoroTimerView(
           controller,

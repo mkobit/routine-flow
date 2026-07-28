@@ -43,7 +43,7 @@ export class PomodoroSettingTab extends PluginSettingTab {
       .setDesc('Frontmatter property incremented when a focus phase completes.')
       .addText(text =>
         text
-          .setPlaceholder('Pomodoros')
+          .setPlaceholder('Property name')
           .setValue(this.plugin.settings.writeBackProperty)
           .onChange(async (value) => {
             this.plugin.settings.writeBackProperty = value
@@ -51,7 +51,7 @@ export class PomodoroSettingTab extends PluginSettingTab {
           }),
       )
 
-    new Setting(containerEl).setName('Custom predicates').setHeading()
+    new Setting(containerEl).setName('Custom rules').setHeading()
 
     for (const predicate of this.plugin.settings.formulaPredicates) {
       this.renderFormulaPredicateRow(containerEl, predicate)
@@ -74,7 +74,7 @@ export class PomodoroSettingTab extends PluginSettingTab {
       .addExtraButton(button =>
         button
           .setIcon('trash')
-          .setTooltip('Remove predicate')
+          .setTooltip('Remove rule')
           .onClick(async () => {
             this.plugin.settings.formulaPredicates = this.plugin.settings.formulaPredicates.filter(p => p.name !== predicate.name)
             await this.saveAndRefreshFormulaPredicates()
@@ -89,8 +89,8 @@ export class PomodoroSettingTab extends PluginSettingTab {
     errorEl.hide()
 
     new Setting(containerEl)
-      .setName('Add predicate')
-      .setDesc('Name and formula (e.g. visitCounts.focus >= 4) for a new custom predicate.')
+      .setName('Add rule')
+      .setDesc('Name and condition (e.g. visitCounts.focus >= 4) for a new custom rule.')
       .addText(text =>
         text
           .setPlaceholder('Name')
@@ -100,7 +100,7 @@ export class PomodoroSettingTab extends PluginSettingTab {
       )
       .addText(text =>
         text
-          .setPlaceholder('Formula')
+          .setPlaceholder('Condition')
           .onChange((value) => {
             formula = value
           }),
@@ -113,7 +113,7 @@ export class PomodoroSettingTab extends PluginSettingTab {
             errorEl.hide()
             const parsedName = PredicateNameSchema.safeParse(name)
             if (!parsedName.success) {
-              errorEl.setText('Enter a predicate name.')
+              errorEl.setText('Enter a rule name.')
               errorEl.show()
               return
             }

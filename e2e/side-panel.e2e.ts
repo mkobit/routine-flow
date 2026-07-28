@@ -54,7 +54,30 @@ test.describe('workspace-wide side panel view', () => {
     await expect(header).toHaveText(/\(running\)$/)
 
     await controls.getByRole('button', { name: 'Reset' }).click()
+    const resetModal = page.locator('.modal').filter({ hasText: 'Reset routine?' })
+    await expect(resetModal).toBeVisible()
+    await resetModal.getByRole('button', { name: 'Reset' }).click()
+    await expect(resetModal).toBeHidden()
+
     await expect(panel).toHaveText(/No routine is running/)
+  })
+
+  test('cancelling the reset confirmation leaves the routine running', async ({ obsidianPage: { page } }) => {
+    await page.locator(RIBBON_ICON).click()
+    const panel = panelOf(page)
+    const header = panel.locator('h2')
+    const controls = panel.locator('.pomodoro-controls')
+
+    await dispatchAction(page, { type: 'start' })
+    await expect(header).toHaveText(/^Focus: \d{2}:\d{2} \(running\)$/)
+
+    await controls.getByRole('button', { name: 'Reset' }).click()
+    const resetModal = page.locator('.modal').filter({ hasText: 'Reset routine?' })
+    await expect(resetModal).toBeVisible()
+    await resetModal.getByRole('button', { name: 'Cancel' }).click()
+    await expect(resetModal).toBeHidden()
+
+    await expect(header).toHaveText(/^Focus: \d{2}:\d{2} \(running\)$/)
   })
 
   test('a routine started from a Bases timer view appears in the panel', async ({ obsidianPage: { page } }) => {
