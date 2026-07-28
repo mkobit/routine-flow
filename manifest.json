@@ -2,7 +2,7 @@
   "id": "routine-flow",
   "name": "Routine Flow",
   "version": "0.0.1",
-  "minAppVersion": "1.10.0",
+  "minAppVersion": "1.12.7",
   "description": "Customizable Pomodoro timer with Obsidian Bases support.",
   "author": "mkobit",
   "authorUrl": "https://github.com/mkobit",
