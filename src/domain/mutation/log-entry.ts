@@ -2,7 +2,7 @@ import { z } from 'zod'
 import { Temporal } from 'temporal-polyfill'
 
 /**
- * A single write-back to a task's frontmatter, e.g. incrementing a pomodoro
+ * A single write-back to a task's frontmatter, e.g. incrementing a session
  * count. Zod-backed because the property's current value is read back from
  * (untrusted, user-editable) frontmatter before this is constructed.
  */

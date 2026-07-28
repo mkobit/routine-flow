@@ -9,11 +9,11 @@ fields:
 views:
   - type: table
     name: Table
-  - type: pomodoro-timer
-    name: Pomodoro
-  - type: pomodoro-timer
+  - type: routine-timer
+    name: Default
+  - type: routine-timer
     name: Standup
     routineFile: routines/standup-routine.md
-  - type: pomodoro-timer
+  - type: routine-timer
     name: Workout
     routineFile: routines/workout-routine.md

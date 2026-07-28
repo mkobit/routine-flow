@@ -1,6 +1,6 @@
-# Obsidian Pomodoro Plugin
+# Routine Flow
 
-This repository contains a customizable Pomodoro timer plugin integrated with Obsidian Bases.
+This repository contains a customizable routine timer plugin integrated with Obsidian Bases.
 It is built with strict TypeScript enforcement.
 
 ## Code style and rules

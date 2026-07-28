@@ -1,5 +1,5 @@
 ---
-pomodoro-routine: true
+is-routine: true
 ---
 
 # Standup routine

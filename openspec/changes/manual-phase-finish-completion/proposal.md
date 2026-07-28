@@ -5,13 +5,13 @@ A duration-less (manual/rep-based) `Phase` — e.g. `docs/examples/workout.md`'s
 The only way out of such a phase today is the `advance-phase` action, which `deriveHookEvents` always derives as `onSkip` when the phase was `'running'`/`'paused'` — so a deliberately finished manual phase and an abandoned one look identical, and `completionPolicy` on a duration-less phase is dead configuration.
 This blocks flow-gu1.25 (`queueCycle`/`futureDate` `CompletionPolicy` execution), since both routines that need those policies are duration-less and can never reach `completePhase` at all.
 
-Separately, `PomodoroTimerView`'s render function currently returns before drawing anything (`if (!phase || state.remaining === null) { return }`) whenever the current phase is duration-less — there is no header, no controls, no queue panel. A duration-less phase is a complete UI dead end today, not just a mis-derived hook event.
+Separately, `RoutineTimerView`'s render function currently returns before drawing anything (`if (!phase || state.remaining === null) { return }`) whenever the current phase is duration-less — there is no header, no controls, no queue panel. A duration-less phase is a complete UI dead end today, not just a mis-derived hook event.
 
 ## What Changes
 
 - Add a `finish-phase` `EngineAction`, dispatched when the user deliberately concludes a phase that has no timer to reach zero on its own. `engineReducer` routes it through the same `completePhase` function `tick` already uses on reaching zero remaining, so it honors `completionPolicy` (`manualClear` halts at `'completed'`; `null`/`noOp` auto-advances; `queueCycle`/`futureDate` still throw — executing those policies is flow-gu1.25's scope, not this change's).
 - `deriveHookEvents` derives `onComplete` (and, for the auto-advance case, `onComplete`+`onExit`+`onEnter`) for `finish-phase`, the same shape it already derives for a zero-remaining `tick`.
-- `PomodoroTimerView` renders duration-less phases instead of returning early: the header omits the countdown, and a "Done" button (dispatching `finish-phase`) appears whenever the active phase is running and duration-less.
+- `RoutineTimerView` renders duration-less phases instead of returning early: the header omits the countdown, and a "Done" button (dispatching `finish-phase`) appears whenever the active phase is running and duration-less.
 
 ## Capabilities
 

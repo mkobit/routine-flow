@@ -7,12 +7,12 @@ import type { PredicateRegistry } from '../domain/hook/predicate'
 import { TaskSourceIdSchema } from '../domain/queue/task-source'
 import { WRITE_BACK_HOOK_NAME } from './write-back'
 
-/** Built-in phase kinds used by the default Pomodoro phase graph. */
+/** Built-in phase kinds used by the default phase graph. */
 export const FOCUS_PHASE_KIND = PhaseKindSchema.parse('focus')
 export const BREAK_PHASE_KIND = PhaseKindSchema.parse('break')
 
 /**
- * The two fixed queue ids PomodoroTimerView registers a BaseQuerySource
+ * The two fixed queue ids RoutineTimerView registers a BaseQuerySource
  * under (see openspec/changes/base-query-task-source/design.md's Non-Goals —
  * arbitrary per-phase Bases filters are out of scope; every focus-kind phase
  * shares one queue, every break-kind phase shares the other).
@@ -121,11 +121,11 @@ const longBreakPhase: Phase = PhaseSchema.parse({
 })
 
 /**
- * Built-in Pomodoro phase graph: 25 min focus → 5 min break, repeating,
+ * Built-in default phase graph: 25 min focus → 5 min break, repeating,
  * with a 15 min long break every 4th focus phase.
  */
-export const POMODORO_PHASE_GRAPH: PhaseGraph = PhaseGraphSchema.parse({
-  id: PhaseGraphIdSchema.parse('pomodoro'),
+export const DEFAULT_PHASE_GRAPH: PhaseGraph = PhaseGraphSchema.parse({
+  id: PhaseGraphIdSchema.parse('default'),
   name: 'Default routine',
   phases: [focusPhase, breakPhase, longBreakPhase],
   transitions: [

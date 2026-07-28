@@ -30,9 +30,9 @@ describe('BaseQuerySource', () => {
     const source = createBaseQuerySource([
       entry({
         frontmatter: {
-          'pomodoro-status': 'active',
-          'pomodoro-time-spent': 'PT15M',
-          'pomodoro-last-cycled': '2026-07-01T12:00:00Z',
+          'routine-status': 'active',
+          'routine-time-spent': 'PT15M',
+          'routine-last-cycled': '2026-07-01T12:00:00Z',
         },
       }),
     ])
@@ -58,9 +58,9 @@ describe('BaseQuerySource', () => {
     const source = createBaseQuerySource([
       entry({
         frontmatter: {
-          'pomodoro-status': 'not-a-real-status',
-          'pomodoro-time-spent': 'not-a-duration',
-          'pomodoro-last-cycled': 'not-an-instant',
+          'routine-status': 'not-a-real-status',
+          'routine-time-spent': 'not-a-duration',
+          'routine-last-cycled': 'not-an-instant',
         },
       }),
     ])
@@ -72,11 +72,11 @@ describe('BaseQuerySource', () => {
     expect(item?.lastCycledAt).toBeNull()
   })
 
-  test('sorts ascending by pomodoro-priority', () => {
+  test('sorts ascending by routine-priority', () => {
     const source = createBaseQuerySource([
-      entry({ path: 'b.md', basename: 'b', frontmatter: { 'pomodoro-priority': 10 } }),
-      entry({ path: 'a.md', basename: 'a', frontmatter: { 'pomodoro-priority': -5 } }),
-      entry({ path: 'c.md', basename: 'c', frontmatter: { 'pomodoro-priority': 0 } }),
+      entry({ path: 'b.md', basename: 'b', frontmatter: { 'routine-priority': 10 } }),
+      entry({ path: 'a.md', basename: 'a', frontmatter: { 'routine-priority': -5 } }),
+      entry({ path: 'c.md', basename: 'c', frontmatter: { 'routine-priority': 0 } }),
     ])
 
     expect(source.getQueue().map(item => item.sourcePath)).toEqual(['a.md', 'c.md', 'b.md'])
@@ -84,10 +84,10 @@ describe('BaseQuerySource', () => {
 
   test('items with no priority sort as if priority were zero, tiebreaking by original order', () => {
     const source = createBaseQuerySource([
-      entry({ path: 'front.md', basename: 'front', frontmatter: { 'pomodoro-priority': -5 } }),
+      entry({ path: 'front.md', basename: 'front', frontmatter: { 'routine-priority': -5 } }),
       entry({ path: 'untouched-1.md', basename: 'untouched-1', frontmatter: undefined }),
       entry({ path: 'untouched-2.md', basename: 'untouched-2', frontmatter: undefined }),
-      entry({ path: 'back.md', basename: 'back', frontmatter: { 'pomodoro-priority': 10 } }),
+      entry({ path: 'back.md', basename: 'back', frontmatter: { 'routine-priority': 10 } }),
     ])
 
     expect(source.getQueue().map(item => item.sourcePath)).toEqual([

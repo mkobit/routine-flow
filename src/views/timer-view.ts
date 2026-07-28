@@ -1,10 +1,10 @@
 import { BasesView } from 'obsidian'
 import type { BasesOptions, QueryController, App, TFile, BasesPropertyId, BasesEntry } from 'obsidian'
-import type PomodoroPlugin from '../main'
+import type RoutineFlowPlugin from '../main'
 import type { EngineState } from '../domain/session/engine-state'
 import type { PhaseGraph } from '../domain/phase/phase-graph'
 import type { Phase } from '../domain/phase/phase'
-import { findPhaseById, FOCUS_PHASE_KIND, POMODORO_PHASE_GRAPH } from '../timer/phase-graph'
+import { findPhaseById, FOCUS_PHASE_KIND, DEFAULT_PHASE_GRAPH } from '../timer/phase-graph'
 import { formatPhaseHeader } from '../timer/format'
 import { decideStartAction, resolveRoutineGraph } from '../timer/routine-selection'
 import type { RoutineResolution } from '../timer/routine-selection'
@@ -14,22 +14,22 @@ import { resolveActiveFilePath } from '../timer/queue-advance'
 import { createBaseQuerySource } from '../timer/base-query-task-source'
 import { filterQueueCandidates } from '../timer/queue-filter'
 
-export class PomodoroTimerView extends BasesView {
-  readonly type = 'pomodoro-timer'
+export class RoutineTimerView extends BasesView {
+  readonly type = 'routine-timer'
   containerEl: HTMLElement
-  private plugin: PomodoroPlugin
+  private plugin: RoutineFlowPlugin
   private unsubscribe: (() => void) | null = null
   private routineFilePath: string | null = null
-  private routineResolution: RoutineResolution = { kind: 'default', graph: POMODORO_PHASE_GRAPH }
+  private routineResolution: RoutineResolution = { kind: 'default', graph: DEFAULT_PHASE_GRAPH }
 
-  constructor(controller: QueryController, containerEl: HTMLElement, plugin: PomodoroPlugin) {
+  constructor(controller: QueryController, containerEl: HTMLElement, plugin: RoutineFlowPlugin) {
     super(controller)
     this.containerEl = containerEl
     this.plugin = plugin
   }
 
   onload() {
-    this.containerEl.addClass('pomodoro-timer-view')
+    this.containerEl.addClass('routine-timer-view')
     this.unsubscribe = this.plugin.store.subscribe((state) => {
       this.render(state)
     })
@@ -62,7 +62,7 @@ export class PomodoroTimerView extends BasesView {
     const configuredPath = this.getConfiguredRoutineFilePath()
     if (configuredPath !== this.routineFilePath) {
       this.routineFilePath = configuredPath
-      this.routineResolution = configuredPath === null ? { kind: 'default', graph: POMODORO_PHASE_GRAPH } : { kind: 'loading' }
+      this.routineResolution = configuredPath === null ? { kind: 'default', graph: DEFAULT_PHASE_GRAPH } : { kind: 'loading' }
       if (configuredPath !== null) {
         void this.loadRoutineFile(configuredPath)
       }
@@ -81,12 +81,12 @@ export class PomodoroTimerView extends BasesView {
     }
 
     if (this.routineResolution.kind === 'error') {
-      this.containerEl.createEl('p', { text: `Routine error: ${this.routineResolution.error.message}`, cls: 'pomodoro-routine-error' })
+      this.containerEl.createEl('p', { text: `Routine error: ${this.routineResolution.error.message}`, cls: 'routine-error' })
       return
     }
 
     if (this.routineResolution.kind === 'loading') {
-      this.containerEl.createEl('p', { text: 'Loading routine…', cls: 'pomodoro-routine-loading' })
+      this.containerEl.createEl('p', { text: 'Loading routine…', cls: 'routine-loading' })
       return
     }
 
@@ -108,15 +108,15 @@ export class PomodoroTimerView extends BasesView {
     }
 
     // Timer Panel
-    const timerPanel = this.containerEl.createDiv({ cls: 'pomodoro-timer-panel' })
+    const timerPanel = this.containerEl.createDiv({ cls: 'routine-timer-panel' })
     timerPanel.createEl('h2', { text: formatPhaseHeader(phase, state.remaining, state.status) })
 
     if (!isViewRoutineActive && state.status !== 'stopped') {
-      timerPanel.createEl('p', { text: `"${graph.name}" is currently active instead of this view's routine ("${viewGraph.name}").`, cls: 'pomodoro-routine-inert' })
+      timerPanel.createEl('p', { text: `"${graph.name}" is currently active instead of this view's routine ("${viewGraph.name}").`, cls: 'routine-inert' })
     }
 
     // Controls
-    const controls = this.containerEl.createDiv({ cls: 'pomodoro-controls' })
+    const controls = this.containerEl.createDiv({ cls: 'routine-controls' })
 
     if (isViewRoutineActive && state.status === 'running') {
       const pauseBtn = controls.createEl('button', { text: 'Pause' })
@@ -144,7 +144,7 @@ export class PomodoroTimerView extends BasesView {
     const queueItems = this.plugin.taskSourceRegistry.resolve(phase.taskSourceId)?.getQueue() ?? []
 
     // Queue Panel
-    const queueEl = this.containerEl.createDiv({ cls: 'pomodoro-queue' })
+    const queueEl = this.containerEl.createDiv({ cls: 'routine-queue' })
     queueEl.createEl('h3', { text: queueTitle })
 
     if (queueItems.length === 0) {
@@ -266,7 +266,7 @@ export class PomodoroTimerView extends BasesView {
         key: 'routineFile',
         type: 'file',
         displayName: 'Routine file',
-        filter: (file: TFile) => app.metadataCache.getFileCache(file)?.frontmatter?.['pomodoro-routine'] === true,
+        filter: (file: TFile) => app.metadataCache.getFileCache(file)?.frontmatter?.['is-routine'] === true,
       },
     ]
   }

@@ -43,7 +43,7 @@ function createFakeDeps(file: VaultFile | null) {
 const frontmatterMutation = {
   kind: 'frontmatter',
   filePath: 'task.md',
-  property: 'pomodoros',
+  property: 'sessions',
   value: 1,
 } as const satisfies FileMutation
 
@@ -81,7 +81,7 @@ describe('ObsidianFileMutationPort', () => {
 
     expect(processFrontMatter).toHaveBeenCalledTimes(1)
     expect(processFrontMatter.mock.calls[0]?.[0]).toBe(file)
-    expect(getWrittenFrontmatter()).toEqual({ pomodoros: 1 })
+    expect(getWrittenFrontmatter()).toEqual({ sessions: 1 })
   })
 
   test('writeFrontmatter rejects when the path does not resolve to a file', async () => {
@@ -119,7 +119,7 @@ describe('ObsidianFileMutationPort', () => {
     await port.reorderQueueItem(reorderToBackMutation)
     const after = Temporal.Now.instant().epochMilliseconds
 
-    const priority = expectNumber(getWrittenFrontmatter()?.['pomodoro-priority'])
+    const priority = expectNumber(getWrittenFrontmatter()?.['routine-priority'])
     expect(priority).toBeGreaterThanOrEqual(before)
     expect(priority).toBeLessThanOrEqual(after)
   })
@@ -132,7 +132,7 @@ describe('ObsidianFileMutationPort', () => {
     await port.reorderQueueItem(reorderToFrontMutation)
     const after = -Temporal.Now.instant().epochMilliseconds
 
-    const priority = expectNumber(getWrittenFrontmatter()?.['pomodoro-priority'])
+    const priority = expectNumber(getWrittenFrontmatter()?.['routine-priority'])
     // before/after are swapped relative to the back case since negation flips ordering.
     expect(priority).toBeLessThanOrEqual(before)
     expect(priority).toBeGreaterThanOrEqual(after)
@@ -152,7 +152,7 @@ describe('ObsidianFileMutationPort', () => {
 
     await port.changeQueueItemStatus(statusChangeMutation)
 
-    expect(getWrittenFrontmatter()).toEqual({ 'pomodoro-status': 'done' })
+    expect(getWrittenFrontmatter()).toEqual({ 'routine-status': 'done' })
   })
 
   test('changeQueueItemStatus rejects when itemId does not resolve to a vault file', async () => {

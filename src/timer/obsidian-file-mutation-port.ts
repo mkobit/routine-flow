@@ -68,7 +68,7 @@ export class ObsidianFileMutationPort implements FileMutationPort {
   }
 
   /**
-   * Writes a `pomodoro-priority` sort key: a live Base query can't be
+   * Writes a `routine-priority` sort key: a live Base query can't be
    * reordered in place, so "reorder" means writing a value the user's own
    * Base sort config orders by. Epoch-millis (negated for 'front'), computed
    * locally with no sibling-queue lookup — see design.md decision 6.
@@ -78,14 +78,14 @@ export class ObsidianFileMutationPort implements FileMutationPort {
     const epochMillis = Temporal.Now.instant().epochMilliseconds
     const priority = mutation.position === 'back' ? epochMillis : -epochMillis
     await this.deps.fileManager.processFrontMatter(file, (frontmatter) => {
-      frontmatter['pomodoro-priority'] = priority
+      frontmatter['routine-priority'] = priority
     })
   }
 
   async changeQueueItemStatus(mutation: Extract<FileMutation, { kind: 'queueStatusChange' }>): Promise<void> {
     const file = resolveFile(this.deps.vault, mutation.itemId)
     await this.deps.fileManager.processFrontMatter(file, (frontmatter) => {
-      frontmatter['pomodoro-status'] = mutation.status
+      frontmatter['routine-status'] = mutation.status
     })
   }
 }

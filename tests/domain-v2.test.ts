@@ -59,8 +59,8 @@ describe('PhaseLogTargetSchema', () => {
 describe('PhaseGraphSchema', () => {
   test('parses a graph with an everyNth transition', () => {
     const graph = PhaseGraphSchema.parse({
-      id: 'pomodoro-v2',
-      name: 'Pomodoro',
+      id: 'routine-v2',
+      name: 'Routine',
       phases: [
         minimalPhase,
         { ...minimalPhase, id: 'break', kind: 'break' },
@@ -109,7 +109,7 @@ describe('CompletionPolicySchema', () => {
 
 describe('FileMutationSchema', () => {
   test('parses a frontmatter mutation', () => {
-    const result = FileMutationSchema.safeParse({ kind: 'frontmatter', filePath: 'task.md', property: 'pomodoros', value: 1 })
+    const result = FileMutationSchema.safeParse({ kind: 'frontmatter', filePath: 'task.md', property: 'sessions', value: 1 })
     expect(result.success).toBe(true)
   })
 
@@ -126,7 +126,7 @@ describe('FileMutationSchema', () => {
 
 describe('HookReferenceSchema', () => {
   test('parses a reference with params', () => {
-    const result = HookReferenceSchema.safeParse({ name: 'increment-frontmatter', params: { property: 'pomodoros' } })
+    const result = HookReferenceSchema.safeParse({ name: 'increment-frontmatter', params: { property: 'sessions' } })
     expect(result.success).toBe(true)
   })
 })

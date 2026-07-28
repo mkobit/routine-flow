@@ -17,10 +17,10 @@ export interface BaseQueryEntry {
   readonly frontmatter: Record<string, unknown> | undefined
 }
 
-const STATUS_KEY = 'pomodoro-status'
-const TIME_SPENT_KEY = 'pomodoro-time-spent'
-const LAST_CYCLED_KEY = 'pomodoro-last-cycled'
-const PRIORITY_KEY = 'pomodoro-priority'
+const STATUS_KEY = 'routine-status'
+const TIME_SPENT_KEY = 'routine-time-spent'
+const LAST_CYCLED_KEY = 'routine-last-cycled'
+const PRIORITY_KEY = 'routine-priority'
 
 const ZERO_DURATION = Temporal.Duration.from({ seconds: 0 })
 
@@ -75,7 +75,7 @@ function toTaskQueueItem(entry: BaseQueryEntry): TaskQueueItem {
 
 /**
  * A TaskSource backed by already-filtered Bases entries. Stateless projection
- * — callers (PomodoroTimerView) construct a fresh one whenever the view's
+ * — callers (RoutineTimerView) construct a fresh one whenever the view's
  * live query data changes and register it with a TaskSourceRegistry.
  */
 export function createBaseQuerySource(entries: readonly BaseQueryEntry[]): TaskSource {

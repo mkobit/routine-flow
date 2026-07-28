@@ -1,4 +1,4 @@
-import type PomodoroPlugin from '../main'
+import type RoutineFlowPlugin from '../main'
 import type { EngineState } from '../domain/session/engine-state'
 import { findPhaseById } from '../timer/phase-graph'
 import { formatPhaseHeader } from '../timer/format'
@@ -9,13 +9,13 @@ import { formatPhaseHeader } from '../timer/format'
  * Click toggles pause/resume; the item hides itself when there's nothing
  * running or paused to show or act on.
  */
-export class PomodoroStatusBarItem {
+export class RoutineStatusBarItem {
   private readonly el: HTMLElement
   private unsubscribe: (() => void) | null = null
 
-  constructor(private readonly plugin: PomodoroPlugin) {
+  constructor(private readonly plugin: RoutineFlowPlugin) {
     this.el = plugin.addStatusBarItem()
-    this.el.addClass('pomodoro-status-bar-item')
+    this.el.addClass('routine-status-bar-item')
     this.el.addEventListener('click', () => this.handleClick())
   }
 

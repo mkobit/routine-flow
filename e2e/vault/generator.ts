@@ -48,9 +48,9 @@ const POMODORO_CYCLE_STATUSES = ['pending', 'active', 'done', 'skipped', 'deferr
 
 /**
  * Work tasks a `focus` phase's queue pulls from (see the `focus-queue` row in
- * docs/examples/pomodoro.md's domain mapping — this is what the "Pomodoro"
+ * docs/examples/pomodoro.md's domain mapping — this is what the "Default"
  * sub-view's Work queue renders, via `focusProperty: note.type`/`focusValue:
- * work`). `pomodoroPriority` is `fc.option`'d so some notes exercise
+ * work`). `routinePriority` is `fc.option`'d so some notes exercise
  * BaseQuerySource's "missing priority sorts as 0" default.
  *
  * The frontmatter key is plain `type`, not `note.type` — Bases' property id
@@ -66,9 +66,9 @@ function generatePomodoroNotes(seed: number): readonly NoteDefinition[] {
     status: fc.constantFrom('todo', 'in-progress', 'done'),
     dueOffsetDays: fc.integer({ min: -2, max: 14 }),
     priority: fc.constantFrom(1, 2, 3),
-    pomodoros: fc.integer({ min: 0, max: 6 }),
-    pomodoroCycleStatus: fc.constantFrom(...POMODORO_CYCLE_STATUSES),
-    pomodoroPriority: fc.option(fc.integer({ min: -1000, max: 1000 }), { nil: undefined }),
+    sessions: fc.integer({ min: 0, max: 6 }),
+    routineCycleStatus: fc.constantFrom(...POMODORO_CYCLE_STATUSES),
+    routinePriority: fc.option(fc.integer({ min: -1000, max: 1000 }), { nil: undefined }),
   })
   const samples = fc.sample(arb, { numRuns: 5, seed })
   return samples.map((s, i) => createNote(
@@ -78,9 +78,9 @@ function generatePomodoroNotes(seed: number): readonly NoteDefinition[] {
       'due': ANCHOR_DATE.add({ days: s.dueOffsetDays }),
       'priority': s.priority,
       'type': 'work',
-      'pomodoros': s.pomodoros,
-      'pomodoro-status': s.pomodoroCycleStatus,
-      ...(s.pomodoroPriority === undefined ? {} : { 'pomodoro-priority': s.pomodoroPriority }),
+      'sessions': s.sessions,
+      'routine-status': s.routineCycleStatus,
+      ...(s.routinePriority === undefined ? {} : { 'routine-priority': s.routinePriority }),
     },
     'Generated test data for the pomodoro routine (see docs/examples/pomodoro.md).',
   ))

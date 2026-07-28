@@ -1,6 +1,6 @@
 ## Context
 
-`PomodoroSettingTab` (src/settings.ts) currently implements `display()`, the deprecated imperative rendering hook for `PluginSettingTab`. It renders two things:
+`RoutineFlowSettingTab` (src/settings.ts) currently implements `display()`, the deprecated imperative rendering hook for `PluginSettingTab`. It renders two things:
 
 1. A single `Setting` text field bound to `plugin.settings.writeBackProperty`, saved via a per-control `onChange` closure.
 2. A "Custom predicates" section: existing `plugin.settings.formulaPredicates` entries rendered as `Setting` rows (name/formula/delete button), followed by an always-visible "Add predicate" row with two text inputs and an Add button that validates via `PredicateNameSchema.safeParse` + `compileFormula` and shows an inline error on failure.
@@ -10,7 +10,7 @@ Obsidian 1.13.0 added a declarative alternative: `SettingTab.getSettingDefinitio
 ## Goals / Non-Goals
 
 **Goals:**
-- Make `PomodoroSettingTab`'s settings appear in Obsidian's in-app settings search (the actual user-facing win `getSettingDefinitions()` provides).
+- Make `RoutineFlowSettingTab`'s settings appear in Obsidian's in-app settings search (the actual user-facing win `getSettingDefinitions()` provides).
 - Clear the `obsidianmd/settings-tab/prefer-setting-definitions` lint warning.
 - Preserve the existing add-predicate UX (two live text fields + inline validation) exactly — it's already correct and tested by hand; don't risk it on an unfamiliar API surface.
 - Add real test coverage for the settings tab (currently zero, unlike most of the domain layer).

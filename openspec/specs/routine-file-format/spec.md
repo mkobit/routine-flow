@@ -4,14 +4,14 @@
 TBD - created by archiving change per-base-routine-selection. Update Purpose after archive.
 ## Requirements
 ### Requirement: Routine files are discoverable via a frontmatter marker
-A vault note SHALL be recognized as a candidate routine file when its frontmatter contains `pomodoro-routine: true`.
+A vault note SHALL be recognized as a candidate routine file when its frontmatter contains `is-routine: true`.
 
 #### Scenario: Note with the marker is recognized
-- **WHEN** a vault note's frontmatter includes `pomodoro-routine: true`
+- **WHEN** a vault note's frontmatter includes `is-routine: true`
 - **THEN** it SHALL be treated as a candidate routine file for parsing
 
 #### Scenario: Note without the marker is ignored
-- **WHEN** a vault note's frontmatter does not include `pomodoro-routine: true`
+- **WHEN** a vault note's frontmatter does not include `is-routine: true`
 - **THEN** it SHALL NOT be treated as a routine file
 
 ### Requirement: A routine file's PhaseGraph is defined in a single fenced JSON code block

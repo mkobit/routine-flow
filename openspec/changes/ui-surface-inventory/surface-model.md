@@ -19,7 +19,7 @@ Each surface is classified by its Obsidian UI primitive and its lifecycle, becau
 | 5 | Queue — empty / no-queue | A. Embedded Bases view (render state) | same `BasesView` (`timer-view.ts:145-158`) | Persistent, conditional sub-state | Yes |
 | 6 | WriteBackModal | B. Modal dialog (data-entry) | `Modal` subclass (`write-back-modal.ts:24`) | Transient, app-modal (blocking) | Yes |
 | 7 | RoutineReplaceModal | B. Modal dialog (confirmation) | `Modal` subclass (`routine-replace-modal.ts:12`) | Transient, app-modal (blocking) | Yes |
-| 8 | PomodoroSettingTab | C. Settings panel | `PluginSettingTab` subclass (`settings.ts:17`) | On-demand, in Obsidian's settings window | Yes |
+| 8 | RoutineFlowSettingTab | C. Settings panel | `PluginSettingTab` subclass (`settings.ts:17`) | On-demand, in Obsidian's settings window | Yes |
 | 9 | Workspace-wide view | D. Workspace chrome | `addStatusBarItem` + side-panel `ItemView` (neither registered) | Persistent (proposed) | **Proposed** |
 | 10 | System (OS) notifications | E. Transient notification (OS) | OS notification API via `Phase.notification` (unread) | Transient, non-blocking (proposed) | **Proposed** |
 | 11 | In-app phase-transition toasts | E. Transient notification (in-app) | `Notice` (`main.ts:22,54` exist for errors only) | Transient, non-blocking (proposed) | **Proposed** |
@@ -27,7 +27,7 @@ Each surface is classified by its Obsidian UI primitive and its lifecycle, becau
 
 Category summary:
 
-- **A. Embedded Bases view** — one component (`PomodoroTimerView`) with five distinct render states (#1–#5). It is *persistent*: it stays mounted in its leaf across state changes and re-renders in place (`timer-view.ts:31-34,43-46`). Its states are mutually exclusive branches of a single `render()` call, not separate surfaces a user navigates between.
+- **A. Embedded Bases view** — one component (`RoutineTimerView`) with five distinct render states (#1–#5). It is *persistent*: it stays mounted in its leaf across state changes and re-renders in place (`timer-view.ts:31-34,43-46`). Its states are mutually exclusive branches of a single `render()` call, not separate surfaces a user navigates between.
 - **B. Modal dialog** — two `Modal` subclasses (#6, #7), both *transient* and *app-modal* (they block interaction with the workspace until resolved). Both use the same "modal as an awaitable" pattern (`waitForResult` opens the modal and returns the one promise it resolves — `write-back-modal.ts:38-43`, `routine-replace-modal.ts:20-25`).
 - **C. Settings panel** — one `PluginSettingTab` (#8), rendered by Obsidian inside its own settings window, independent of the workspace.
 - **D. Workspace chrome** — the proposed workspace-wide view (#9), itself two candidate sub-surfaces (a status-bar item and a side-panel view). *Persistent* like category A, but not bound to a Bases leaf.
@@ -39,14 +39,14 @@ Category summary:
 ### 2.1 Single source of truth
 
 Every surface that shows timer state is a projection of one shared `EngineStore` (`main.ts:51`) — there is exactly one store, holding one active `PhaseGraph` and one `EngineState`.
-`PomodoroTimerView` subscribes to it (`timer-view.ts:31-34`) and re-renders on every state change; it never holds timer state of its own.
+`RoutineTimerView` subscribes to it (`timer-view.ts:31-34`) and re-renders on every state change; it never holds timer state of its own.
 This is the load-bearing fact for every relationship below: surfaces cannot *disagree* about status / phase / remaining, because there is only one state to read.
 
 ### 2.2 Concurrency — what can be visible at once
 
 | Pair | Can coexist? | Notes |
 | :-- | :-- | :-- |
-| Multiple #1 instances (several Bases leaves) | Yes | Multiple leaves can each render `PomodoroTimerView` simultaneously. All read the one store, so they agree on global status/phase/remaining. Each has its *own* configured `routineFile` (`timer-view.ts:60,199-202`), so at most one is "active" and the rest render the inert state #4 (`timer-view.ts:99,120-122`). |
+| Multiple #1 instances (several Bases leaves) | Yes | Multiple leaves can each render `RoutineTimerView` simultaneously. All read the one store, so they agree on global status/phase/remaining. Each has its *own* configured `routineFile` (`timer-view.ts:60,199-202`), so at most one is "active" and the rest render the inert state #4 (`timer-view.ts:99,120-122`). |
 | #1 and #4 (inert) | Yes — #4 is additive within #1 | Corrected (2026-07-22, adversarial review caught a self-contradiction with §2.3 below): #4 is not an alternative branch to #1, it's conditional content *appended within* the same active-panel render (`timer-view.ts:120-122`, right after the header at `:118`). A bystander leaf renders #1's full panel (header, controls, queue — all still reading the globally active routine's state) *and* the inert paragraph together, not one or the other. |
 | #6 (WriteBackModal) and #7 (RoutineReplaceModal) | Not observed in normal flow, but the reasoning below is weaker than originally stated | Softened (2026-07-22, adversarial review): `EngineStore.dispatch` (`store.ts:70-97`) has no reentrancy guard — "single-threaded JS" alone doesn't prevent a second `dispatch`/`handleStart` call while a prior one's hook is still `await`ing the write-back prompt. On natural (tick-driven) completion, `status` is set to `'stopped'` before the hook's prompt is awaited, which defuses `decideStartAction`'s guard — but on a manual-clear (Done button) completion, `status` becomes `'completed'` instead, which does *not* defuse that guard. Whether RoutineReplaceModal could open while WriteBackModal is still pending (e.g. via a second window/pop-out leaf, never ruled out by this document) is unproven either way — treat "they do not fire together" as an open question, not a settled fact. |
 | #6/#7 modal and any #1–#5 timer state | Modal is layered over it | The modal blocks the workspace but the timer panel remains mounted underneath and resumes on modal close. |
@@ -63,7 +63,7 @@ This is the load-bearing fact for every relationship below: surfaces cannot *dis
 
 | # | Appears when | Disappears when | Grounding |
 | :-- | :-- | :-- | :-- |
-| 1 | The `pomodoro-timer` Bases view is added to a leaf and its routine resolves to `default`/`loaded` with a findable phase | Leaf closes, or state moves into a loading/error/inert branch | `main.ts:68-80`, `timer-view.ts:29-35,91-97` |
+| 1 | The `routine-timer` Bases view is added to a leaf and its routine resolves to `default`/`loaded` with a findable phase | Leaf closes, or state moves into a loading/error/inert branch | `main.ts:68-80`, `timer-view.ts:29-35,91-97` |
 | 2 | A newly configured `routineFile` differs from the last and its async read is in flight | `loadRoutineFile` settles to `loaded`/`error` | `timer-view.ts:61-66,86-89,204-215` |
 | 3 | The configured `routineFile` doesn't resolve to a vault file, or fails to parse | The routine selection changes to a valid file | `timer-view.ts:81-84,206-208`; `routine-selection.ts:18-21` |
 | 4 | A *different* routine is globally active (`status !== 'stopped'`) than this leaf's configured routine | The active routine matches this leaf's, or status returns to `stopped` | `timer-view.ts:99,120-122` |
@@ -83,7 +83,7 @@ Note on #6's trigger precision: `onComplete` is wired on *all three* phases (`ph
 
 Why they share:
 
-- There is one `EngineStore` (`main.ts:51`). *If* a workspace-wide view (#9) subscribes to that *same* store — the natural approach, and what `PomodoroTimerView` itself does (`timer-view.ts:31-34`) — it cannot hold a second copy of timer state, so **#9 and #1 would agree by construction**: no state to reconcile, no sync problem. Softened (2026-07-22, adversarial review): this is a strong architectural recommendation given how the store already works, not a settled fact about code that doesn't exist yet — #9 has zero implementation, so "subscribes to the shared store" is the recommended design, not a verified property of a real component. `design.md` #9's own sub-question ("does starting a routine from the Bases view also populate the status bar") is answered *conditionally*: yes, if #9 is built this way — which whoever picks up flow-gu1.11 should treat as a design decision to make, not inherit as inevitable.
+- There is one `EngineStore` (`main.ts:51`). *If* a workspace-wide view (#9) subscribes to that *same* store — the natural approach, and what `RoutineTimerView` itself does (`timer-view.ts:31-34`) — it cannot hold a second copy of timer state, so **#9 and #1 would agree by construction**: no state to reconcile, no sync problem. Softened (2026-07-22, adversarial review): this is a strong architectural recommendation given how the store already works, not a settled fact about code that doesn't exist yet — #9 has zero implementation, so "subscribes to the shared store" is the recommended design, not a verified property of a real component. `design.md` #9's own sub-question ("does starting a routine from the Bases view also populate the status bar") is answered *conditionally*: yes, if #9 is built this way — which whoever picks up flow-gu1.11 should treat as a design decision to make, not inherit as inevitable.
 - The state vocabulary they render (phase label, status, remaining) is identical, so the color/type/spacing/state-language decisions belong to the shared design foundations (`flow-gu1.19.2`), not to either surface alone.
 
 Why they still need separate briefs:
@@ -146,9 +146,9 @@ Keyboard baseline: no surface overrides Obsidian's default keyboard behavior —
 - **Replace button** (`.setCta()`) — `confirm()` → resolves `'confirmed'` (`routine-replace-modal.ts:35,45-49`).
 - **Escape / click-outside** — resolve cancelled (Obsidian `Modal` default; `:38-43`).
 
-### #8 — PomodoroSettingTab
+### #8 — RoutineFlowSettingTab
 
-- **Write-back property text field** — placeholder `Pomodoros`; `onChange` writes `settings.writeBackProperty` and calls `saveSettings()` (`settings.ts:29-40`). Sole interaction on the screen today.
+- **Write-back property text field** — placeholder `Property name`; `onChange` writes `settings.writeBackProperty` and calls `saveSettings()` (`settings.ts:29-40`). Sole interaction on the screen today.
 
 ### #9 — Workspace-wide view (proposed)
 

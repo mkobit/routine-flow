@@ -28,6 +28,6 @@ Every Hook (`onEnter`/`onComplete`/`onSkip`/`onExit`) and every `TransitionCondi
 - `src/timer/store.ts` (`EngineStore.dispatch`'s hook loop — per-invocation error isolation).
 - `src/domain/hook/hook.ts` (`HookContext` gains enrichment fields; no change to `Hook`'s own type).
 - New: a Worker entry module (script execution sandbox), a Temporal serialize/rehydrate boundary module, a script-hook registry (settings-backed, mutable, plugin-scoped — distinct from today's load-once `HookRegistry`/`PredicateRegistry` pattern), a predicate-expression parser/interpreter, and settings-tab UI for both the script-binding list and the predicate list.
-- `src/settings.ts` / `PomodoroSettingTab` (new configuration surfaces).
+- `src/settings.ts` / `RoutineFlowSettingTab` (new configuration surfaces).
 - `main.ts` (wiring the new registries in place of the current static resolve-only objects).
 - No change to `src/domain/hook/predicate.ts`'s `Predicate` type signature in this change.

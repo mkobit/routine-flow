@@ -38,7 +38,7 @@ Confirmed: string-formula interpreter (not a structured/dropdown-built config) â
 ## 5. main.ts wiring
 
 - [ ] 5.1 Replace `main.ts`'s static `hookRegistry`/`predicateRegistry` construction with the mutable registries from tasks 2.5 and 4.4, keeping `createWriteBackHook`'s existing entry alongside script-authored ones (both resolvable via the same `HookRegistry`)
-- [ ] 5.2 Confirm `EngineStore` construction and `PomodoroSettingTab` wiring both receive/reference the same registry instances (no duplicate registries)
+- [ ] 5.2 Confirm `EngineStore` construction and `RoutineFlowSettingTab` wiring both receive/reference the same registry instances (no duplicate registries)
 
 ## 6. Manual verification
 

@@ -4,7 +4,7 @@
 // only when an e2e test demonstrably needs it, with a comment explaining why.
 import 'obsidian'
 import type { App } from 'obsidian'
-import type PomodoroPlugin from '../src/main'
+import type RoutineFlowPlugin from '../src/main'
 
 declare global {
   interface Window {
@@ -22,7 +22,7 @@ declare module 'obsidian' {
     // engine actions directly); every other plugin id still falls back to
     // `unknown` via the Record intersection.
     readonly plugins: Record<string, unknown> & {
-      'routine-flow'?: PomodoroPlugin
+      'routine-flow'?: RoutineFlowPlugin
     }
   }
 

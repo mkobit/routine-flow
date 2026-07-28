@@ -3,9 +3,9 @@ import type { TaskSource, TaskSourceId, TaskSourceRegistry } from '../domain/que
 /**
  * Widens TaskSourceRegistry with register/unregister — unlike HookRegistry/
  * PredicateRegistry (populated once at plugin load), a baseQuery source's
- * contents change on every Bases onDataUpdated, so PomodoroTimerView needs to
+ * contents change on every Bases onDataUpdated, so RoutineTimerView needs to
  * keep the registry fresh at runtime. Only the integration layer
- * (PomodoroTimerView) needs this wider type; ObsidianFileMutationPort and
+ * (RoutineTimerView) needs this wider type; ObsidianFileMutationPort and
  * domain code only ever see the narrow resolve-only TaskSourceRegistry.
  */
 export interface MutableTaskSourceRegistry extends TaskSourceRegistry {

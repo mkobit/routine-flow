@@ -4,7 +4,7 @@ import { EngineStore } from '../src/timer/store'
 import { PhaseGraphSchema, PhaseGraphIdSchema } from '../src/domain/phase/phase-graph'
 import type { PhaseGraph } from '../src/domain/phase/phase-graph'
 import { PhaseIdSchema, PhaseSchema } from '../src/domain/phase/phase'
-import { POMODORO_PHASE_GRAPH } from '../src/timer/phase-graph'
+import { DEFAULT_PHASE_GRAPH } from '../src/timer/phase-graph'
 import { WRITE_BACK_HOOK_NAME } from '../src/timer/write-back'
 import { TaskQueueItemIdSchema, TaskSourceIdSchema } from '../src/domain/queue/task-source'
 import type { TaskQueueItem, TaskSource, TaskSourceRegistry } from '../src/domain/queue/task-source'
@@ -253,9 +253,9 @@ describe('EngineStore item-touch snapshotting', () => {
   })
 })
 
-describe('POMODORO_PHASE_GRAPH write-back wiring', () => {
+describe('DEFAULT_PHASE_GRAPH write-back wiring', () => {
   test('every phase declares onComplete naming the write-back hook', () => {
-    for (const phase of POMODORO_PHASE_GRAPH.phases) {
+    for (const phase of DEFAULT_PHASE_GRAPH.phases) {
       expect(phase.onComplete).toEqual({ name: WRITE_BACK_HOOK_NAME, params: {} })
     }
   })
@@ -475,7 +475,7 @@ describe('EngineStore hook-outcome folding', () => {
 
   test('a partial mutation-apply failure records the successful prefix in mutationsApplied and the failure in hookFailures', async () => {
     const succeeding = appendMutation('this one writes')
-    const failing = frontmatterMutation('pomodoros')
+    const failing = frontmatterMutation('sessions')
     const exitHook: Hook = async () => [succeeding, failing]
     const registry: HookRegistry = { resolve: name => (name === 'exit' ? exitHook : undefined) }
     const graph = buildIsolationGraph({ onExit: hookRef('exit') })
