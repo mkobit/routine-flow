@@ -6,12 +6,12 @@ import type { NoteDefinition } from './vault'
 const PLUGIN_ID = 'routine-flow'
 
 /** Mirrors createBaseQuerySource's priority read (src/timer/base-query-task-source.ts) -- missing/non-numeric priority sorts as 0. */
-function pomodoroPriorityOf(note: NoteDefinition): number {
-  const value = note.frontmatter['pomodoro-priority']
+function routinePriorityOf(note: NoteDefinition): number {
+  const value = note.frontmatter['routine-priority']
   return typeof value === 'number' ? value : 0
 }
 
-test.describe('Pomodoro Timer View', () => {
+test.describe('Routine Timer View', () => {
   test('registers bases view and can start a timer', async ({ obsidianPage: { page } }) => {
     // Assert registration exists
     await expect.poll(async () =>
@@ -50,9 +50,9 @@ test.describe('duration-less phase (finish-phase / "Done" control)', () => {
   })
 
   test('renders the phase (not blank) and a Done button appears once running, completing the phase on click', async ({ obsidianPage: { page } }) => {
-    const view = page.locator('.workspace-leaf-content[data-type="bases"] .pomodoro-timer-view')
-    const panel = page.locator('.workspace-leaf-content[data-type="bases"] .pomodoro-timer-panel')
-    const controls = page.locator('.workspace-leaf-content[data-type="bases"] .pomodoro-controls')
+    const view = page.locator('.workspace-leaf-content[data-type="bases"] .routine-timer-view')
+    const panel = page.locator('.workspace-leaf-content[data-type="bases"] .routine-timer-panel')
+    const controls = page.locator('.workspace-leaf-content[data-type="bases"] .routine-controls')
 
     // beforeEach's sub-view switch resolves before this view's async routine-file load settles --
     // wait for the resolved-graph marker so Start isn't clicked against the previous sub-view's
@@ -96,7 +96,7 @@ test.describe('BaseQuerySource-backed queue (base-query-task-source)', () => {
 
     // .obsidian/workspace.json is gitignored (runtime state, not canonical vault content) -- a
     // fresh checkout (CI, or any new clone) has no persisted leaf, so Tasks.base must be opened and
-    // its "Pomodoro" sub-view selected explicitly, same as the "Workout" sub-view below.
+    // its "Default" sub-view selected explicitly, same as the "Workout" sub-view below.
     await evaluateObsidian(page, async (app) => {
       const file = app.vault.getFileByPath('Tasks.base')
       if (!file) {
@@ -106,25 +106,25 @@ test.describe('BaseQuerySource-backed queue (base-query-task-source)', () => {
       await leaf.openFile(file)
     })
     await page.locator('.workspace-leaf-content[data-type="bases"] .bases-toolbar-views-menu .text-icon-button').click()
-    await page.locator('.menu .bases-toolbar-menu-item-name', { hasText: 'Pomodoro' }).click()
+    await page.locator('.menu .bases-toolbar-menu-item-name', { hasText: 'Default' }).click()
   })
 
-  test('Work queue renders real Bases entries sorted by pomodoro-priority', async ({ obsidianPage: { page } }) => {
-    // Tasks.base's "Pomodoro" sub-view (no routineFile -- the default POMODORO_PHASE_GRAPH) has a
+  test('Work queue renders real Bases entries sorted by routine-priority', async ({ obsidianPage: { page } }) => {
+    // Tasks.base's "Default" sub-view (no routineFile -- the default DEFAULT_PHASE_GRAPH) has a
     // focus phase whose taskSourceId is focus-queue. No engine interaction needed: the queue
     // renders from the shared engine's default (untouched) state, which starts at the 'focus' phase.
-    const queue = page.locator('.workspace-leaf-content[data-type="bases"] .pomodoro-queue')
+    const queue = page.locator('.workspace-leaf-content[data-type="bases"] .routine-queue')
     await expect(queue.locator('h3')).toHaveText('Work queue')
 
     // Derived from the same generateVault(resolveVaultSeed()) the vault was built from, rather than
     // duplicating its output as literals here (a VAULT_SEED override would otherwise change the
     // vault's contents without this assertion following along). Sort mirrors
-    // createBaseQuerySource (src/timer/base-query-task-source.ts): ascending by pomodoro-priority,
+    // createBaseQuerySource (src/timer/base-query-task-source.ts): ascending by routine-priority,
     // missing priority sorts as 0. displayName is the file's basename (indexedPath's slugified
     // filename), not the note's title.
     const expectedDisplayNames = generateVault(resolveVaultSeed())
       .filter(note => note.relativePath.dir === 'pomodoro')
-      .toSorted((a, b) => pomodoroPriorityOf(a) - pomodoroPriorityOf(b))
+      .toSorted((a, b) => routinePriorityOf(a) - routinePriorityOf(b))
       .map(note => note.relativePath.name)
 
     await expect(queue.locator('li button')).toHaveText(expectedDisplayNames, { timeout: 20_000 })

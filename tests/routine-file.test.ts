@@ -27,7 +27,7 @@ const validPhaseGraph = {
 }
 
 function routineFile(graph: unknown): string {
-  return `---\npomodoro-routine: true\n---\n\n# Standup routine\n\n\`\`\`json\n${JSON.stringify(graph, null, 2)}\n\`\`\`\n`
+  return `---\nis-routine: true\n---\n\n# Standup routine\n\n\`\`\`json\n${JSON.stringify(graph, null, 2)}\n\`\`\`\n`
 }
 
 describe('parseRoutineFile', () => {
@@ -84,7 +84,7 @@ describe('parseRoutineFile', () => {
   })
 
   test('malformed JSON in the fenced block fails with a RoutineParseError, not a throw', () => {
-    const content = '---\npomodoro-routine: true\n---\n\n```json\n{ not valid json\n```\n'
+    const content = '---\nis-routine: true\n---\n\n```json\n{ not valid json\n```\n'
 
     const result = parseRoutineFile(content)
 
@@ -134,7 +134,7 @@ describe('parseRoutineFile', () => {
   })
 
   test('a note body with zero fenced JSON blocks fails with a RoutineParseError', () => {
-    const content = '---\npomodoro-routine: true\n---\n\nNo code block here.\n'
+    const content = '---\nis-routine: true\n---\n\nNo code block here.\n'
 
     const result = parseRoutineFile(content)
 
@@ -143,7 +143,7 @@ describe('parseRoutineFile', () => {
   })
 
   test('a note body with multiple fenced JSON blocks fails with a RoutineParseError', () => {
-    const content = `---\npomodoro-routine: true\n---\n\n\`\`\`json\n${JSON.stringify(validPhaseGraph)}\n\`\`\`\n\n\`\`\`json\n${JSON.stringify(validPhaseGraph)}\n\`\`\`\n`
+    const content = `---\nis-routine: true\n---\n\n\`\`\`json\n${JSON.stringify(validPhaseGraph)}\n\`\`\`\n\n\`\`\`json\n${JSON.stringify(validPhaseGraph)}\n\`\`\`\n`
 
     const result = parseRoutineFile(content)
 

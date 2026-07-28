@@ -60,7 +60,7 @@ function createDeps(overrides: Partial<WriteBackHookDeps> = {}): WriteBackHookDe
     logTargetResolverRegistry: createFakeRegistry(),
     frontmatterReader: createFakeReader(undefined),
     writeBackPrompt: createFakePrompt(),
-    getWriteBackProperty: () => 'pomodoros',
+    getWriteBackProperty: () => 'sessions',
     ...overrides,
   }
 }
@@ -104,9 +104,9 @@ describe('createWriteBackHook', () => {
 
     const mutations = await hook(buildContext(activeItemPhase, 'task.md'))
 
-    expect(reader.readValue).toHaveBeenCalledWith('task.md', 'pomodoros')
-    expect(prompt.prompt).toHaveBeenCalledWith({ filePath: 'task.md', property: 'pomodoros', value: 4 })
-    expect(mutations).toEqual([{ kind: 'frontmatter', filePath: 'task.md', property: 'pomodoros', value: 4 }])
+    expect(reader.readValue).toHaveBeenCalledWith('task.md', 'sessions')
+    expect(prompt.prompt).toHaveBeenCalledWith({ filePath: 'task.md', property: 'sessions', value: 4 })
+    expect(mutations).toEqual([{ kind: 'frontmatter', filePath: 'task.md', property: 'sessions', value: 4 }])
   })
 
   test('activeItem target with no active file is skipped without prompting', async () => {
@@ -145,9 +145,9 @@ describe('createWriteBackHook', () => {
 
     const mutations = await hook(buildContext(callbackPhase, null))
 
-    expect(reader.readValue).toHaveBeenCalledWith('daily-note.md', 'pomodoros')
-    expect(prompt.prompt).toHaveBeenCalledWith({ filePath: 'daily-note.md', property: 'pomodoros', value: 1 })
-    expect(mutations).toEqual([{ kind: 'frontmatter', filePath: 'daily-note.md', property: 'pomodoros', value: 1 }])
+    expect(reader.readValue).toHaveBeenCalledWith('daily-note.md', 'sessions')
+    expect(prompt.prompt).toHaveBeenCalledWith({ filePath: 'daily-note.md', property: 'sessions', value: 1 })
+    expect(mutations).toEqual([{ kind: 'frontmatter', filePath: 'daily-note.md', property: 'sessions', value: 1 }])
   })
 
   test('callback target with a registered resolver that returns null is skipped without prompting', async () => {

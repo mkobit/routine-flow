@@ -6,7 +6,7 @@ import type { EngineStatus } from '../domain/session/engine-state'
  * Formats a phase's label, remaining time, and status into one display
  * string, e.g. "Focus: 24:59 (running)" or "Standup turn (running)" for a
  * duration-less phase. Shared by every surface that mirrors the active
- * phase (PomodoroTimerView, the workspace-wide status bar item).
+ * phase (RoutineTimerView, the workspace-wide status bar item).
  */
 export function formatPhaseHeader(phase: Phase, remaining: Temporal.Duration | null, status: EngineStatus): string {
   if (remaining === null) {

@@ -30,11 +30,11 @@ describe('NonNegativeDurationSchema', () => {
 describe('LogEntrySchema', () => {
   test('parses a valid entry', () => {
     const entry = LogEntrySchema.parse({
-      property: 'pomodoros',
+      property: 'sessions',
       value: 1,
       recordedAt: Temporal.Now.instant(),
     })
-    expect(entry.property).toBe('pomodoros')
+    expect(entry.property).toBe('sessions')
     expect(entry.value).toBe(1)
   })
 
@@ -52,27 +52,27 @@ describe('nextLogEntry', () => {
   const now = Temporal.Now.instant()
 
   test('increments a numeric current value by 1', () => {
-    const entry = nextLogEntry(3, 'pomodoros', now)
-    expect(entry).toEqual({ property: 'pomodoros', value: 4, recordedAt: now })
+    const entry = nextLogEntry(3, 'sessions', now)
+    expect(entry).toEqual({ property: 'sessions', value: 4, recordedAt: now })
   })
 
   test('yields 1 for an undefined current value', () => {
-    const entry = nextLogEntry(undefined, 'pomodoros', now)
+    const entry = nextLogEntry(undefined, 'sessions', now)
     expect(entry.value).toBe(1)
   })
 
   test('yields 1 for a non-numeric current value', () => {
-    const entry = nextLogEntry('not-a-number', 'pomodoros', now)
+    const entry = nextLogEntry('not-a-number', 'sessions', now)
     expect(entry.value).toBe(1)
   })
 
   test('yields 1 for a NaN current value', () => {
-    const entry = nextLogEntry(Number.NaN, 'pomodoros', now)
+    const entry = nextLogEntry(Number.NaN, 'sessions', now)
     expect(entry.value).toBe(1)
   })
 
   test('yields 1 for an Infinity current value', () => {
-    const entry = nextLogEntry(Number.POSITIVE_INFINITY, 'pomodoros', now)
+    const entry = nextLogEntry(Number.POSITIVE_INFINITY, 'sessions', now)
     expect(entry.value).toBe(1)
   })
 

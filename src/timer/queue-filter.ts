@@ -30,7 +30,7 @@ export interface QueueFilterCandidate extends BaseQueryEntry {
 /**
  * Resolves which property/value a phase's queue filters on (isFocus -> propId/targetVal
  * resolution) and applies it to `candidates`, returning only the matching entries. Pulled out of
- * PomodoroTimerView.buildTaskSource so this logic — including the unconfigured-View-Option
+ * RoutineTimerView.buildTaskSource so this logic — including the unconfigured-View-Option
  * fallback that previously regressed silently (flow-djx) — is unit-testable with plain fakes
  * instead of only via slow e2e (flow-kg3).
  */

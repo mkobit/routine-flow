@@ -12,7 +12,7 @@ function dispatchAction(page: Page, action: EngineAction): Promise<unknown> {
 }
 
 function panelOf(page: Page) {
-  return page.locator('.pomodoro-side-panel')
+  return page.locator('.routine-side-panel')
 }
 
 test.describe('workspace-wide side panel view', () => {
@@ -31,18 +31,18 @@ test.describe('workspace-wide side panel view', () => {
     await page.locator(RIBBON_ICON).click()
     const panel = panelOf(page)
     await expect(panel).toHaveText(/No routine is running/)
-    await expect(panel.locator('.pomodoro-controls')).toHaveCount(0)
-    await expect(panel.locator('.pomodoro-queue')).toHaveCount(0)
+    await expect(panel.locator('.routine-controls')).toHaveCount(0)
+    await expect(panel.locator('.routine-queue')).toHaveCount(0)
 
     await page.locator(RIBBON_ICON).click()
-    await expect(page.locator('.workspace-leaf-content[data-type="pomodoro-side-panel"]')).toHaveCount(1)
+    await expect(page.locator('.workspace-leaf-content[data-type="routine-side-panel"]')).toHaveCount(1)
   })
 
   test('pause/resume/reset controls reflect and drive the shared engine state', async ({ obsidianPage: { page } }) => {
     await page.locator(RIBBON_ICON).click()
     const panel = panelOf(page)
     const header = panel.locator('h2')
-    const controls = panel.locator('.pomodoro-controls')
+    const controls = panel.locator('.routine-controls')
 
     await dispatchAction(page, { type: 'start' })
     await expect(header).toHaveText(/^Focus: \d{2}:\d{2} \(running\)$/)
@@ -66,7 +66,7 @@ test.describe('workspace-wide side panel view', () => {
     await page.locator(RIBBON_ICON).click()
     const panel = panelOf(page)
     const header = panel.locator('h2')
-    const controls = panel.locator('.pomodoro-controls')
+    const controls = panel.locator('.routine-controls')
 
     await dispatchAction(page, { type: 'start' })
     await expect(header).toHaveText(/^Focus: \d{2}:\d{2} \(running\)$/)
@@ -94,15 +94,15 @@ test.describe('workspace-wide side panel view', () => {
       await leaf.openFile(file)
     })
     await page.locator('.workspace-leaf-content[data-type="bases"] .bases-toolbar-views-menu .text-icon-button').click()
-    await page.locator('.menu .bases-toolbar-menu-item-name', { hasText: 'Pomodoro' }).click()
+    await page.locator('.menu .bases-toolbar-menu-item-name', { hasText: 'Default' }).click()
 
-    await page.locator('.workspace-leaf-content[data-type="bases"] .pomodoro-controls').getByRole('button', { name: 'Start' }).click()
+    await page.locator('.workspace-leaf-content[data-type="bases"] .routine-controls').getByRole('button', { name: 'Start' }).click()
 
     await expect(panel.locator('h2')).toHaveText(/^Focus: \d{2}:\d{2} \(running\)$/)
   })
 
   test('queue items are listed with the active item highlighted, and clicking one switches the active file', async ({ obsidianPage: { page } }) => {
-    // Populate the focus-queue TaskSource via Tasks.base's "Pomodoro" sub-view, same setup as
+    // Populate the focus-queue TaskSource via Tasks.base's "Default" sub-view, same setup as
     // timer.e2e.ts's BaseQuerySource-backed queue test.
     await evaluateObsidian(page, async (app) => {
       const file = app.vault.getFileByPath('Tasks.base')
@@ -113,13 +113,13 @@ test.describe('workspace-wide side panel view', () => {
       await leaf.openFile(file)
     })
     await page.locator('.workspace-leaf-content[data-type="bases"] .bases-toolbar-views-menu .text-icon-button').click()
-    await page.locator('.menu .bases-toolbar-menu-item-name', { hasText: 'Pomodoro' }).click()
+    await page.locator('.menu .bases-toolbar-menu-item-name', { hasText: 'Default' }).click()
 
     await page.locator(RIBBON_ICON).click()
     await dispatchAction(page, { type: 'start' })
 
     const panel = panelOf(page)
-    const queue = panel.locator('.pomodoro-queue')
+    const queue = panel.locator('.routine-queue')
     await expect(queue.locator('h3')).toHaveText('Work queue', { timeout: 20_000 })
 
     const items = queue.locator('li')

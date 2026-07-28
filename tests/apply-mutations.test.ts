@@ -26,7 +26,7 @@ function createFakePort(rejections: Partial<Record<PortMethodName, unknown>> = {
 const frontmatterMutation: FileMutation = FileMutationSchema.parse({
   kind: 'frontmatter',
   filePath: 'task.md',
-  property: 'pomodoros',
+  property: 'sessions',
   value: 1,
 })
 

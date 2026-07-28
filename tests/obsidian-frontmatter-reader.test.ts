@@ -18,10 +18,10 @@ function createFakeDeps(file: VaultFile | null, cache: { frontmatter?: Record<st
 describe('ObsidianFrontmatterReader', () => {
   test('readValue returns the frontmatter property from the resolved file\'s cache', () => {
     const file = fakeFile('task.md')
-    const { deps, getFileCache } = createFakeDeps(file, { frontmatter: { pomodoros: 3 } })
+    const { deps, getFileCache } = createFakeDeps(file, { frontmatter: { sessions: 3 } })
     const reader = new ObsidianFrontmatterReader(deps)
 
-    expect(reader.readValue('task.md', 'pomodoros')).toBe(3)
+    expect(reader.readValue('task.md', 'sessions')).toBe(3)
     expect(getFileCache).toHaveBeenCalledWith(file)
   })
 
@@ -29,27 +29,27 @@ describe('ObsidianFrontmatterReader', () => {
     const { deps } = createFakeDeps(fakeFile('task.md'), null)
     const reader = new ObsidianFrontmatterReader(deps)
 
-    expect(reader.readValue('task.md', 'pomodoros')).toBeUndefined()
+    expect(reader.readValue('task.md', 'sessions')).toBeUndefined()
   })
 
   test('readValue returns undefined when the cache has no frontmatter', () => {
     const { deps } = createFakeDeps(fakeFile('task.md'), {})
     const reader = new ObsidianFrontmatterReader(deps)
 
-    expect(reader.readValue('task.md', 'pomodoros')).toBeUndefined()
+    expect(reader.readValue('task.md', 'sessions')).toBeUndefined()
   })
 
   test('readValue returns undefined when the property is absent from frontmatter', () => {
     const { deps } = createFakeDeps(fakeFile('task.md'), { frontmatter: { streak: 1 } })
     const reader = new ObsidianFrontmatterReader(deps)
 
-    expect(reader.readValue('task.md', 'pomodoros')).toBeUndefined()
+    expect(reader.readValue('task.md', 'sessions')).toBeUndefined()
   })
 
   test('readValue throws when the path does not resolve to a file', () => {
     const { deps } = createFakeDeps(null, null)
     const reader = new ObsidianFrontmatterReader(deps)
 
-    expect(() => reader.readValue('missing.md', 'pomodoros')).toThrow()
+    expect(() => reader.readValue('missing.md', 'sessions')).toThrow()
   })
 })

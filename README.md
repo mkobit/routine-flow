@@ -7,8 +7,8 @@ The underlying model is a generic phase graph, not a hardcoded 25/5 cycle — a 
 
 - Adds a "Routine Timer" view type to Obsidian Bases, alongside the built-in Table/Cards views.
 - Work and break queues are driven by the Base's own query — filter which notes count as "focus" or "break" tasks via a configured property/value pair.
-- Optional custom routines: point a view at a note whose frontmatter includes `pomodoro-routine: true` to define an alternate phase graph, instead of the default focus/break cycle.
-- Write-back on completion: increments a configurable frontmatter property (default `pomodoros`) on the active note when a focus phase finishes.
+- Optional custom routines: point a view at a note whose frontmatter includes `is-routine: true` to define an alternate phase graph, instead of the default focus/break cycle.
+- Write-back on completion: increments a configurable frontmatter property (default `sessions`) on the active note when a focus phase finishes.
 
 ## Requirements
 

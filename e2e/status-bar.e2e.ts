@@ -28,7 +28,7 @@ test.describe('workspace-wide status bar item', () => {
   })
 
   test('hidden while stopped, shows the active phase once running, and hides again on stop', async ({ obsidianPage: { page } }) => {
-    const item = page.locator('.pomodoro-status-bar-item')
+    const item = page.locator('.routine-status-bar-item')
     await expect(item).not.toBeVisible()
 
     await dispatchAction(page, { type: 'start' })
@@ -40,7 +40,7 @@ test.describe('workspace-wide status bar item', () => {
   })
 
   test('clicking toggles pause/resume', async ({ obsidianPage: { page } }) => {
-    const item = page.locator('.pomodoro-status-bar-item')
+    const item = page.locator('.routine-status-bar-item')
     await dispatchAction(page, { type: 'start' })
     await expect(item).toHaveText(/\(running\)$/)
 

@@ -1,7 +1,7 @@
 import { z } from 'zod'
 import type { App } from 'obsidian'
 import { PluginSettingTab, Setting } from 'obsidian'
-import type PomodoroPlugin from './main'
+import type RoutineFlowPlugin from './main'
 import { PredicateNameSchema } from './domain/hook/predicate'
 import { compileFormula } from './domain/hook/formula/evaluator'
 import type { FormulaPredicateSetting } from './timer/formula-predicate-registry'
@@ -12,24 +12,24 @@ export const FormulaPredicateSettingSchema = z.object({
   formula: z.string().min(1),
 })
 
-export const PomodoroSettingsSchema = z.object({
+export const RoutineFlowSettingsSchema = z.object({
   /** Frontmatter property to increment when a focus phase completes. */
-  writeBackProperty: z.string().default('pomodoros'),
+  writeBackProperty: z.string().default('sessions'),
   /** Named formula-authored 'custom' TransitionCondition predicates, evaluated via MutableFormulaPredicateRegistry. */
   formulaPredicates: z.array(FormulaPredicateSettingSchema).default([]),
 })
 
-export type PomodoroSettings = z.infer<typeof PomodoroSettingsSchema>
+export type RoutineFlowSettings = z.infer<typeof RoutineFlowSettingsSchema>
 
-export const DEFAULT_SETTINGS: PomodoroSettings = {
-  writeBackProperty: 'pomodoros',
+export const DEFAULT_SETTINGS: RoutineFlowSettings = {
+  writeBackProperty: 'sessions',
   formulaPredicates: [],
 }
 
-export class PomodoroSettingTab extends PluginSettingTab {
-  private plugin: PomodoroPlugin
+export class RoutineFlowSettingTab extends PluginSettingTab {
+  private plugin: RoutineFlowPlugin
 
-  constructor(app: App, plugin: PomodoroPlugin) {
+  constructor(app: App, plugin: RoutineFlowPlugin) {
     super(app, plugin)
     this.plugin = plugin
   }
@@ -85,7 +85,7 @@ export class PomodoroSettingTab extends PluginSettingTab {
   private renderAddFormulaPredicateRow(containerEl: HTMLElement): void {
     let name = ''
     let formula = ''
-    const errorEl = containerEl.createDiv({ cls: 'pomodoro-formula-predicate-error' })
+    const errorEl = containerEl.createDiv({ cls: 'routine-formula-predicate-error' })
     errorEl.hide()
 
     new Setting(containerEl)

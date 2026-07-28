@@ -1,9 +1,9 @@
 import { Notice, Plugin } from 'obsidian'
-import { DEFAULT_SETTINGS, type PomodoroSettings, PomodoroSettingTab } from './settings'
+import { DEFAULT_SETTINGS, type RoutineFlowSettings, RoutineFlowSettingTab } from './settings'
 import { EngineStore } from './timer/store'
 import type { HookEventApplication } from './timer/store'
 import { TimerTicker } from './timer/ticker'
-import { POMODORO_PHASE_GRAPH } from './timer/phase-graph'
+import { DEFAULT_PHASE_GRAPH } from './timer/phase-graph'
 import { ObsidianFileMutationPort } from './timer/obsidian-file-mutation-port'
 import { ObsidianFrontmatterReader } from './timer/obsidian-frontmatter-reader'
 import { createWriteBackHook, WRITE_BACK_HOOK_NAME } from './timer/write-back'
@@ -12,10 +12,10 @@ import { createTaskSourceRegistry } from './timer/task-source-registry'
 import type { MutableTaskSourceRegistry } from './timer/task-source-registry'
 import { createFormulaPredicateRegistry } from './timer/formula-predicate-registry'
 import type { MutableFormulaPredicateRegistry } from './timer/formula-predicate-registry'
-import { PomodoroTimerView } from './views/timer-view'
+import { RoutineTimerView } from './views/timer-view'
 import { ObsidianWriteBackPromptPort } from './views/write-back-modal'
-import { PomodoroStatusBarItem } from './views/status-bar'
-import { PomodoroSidePanelView, SIDE_PANEL_VIEW_TYPE } from './views/side-panel-view'
+import { RoutineStatusBarItem } from './views/status-bar'
+import { RoutineSidePanelView, SIDE_PANEL_VIEW_TYPE } from './views/side-panel-view'
 
 /** Surfaces a dispatched hook's invocation failures and failed FileMutation applications — mirrors the reporting main.ts's old write-back subscriber did inline. */
 function reportFailedHookApplications(applications: readonly HookEventApplication[]): void {
@@ -33,13 +33,13 @@ function reportFailedHookApplications(applications: readonly HookEventApplicatio
 
 const describeCause = (cause: unknown): string => cause instanceof Error ? cause.message : String(cause)
 
-export default class PomodoroPlugin extends Plugin {
-  public settings: PomodoroSettings = DEFAULT_SETTINGS
+export default class RoutineFlowPlugin extends Plugin {
+  public settings: RoutineFlowSettings = DEFAULT_SETTINGS
   public store!: EngineStore
   public ticker!: TimerTicker
   public taskSourceRegistry: MutableTaskSourceRegistry = createTaskSourceRegistry()
   public formulaPredicateRegistry: MutableFormulaPredicateRegistry = createFormulaPredicateRegistry()
-  private statusBarItem!: PomodoroStatusBarItem
+  private statusBarItem!: RoutineStatusBarItem
 
   async onload() {
     await this.loadSettings()
@@ -56,7 +56,7 @@ export default class PomodoroPlugin extends Plugin {
     const hookRegistry: HookRegistry = {
       resolve: name => name === WRITE_BACK_HOOK_NAME ? writeBackHook : undefined,
     }
-    this.store = new EngineStore(POMODORO_PHASE_GRAPH, {
+    this.store = new EngineStore(DEFAULT_PHASE_GRAPH, {
       hookRegistry,
       port,
       predicateRegistry: this.formulaPredicateRegistry,
@@ -79,20 +79,20 @@ export default class PomodoroPlugin extends Plugin {
     })
 
     this.registerBasesView(
-      'pomodoro-timer',
+      'routine-timer',
       {
         name: 'Routine Timer',
         icon: 'timer',
-        factory: (controller, containerEl) => new PomodoroTimerView(
+        factory: (controller, containerEl) => new RoutineTimerView(
           controller,
           containerEl,
           this,
         ),
-        options: () => PomodoroTimerView.getViewOptions(this.app),
+        options: () => RoutineTimerView.getViewOptions(this.app),
       },
     )
 
-    this.registerView(SIDE_PANEL_VIEW_TYPE, leaf => new PomodoroSidePanelView(leaf, this))
+    this.registerView(SIDE_PANEL_VIEW_TYPE, leaf => new RoutineSidePanelView(leaf, this))
     this.addRibbonIcon('timer', 'Open routine panel', () => void this.activateView())
     this.addCommand({
       id: 'open-routine-panel',
@@ -100,9 +100,9 @@ export default class PomodoroPlugin extends Plugin {
       callback: () => void this.activateView(),
     })
 
-    this.addSettingTab(new PomodoroSettingTab(this.app, this))
+    this.addSettingTab(new RoutineFlowSettingTab(this.app, this))
 
-    this.statusBarItem = new PomodoroStatusBarItem(this)
+    this.statusBarItem = new RoutineStatusBarItem(this)
     this.statusBarItem.load()
   }
 
@@ -126,7 +126,7 @@ export default class PomodoroPlugin extends Plugin {
   }
 
   async loadSettings() {
-    const loaded: Partial<PomodoroSettings> = await this.loadData()
+    const loaded: Partial<RoutineFlowSettings> = await this.loadData()
     this.settings = Object.assign({}, DEFAULT_SETTINGS, loaded)
   }
 

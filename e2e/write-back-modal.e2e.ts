@@ -48,10 +48,10 @@ async function completeFocusPhase(page: Page): Promise<void> {
   void dispatchAction(page, { type: 'tick' })
 }
 
-function readPomodoros(page: Page): Promise<unknown> {
+function readSessionsValue(page: Page): Promise<unknown> {
   return evaluateObsidian(page, (app, args: { path: string }) => {
     const file = app.vault.getFileByPath(args.path)
-    const value: unknown = file ? app.metadataCache.getFileCache(file)?.frontmatter?.pomodoros : undefined
+    const value: unknown = file ? app.metadataCache.getFileCache(file)?.frontmatter?.sessions : undefined
     return value
   }, { path: TASK_PATH })
 }
@@ -62,11 +62,11 @@ function modalLocator(page: Page) {
 
 test.describe('write-back confirmation modal', () => {
   test.beforeEach(async ({ obsidianPage: { page, vaultPath } }) => {
-    const note = createNote(TASK_PATH, { type: 'work', pomodoros: 3 })
+    const note = createNote(TASK_PATH, { type: 'work', sessions: 3 })
     const writeError = await writeNoteToVault(vaultPath, note)
     expect(writeError).toBeUndefined()
 
-    await expect.poll(() => readPomodoros(page)).toBe(3)
+    await expect.poll(() => readSessionsValue(page)).toBe(3)
     await dispatchAction(page, { type: 'start', filePath: TASK_PATH })
   })
 
@@ -75,7 +75,7 @@ test.describe('write-back confirmation modal', () => {
 
     await modalLocator(page).getByRole('button', { name: 'Submit' }).click()
 
-    await expect.poll(() => readPomodoros(page)).toBe(4)
+    await expect.poll(() => readSessionsValue(page)).toBe(4)
   })
 
   test('cancelling the prompt writes nothing', async ({ obsidianPage: { page } }) => {
@@ -83,7 +83,7 @@ test.describe('write-back confirmation modal', () => {
 
     await modalLocator(page).getByRole('button', { name: 'Cancel' }).click()
 
-    await expect.poll(() => readPomodoros(page)).toBe(3)
+    await expect.poll(() => readSessionsValue(page)).toBe(3)
   })
 
   test('editing the value field before submit writes the edited value', async ({ obsidianPage: { page } }) => {
@@ -93,6 +93,6 @@ test.describe('write-back confirmation modal', () => {
     await modal.locator('.setting-item', { hasText: 'Value' }).locator('input').fill('99')
     await modal.getByRole('button', { name: 'Submit' }).click()
 
-    await expect.poll(() => readPomodoros(page)).toBe(99)
+    await expect.poll(() => readSessionsValue(page)).toBe(99)
   })
 })

@@ -29,11 +29,11 @@ A `LogTargetResolverRegistry` SHALL expose `resolve(name: LogTargetResolverName)
 `nextLogEntry(currentValue: unknown, property: string, recordedAt: Temporal.Instant)` SHALL return a `LogEntry` whose `value` is `currentValue + 1` when `currentValue` is a `number`, and `1` otherwise (including when `currentValue` is `undefined`, a string, a boolean, or any other non-number). The returned `LogEntry`'s `property` and `recordedAt` SHALL echo the given arguments unchanged.
 
 #### Scenario: Current value is a number
-- **WHEN** `nextLogEntry(3, 'pomodoros', now)` is called
-- **THEN** it returns `{ property: 'pomodoros', value: 4, recordedAt: now }`
+- **WHEN** `nextLogEntry(3, 'sessions', now)` is called
+- **THEN** it returns `{ property: 'sessions', value: 4, recordedAt: now }`
 
 #### Scenario: Current value is missing or non-numeric
-- **WHEN** `nextLogEntry(undefined, 'pomodoros', now)` or `nextLogEntry('not-a-number', 'pomodoros', now)` is called
+- **WHEN** `nextLogEntry(undefined, 'sessions', now)` or `nextLogEntry('not-a-number', 'sessions', now)` is called
 - **THEN** it returns a `LogEntry` with `value: 1`
 
 ### Requirement: Write-back orchestration resolves a target, then reads, computes, and applies a single frontmatter mutation

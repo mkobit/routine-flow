@@ -259,7 +259,7 @@ export class EngineStore {
    * Unconditional and immediate: resets even if a session is currently
    * running or paused, discarding its progress with no warning. This store
    * enforces no guard against that — callers that let a user trigger this
-   * (e.g. PomodoroTimerView's Start handler) must confirm with the user
+   * (e.g. RoutineTimerView's Start handler) must confirm with the user
    * first whenever a different routine is already in progress.
    */
   public setGraph(graph: PhaseGraph) {

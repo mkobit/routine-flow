@@ -88,13 +88,13 @@ describe('filterQueueCandidates', () => {
       candidate({
         path: 'a.md',
         basename: 'a',
-        frontmatter: { 'pomodoro-priority': 3 },
+        frontmatter: { 'routine-priority': 3 },
         getValue: () => ({ toString: () => 'work' }),
       }),
     ]
 
     const result = filterQueueCandidates({ kind: FOCUS_PHASE_KIND }, undefined, candidates)
 
-    expect(result).toEqual([{ path: 'a.md', basename: 'a', frontmatter: { 'pomodoro-priority': 3 } }])
+    expect(result).toEqual([{ path: 'a.md', basename: 'a', frontmatter: { 'routine-priority': 3 } }])
   })
 })

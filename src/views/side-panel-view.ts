@@ -1,23 +1,23 @@
 import { ItemView } from 'obsidian'
 import type { WorkspaceLeaf } from 'obsidian'
-import type PomodoroPlugin from '../main'
+import type RoutineFlowPlugin from '../main'
 import type { EngineState } from '../domain/session/engine-state'
 import { findPhaseById, FOCUS_PHASE_KIND } from '../timer/phase-graph'
 import { formatPhaseHeader } from '../timer/format'
 import { ResetConfirmModal } from './reset-confirm-modal'
 
-export const SIDE_PANEL_VIEW_TYPE = 'pomodoro-side-panel'
+export const SIDE_PANEL_VIEW_TYPE = 'routine-side-panel'
 
 /**
  * Workspace-wide side panel mirroring the shared EngineStore, closer to
- * PomodoroTimerView's fidelity (phase + controls + queue) than the status
+ * RoutineTimerView's fidelity (phase + controls + queue) than the status
  * bar item, but not bound to any leaf's routineFile -- no viewGraph, no
  * Start button, no routine-selection UI (see design.md's Decisions).
  */
-export class PomodoroSidePanelView extends ItemView {
+export class RoutineSidePanelView extends ItemView {
   private unsubscribe: (() => void) | null = null
 
-  constructor(leaf: WorkspaceLeaf, private readonly plugin: PomodoroPlugin) {
+  constructor(leaf: WorkspaceLeaf, private readonly plugin: RoutineFlowPlugin) {
     super(leaf)
   }
 
@@ -34,7 +34,7 @@ export class PomodoroSidePanelView extends ItemView {
   }
 
   async onOpen(): Promise<void> {
-    this.contentEl.addClass('pomodoro-side-panel')
+    this.contentEl.addClass('routine-side-panel')
     this.unsubscribe = this.plugin.store.subscribe(state => this.render(state))
     this.render(this.plugin.store.getState())
   }
@@ -60,7 +60,7 @@ export class PomodoroSidePanelView extends ItemView {
 
     this.contentEl.createEl('h2', { text: formatPhaseHeader(phase, state.remaining, state.status) })
 
-    const controls = this.contentEl.createDiv({ cls: 'pomodoro-controls' })
+    const controls = this.contentEl.createDiv({ cls: 'routine-controls' })
 
     if (state.status === 'running') {
       const pauseBtn = controls.createEl('button', { text: 'Pause' })
@@ -87,7 +87,7 @@ export class PomodoroSidePanelView extends ItemView {
     const queueTitle = phase.kind === FOCUS_PHASE_KIND ? 'Work queue' : 'Break queue'
     const queueItems = this.plugin.taskSourceRegistry.resolve(phase.taskSourceId)?.getQueue() ?? []
 
-    const queueEl = this.contentEl.createDiv({ cls: 'pomodoro-queue' })
+    const queueEl = this.contentEl.createDiv({ cls: 'routine-queue' })
     queueEl.createEl('h3', { text: queueTitle })
 
     if (queueItems.length === 0) {
