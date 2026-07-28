@@ -126,7 +126,7 @@ const longBreakPhase: Phase = PhaseSchema.parse({
  */
 export const POMODORO_PHASE_GRAPH: PhaseGraph = PhaseGraphSchema.parse({
   id: PhaseGraphIdSchema.parse('pomodoro'),
-  name: 'Pomodoro',
+  name: 'Default routine',
   phases: [focusPhase, breakPhase, longBreakPhase],
   transitions: [
     { fromPhaseId: focusPhase.id, toPhaseId: longBreakPhase.id, condition: { kind: 'everyNth', n: 4 } },

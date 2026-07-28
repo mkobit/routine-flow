@@ -54,9 +54,9 @@ test.describe('routine replace confirmation modal', () => {
     await modal.getByRole('button', { name: 'Cancel' }).click()
     await expect(modal).toBeHidden()
 
-    // Still showing the Workout sub-view, but the Pomodoro routine remains the active one.
+    // Still showing the Workout sub-view, but the default routine remains the active one.
     await expect(panel.locator('.pomodoro-routine-inert'))
-      .toHaveText('"Pomodoro" is currently active instead of this view\'s routine ("Workout").')
+      .toHaveText('"Default routine" is currently active instead of this view\'s routine ("Workout").')
   })
 
   test('replacing switches the active graph and starts it', async ({ obsidianPage: { page } }) => {

@@ -4,6 +4,7 @@ import type PomodoroPlugin from '../main'
 import type { EngineState } from '../domain/session/engine-state'
 import { findPhaseById, FOCUS_PHASE_KIND } from '../timer/phase-graph'
 import { formatPhaseHeader } from '../timer/format'
+import { ResetConfirmModal } from './reset-confirm-modal'
 
 export const SIDE_PANEL_VIEW_TYPE = 'pomodoro-side-panel'
 
@@ -76,7 +77,7 @@ export class PomodoroSidePanelView extends ItemView {
     }
 
     const resetBtn = controls.createEl('button', { text: 'Reset' })
-    resetBtn.addEventListener('click', () => void this.plugin.store.dispatch({ type: 'stop' }))
+    resetBtn.addEventListener('click', () => void this.handleReset(graph.name))
 
     // A phase with no taskSourceId has no queue at all (e.g. a rep-based workout phase).
     if (phase.taskSourceId === null) {
@@ -105,5 +106,13 @@ export class PomodoroSidePanelView extends ItemView {
         void this.plugin.store.dispatch({ type: 'start', filePath: item.sourcePath })
       })
     }
+  }
+
+  private async handleReset(routineName: string): Promise<void> {
+    const result = await new ResetConfirmModal(this.plugin.app, routineName).waitForResult()
+    if (result !== 'confirmed') {
+      return
+    }
+    void this.plugin.store.dispatch({ type: 'stop' })
   }
 }

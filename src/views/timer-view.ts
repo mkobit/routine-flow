@@ -9,6 +9,7 @@ import { formatPhaseHeader } from '../timer/format'
 import { decideStartAction, resolveRoutineGraph } from '../timer/routine-selection'
 import type { RoutineResolution } from '../timer/routine-selection'
 import { RoutineReplaceModal } from './routine-replace-modal'
+import { ResetConfirmModal } from './reset-confirm-modal'
 import { resolveActiveFilePath } from '../timer/queue-advance'
 import { createBaseQuerySource } from '../timer/base-query-task-source'
 import { filterQueueCandidates } from '../timer/queue-filter'
@@ -132,7 +133,7 @@ export class PomodoroTimerView extends BasesView {
     }
 
     const stopBtn = controls.createEl('button', { text: 'Reset' })
-    stopBtn.addEventListener('click', () => void this.plugin.store.dispatch({ type: 'stop' }))
+    stopBtn.addEventListener('click', () => void this.handleReset(graph.name))
 
     // A phase with no taskSourceId has no queue at all (e.g. a rep-based workout phase) — nothing to render.
     if (phase.taskSourceId === null) {
@@ -225,6 +226,14 @@ export class PomodoroTimerView extends BasesView {
       this.plugin.store.setGraph(graph)
     }
     void this.plugin.store.dispatch({ type: 'start' })
+  }
+
+  private async handleReset(routineName: string): Promise<void> {
+    const result = await new ResetConfirmModal(this.plugin.app, routineName).waitForResult()
+    if (result !== 'confirmed') {
+      return
+    }
+    void this.plugin.store.dispatch({ type: 'stop' })
   }
 
   static getViewOptions(app: App): BasesOptions[] {
