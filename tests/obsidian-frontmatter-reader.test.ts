@@ -52,4 +52,34 @@ describe('ObsidianFrontmatterReader', () => {
 
     expect(() => reader.readValue('missing.md', 'sessions')).toThrow()
   })
+
+  test('readAll returns the whole frontmatter record from the resolved file\'s cache', () => {
+    const file = fakeFile('task.md')
+    const { deps, getFileCache } = createFakeDeps(file, { frontmatter: { sessions: 3, streak: 1 } })
+    const reader = new ObsidianFrontmatterReader(deps)
+
+    expect(reader.readAll('task.md')).toEqual({ sessions: 3, streak: 1 })
+    expect(getFileCache).toHaveBeenCalledWith(file)
+  })
+
+  test('readAll returns null when the file has no metadata cache yet', () => {
+    const { deps } = createFakeDeps(fakeFile('task.md'), null)
+    const reader = new ObsidianFrontmatterReader(deps)
+
+    expect(reader.readAll('task.md')).toBeNull()
+  })
+
+  test('readAll returns null when the cache has no frontmatter', () => {
+    const { deps } = createFakeDeps(fakeFile('task.md'), {})
+    const reader = new ObsidianFrontmatterReader(deps)
+
+    expect(reader.readAll('task.md')).toBeNull()
+  })
+
+  test('readAll throws when the path does not resolve to a file', () => {
+    const { deps } = createFakeDeps(null, null)
+    const reader = new ObsidianFrontmatterReader(deps)
+
+    expect(() => reader.readAll('missing.md')).toThrow()
+  })
 })

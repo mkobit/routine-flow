@@ -300,6 +300,17 @@ export default tseslint.config(
       'functional/prefer-property-signatures': 'off',
     },
   },
+  // script-hook.ts deliberately uses `new Function` to execute vault-authored
+  // script hooks in-process, per openspec/changes/transition-hook-script-runner's
+  // 2026-07-28 design decision (no runtime isolation; the bind-time
+  // confirmation in script-hook-source is the trust boundary instead). This
+  // is the one production file allowed to do this -- do not widen this glob.
+  {
+    files: ['src/timer/script-hook.ts'],
+    rules: {
+      'obsidianmd/rule-custom-message': 'off', // covers no-new-func for the new Function() usage above
+    },
+  },
   // Overrides for Tests
   {
     files: ['tests/**/*.ts', 'tests/**/*.tsx', 'e2e/**/*.ts'],
