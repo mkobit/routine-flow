@@ -11,16 +11,16 @@ The plugin settings tab SHALL expose a setting for a single designated vault fol
 - **WHEN** a `.js` file exists elsewhere in the vault, outside the configured scripts folder
 - **THEN** that file does not appear as a selectable script
 
-### Requirement: A binding pairs one script with one or more Phase lifecycle events
-The settings tab SHALL let a user create a named binding associating exactly one selected script with one or more of `onEnter`, `onComplete`, `onSkip`, `onExit`. Each binding SHALL be editable and removable after creation.
+### Requirement: A binding pairs a chosen name with one selected script
+The settings tab SHALL let a user create a named binding associating a chosen name with exactly one selected script. Each binding SHALL be editable and removable after creation. A binding carries no event association of its own — which Phase lifecycle event(s) reference a binding's name is decided entirely by a routine's own `onEnter`/`onComplete`/`onSkip`/`onExit` `HookReference` fields (`{ name, params }`, e.g. `phase-graph.ts`'s existing `onComplete: { name: WRITE_BACK_HOOK_NAME, params: {} }`), the same mechanism the built-in write-back hook already uses — `HookRegistry.resolve` takes a name only, with no event parameter, so there is nothing for a binding-level event selection to control.
 
-#### Scenario: A binding can target multiple events
-- **WHEN** a user creates a binding for `log-focus-complete.js` and selects both `onComplete` and `onSkip`
-- **THEN** the binding is saved covering both events for that script
+#### Scenario: A binding's name becomes resolvable from any routine's HookReference
+- **WHEN** a user creates a binding named `log-focus-complete` for the script `log-focus-complete.js` and confirms it
+- **THEN** a routine whose `Phase.onComplete` is `{ name: 'log-focus-complete', params: {} }` resolves that script via `HookRegistry` when the phase completes — no separate event configuration on the binding itself is needed
 
-#### Scenario: Removing a binding stops that script resolving for its events
+#### Scenario: Removing a binding stops that name resolving
 - **WHEN** a user removes an existing binding
-- **THEN** a `HookReference` naming that binding's script no longer resolves via the configured `HookRegistry`
+- **THEN** a `HookReference` naming that binding no longer resolves via the configured `HookRegistry`
 
 ### Requirement: A new binding requires a one-time confirmation before it becomes active
 When a user creates a binding, the settings tab SHALL present the selected script's current source for review and require explicit confirmation before the binding is enabled. An unconfirmed binding SHALL NOT resolve via `HookRegistry`.

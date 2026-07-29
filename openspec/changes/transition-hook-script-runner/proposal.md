@@ -4,7 +4,7 @@ Every Hook (`onEnter`/`onComplete`/`onSkip`/`onExit`) and every `TransitionCondi
 
 ## What Changes
 
-- Adds a settings-tab "scripts folder" setting: any `.js` file placed there becomes selectable by name in a new list of script-to-event bindings (one binding = one script + one or more of `onEnter`/`onComplete`/`onSkip`/`onExit`).
+- Adds a settings-tab "scripts folder" setting: any `.js` file placed there becomes selectable in a new list of named bindings (one binding = a chosen name + one selected script). A binding carries no event association of its own — a routine's own `onEnter`/`onComplete`/`onSkip`/`onExit` `HookReference` (`{ name, params }`) is what actually wires a binding's name to a specific phase and event, same as the built-in write-back hook already works.
 - Each binding requires a one-time bind-time confirmation (review the script, confirm trust) before it's enabled — no per-firing prompt afterward.
 - A bound script executes in-process (no Worker, no runtime sandbox — see design.md's 2026-07-28 update) as `(context) => Promise<FileMutation[]>` — the existing `Hook` contract, unchanged. The bind-time confirmation gate is the only trust boundary; a confirmed script has the same Node/host access as any other in-process code. Stronger sandboxing is tracked separately (flow-gu1.67), not part of this change.
 - `HookContext` gains pre-resolved, read-only frontmatter for one context-implied path only (the active file's note, via `EngineState.activeFilePath` — `Phase` has no note/file-path field of its own, so there is no second "phase's own note" to resolve) — resolved synchronously before the script runs.

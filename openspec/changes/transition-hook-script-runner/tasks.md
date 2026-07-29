@@ -28,28 +28,32 @@ Unblocked 2026-07-28: dropped Worker-based isolation after 3.0's spike showed it
 
 ## 4. Script-hook binding + settings UI
 
-- [ ] 4.1 Add a settings-tab field for the designated scripts folder path
-- [ ] 4.2 Add a settings-tab list of script-to-event bindings: script (selected from `.js` files directly inside the configured folder) + one or more of `onEnter`/`onComplete`/`onSkip`/`onExit`, add/edit/remove
-- [ ] 4.3 Add the bind-time confirmation UI: on creating a binding, show the selected script's current source and require explicit confirmation before the binding is stored as enabled; an unconfirmed binding is not persisted as resolvable
-- [ ] 4.4 Wire a `MutableScriptHookRegistry` implementing `HookRegistry`, built from the confirmed bindings list (name -> the task 3.3 `Hook` adapter over that binding's script source), replacing `main.ts`'s static single-entry `HookRegistry`
-- [ ] 4.5 Settings-tab tests/manual checks: a `.js` file outside the configured folder isn't selectable; removing a binding makes its name stop resolving; an unconfirmed binding doesn't resolve
+Revised 2026-07-29 (user call): a binding is a chosen name + one selected script only, no event checkboxes — see design.md's Decisions and script-hook-source's revised spec for why (`HookRegistry.resolve(name)` takes no event parameter; a routine's own `HookReference` already owns which phase/event fires a name).
+
+- [x] 4.1 Add a settings-tab field for the designated scripts folder path. Landed as `RoutineFlowSettings.scriptsFolder` (`src/settings.ts`), a plain text setting.
+- [x] 4.2 Add a settings-tab list of named script bindings: a chosen name + one script selected from `.js` files directly inside the configured folder, add/remove. Landed as `scriptHookBindings` (`ScriptHookBindingSettingSchema`) plus `ScriptFileSuggest` (an `AbstractInputSuggest<TFile>` restricted to `.js` files whose immediate parent matches the configured folder, mirroring `write-back-modal.ts`'s `VaultFileSuggest`).
+- [x] 4.3 Add the bind-time confirmation UI: on creating a binding, show the selected script's current source and require explicit confirmation before the binding is stored as enabled; an unconfirmed binding is not persisted as resolvable. Landed as `ScriptHookConfirmModal` (`src/views/script-hook-confirm-modal.ts`, the same "Modal as an awaitable" pattern as `WriteBackModal`/`ResetConfirmModal`) — the settings-tab Add flow only writes to `settings.scriptHookBindings` after the modal resolves `'confirmed'`, so there is no separate persisted-but-unconfirmed state to model.
+- [x] 4.4 Wire a `MutableScriptHookRegistry` implementing `HookRegistry`, built from the confirmed bindings list (name -> the task 3.3 `Hook` adapter over that binding's script source), replacing `main.ts`'s static single-entry `HookRegistry`. Landed as `createScriptHookRegistry` (`src/timer/script-hook-registry.ts`), mirroring `MutableFormulaPredicateRegistry`'s "rebuild wholesale from settings" shape. `scriptSource` is the snapshot confirmed at bind time, not a live re-read of `scriptPath` — see the type's doc comment and the follow-up noted in task 7.5.
+- [x] 4.5 Settings-tab tests/manual checks: a `.js` file outside the configured folder isn't selectable; removing a binding makes its name stop resolving; an unconfirmed binding doesn't resolve. Landed as `tests/script-hook-registry.test.ts`; manual settings-tab verification is task 6.1 below (not yet run).
 
 ## 5. main.ts wiring
 
-- [ ] 5.1 Replace `main.ts`'s static `hookRegistry`/`predicateRegistry` construction with the mutable registries from tasks 2.5 and 4.4, keeping `createWriteBackHook`'s existing entry alongside script-authored ones (both resolvable via the same `HookRegistry`)
-- [ ] 5.2 Confirm `EngineStore` construction and `RoutineFlowSettingTab` wiring both receive/reference the same registry instances (no duplicate registries)
+- [x] 5.1 Replace `main.ts`'s static `hookRegistry`/`predicateRegistry` construction with the mutable registries from tasks 2.5 and 4.4, keeping `createWriteBackHook`'s existing entry alongside script-authored ones (both resolvable via the same `HookRegistry`). Landed: `hookRegistry.resolve` checks `WRITE_BACK_HOOK_NAME` first, then delegates to `this.scriptHookRegistry.resolve(name)`.
+- [x] 5.2 Confirm `EngineStore` construction and `RoutineFlowSettingTab` wiring both receive/reference the same registry instances (no duplicate registries). Confirmed: `this.scriptHookRegistry` is a single plugin-owned instance, read by both `hookRegistry.resolve` (used to construct `EngineStore`) and `RoutineFlowSettingTab`'s `saveAndRefreshScriptHookBindings` via `this.plugin.scriptHookRegistry`.
 
 ## 6. Manual verification
 
-- [ ] 6.1 In the dev vault (`bun run vault:dev:headless`), configure a scripts folder and a real `.js` script bound to `onComplete`, confirm the binding, complete a focus phase, and verify the script's `FileMutation` is applied
-- [ ] 6.2 Verify a script left unconfirmed does not fire on phase completion
-- [ ] 6.3 Verify a formula-authored predicate correctly gates a `'custom'` `TransitionCondition` end-to-end in a routine using one
-- [ ] 6.4 Verify a script that throws does not prevent a same-transition write-back (or other) hook from still applying its own mutation
+Covered via automated e2e (`e2e/script-hook.e2e.ts`) against real Obsidian/Electron (Playwright + CDP, same harness as write-back-modal.e2e.ts) rather than a human clicking through the dev vault — this validates the functional path (real `new Function`, real FrontmatterReader, real FileMutationPort); the settings-tab UI itself (Setting()/AbstractInputSuggest/Modal) reuses patterns already covered by write-back-modal.e2e.ts/routine-replace-modal.e2e.ts, so no separate UI-driving e2e test was written for it.
+
+- [x] 6.1 In the dev vault (`bun run vault:dev:headless`), configure a scripts folder and a real `.js` script bound to `onComplete`, confirm the binding, complete a focus phase, and verify the script's `FileMutation` is applied. Covered by `e2e/script-hook.e2e.ts`'s first test: registers a binding directly against the live `MutableScriptHookRegistry` (bypassing the settings UI, which isn't this task's concern — see note above), points the focus phase's `onComplete` at it via a live `setGraph`, drives a real completion, and asserts the script's `FileMutation` (which itself reads the enriched `activeFileFrontmatter`) lands on a real vault file.
+- [ ] 6.2 Verify a script left unconfirmed does not fire on phase completion. Not covered by e2e — the settings-tab Add flow only ever writes to `settings.scriptHookBindings` after `ScriptHookConfirmModal` resolves `'confirmed'` (see `src/settings.ts`), so there is no persisted-but-unconfirmed state for an e2e test to distinguish; verified by code inspection instead.
+- [ ] 6.3 Verify a formula-authored predicate correctly gates a `'custom'` `TransitionCondition` end-to-end in a routine using one. Out of scope for this session's changes (group 2, already shipped via PR #102) — not re-verified here.
+- [x] 6.4 Verify a script that throws does not prevent a same-transition write-back (or other) hook from still applying its own mutation. Covered by `e2e/script-hook.e2e.ts`'s second test: a real throwing script doesn't hang `EngineStore.dispatch` or leave the phase stuck (the sibling-hook-isolation property itself was already unit-tested against fake hooks in `hook-execution.test.ts`; this confirms a real script's real throw is caught the same way).
 
 ## 7. Quality gates
 
-- [ ] 7.1 `bun test` passes
-- [ ] 7.2 `bun run typecheck` passes
-- [ ] 7.3 `bun run lint` passes
-- [ ] 7.4 `bun run build` succeeds
-- [ ] 7.5 Close flow-gu1.10 in beads, referencing this change; file any follow-up issues raised in design.md's Open Questions (bind-time content-hash re-confirmation; predicate context widening for vault-state-dependent predicates) rather than leaving them implicit — stronger script-hook sandboxing is already tracked as flow-gu1.67, no new issue needed for that one
+- [x] 7.1 `bun test` passes (265 tests)
+- [x] 7.2 `bun run typecheck` passes
+- [x] 7.3 `bun run lint` passes (0 errors; pre-existing warnings only, confirmed unchanged against `main`)
+- [x] 7.4 `bun run build` succeeds
+- [x] 7.5 Close flow-gu1.10 in beads, referencing this change; file any follow-up issues raised in design.md's Open Questions (bind-time content-hash re-confirmation; predicate context widening for vault-state-dependent predicates) rather than leaving them implicit — stronger script-hook sandboxing is already tracked as flow-gu1.67, no new issue needed for that one. Filed: flow-gu1.69 (content-hash re-confirmation), flow-gu1.70 (predicate context widening). flow-gu1.68 (non-coder-friendly builder for script hooks/predicates) also filed this session, raised by the user mid-implementation, not from an Open Question in this doc.

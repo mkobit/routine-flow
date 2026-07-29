@@ -12,6 +12,8 @@ import { createTaskSourceRegistry } from './timer/task-source-registry'
 import type { MutableTaskSourceRegistry } from './timer/task-source-registry'
 import { createFormulaPredicateRegistry } from './timer/formula-predicate-registry'
 import type { MutableFormulaPredicateRegistry } from './timer/formula-predicate-registry'
+import { createScriptHookRegistry } from './timer/script-hook-registry'
+import type { MutableScriptHookRegistry } from './timer/script-hook-registry'
 import { RoutineTimerView } from './views/timer-view'
 import { ObsidianWriteBackPromptPort } from './views/write-back-modal'
 import { RoutineStatusBarItem } from './views/status-bar'
@@ -39,22 +41,26 @@ export default class RoutineFlowPlugin extends Plugin {
   public ticker!: TimerTicker
   public taskSourceRegistry: MutableTaskSourceRegistry = createTaskSourceRegistry()
   public formulaPredicateRegistry: MutableFormulaPredicateRegistry = createFormulaPredicateRegistry()
+  public scriptHookRegistry!: MutableScriptHookRegistry
   private statusBarItem!: RoutineStatusBarItem
 
   async onload() {
     await this.loadSettings()
     this.formulaPredicateRegistry.setFormulas(this.settings.formulaPredicates)
+    const frontmatterReader = new ObsidianFrontmatterReader(this.app)
+    this.scriptHookRegistry = createScriptHookRegistry({ frontmatterReader })
+    this.scriptHookRegistry.setBindings(this.settings.scriptHookBindings)
     const port = new ObsidianFileMutationPort(this.app)
 
     const writeBackHook = createWriteBackHook({
       // No named log-target resolver (e.g. 'dailyNote') is registered yet — see design.md decision 2.
       logTargetResolverRegistry: { resolve: () => undefined },
-      frontmatterReader: new ObsidianFrontmatterReader(this.app),
+      frontmatterReader,
       writeBackPrompt: new ObsidianWriteBackPromptPort(this.app),
       getWriteBackProperty: () => this.settings.writeBackProperty,
     })
     const hookRegistry: HookRegistry = {
-      resolve: name => name === WRITE_BACK_HOOK_NAME ? writeBackHook : undefined,
+      resolve: name => name === WRITE_BACK_HOOK_NAME ? writeBackHook : this.scriptHookRegistry.resolve(name),
     }
     this.store = new EngineStore(DEFAULT_PHASE_GRAPH, {
       hookRegistry,
