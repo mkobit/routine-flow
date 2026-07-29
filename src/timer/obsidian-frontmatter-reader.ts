@@ -20,4 +20,9 @@ export class ObsidianFrontmatterReader implements FrontmatterReader {
     const file = resolveFile(this.deps.vault, filePath)
     return this.deps.metadataCache.getFileCache(file)?.frontmatter?.[property]
   }
+
+  readAll(filePath: string): Readonly<Record<string, unknown>> | null {
+    const file = resolveFile(this.deps.vault, filePath)
+    return this.deps.metadataCache.getFileCache(file)?.frontmatter ?? null
+  }
 }

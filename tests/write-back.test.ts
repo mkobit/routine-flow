@@ -40,7 +40,10 @@ const callbackPhase: Phase = PhaseSchema.parse({
 })
 
 function createFakeReader(value: unknown): FrontmatterReader {
-  return { readValue: mock((_filePath: string, _property: string) => value) }
+  return {
+    readValue: mock((_filePath: string, _property: string) => value),
+    readAll: mock((_filePath: string) => null),
+  }
 }
 
 function createFakeRegistry(resolvers: Record<string, LogTargetResolver> = {}): LogTargetResolverRegistry {
