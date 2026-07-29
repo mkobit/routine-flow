@@ -6,10 +6,9 @@ Every Hook (`onEnter`/`onComplete`/`onSkip`/`onExit`) and every `TransitionCondi
 
 - Adds a settings-tab "scripts folder" setting: any `.js` file placed there becomes selectable by name in a new list of script-to-event bindings (one binding = one script + one or more of `onEnter`/`onComplete`/`onSkip`/`onExit`).
 - Each binding requires a one-time bind-time confirmation (review the script, confirm trust) before it's enabled — no per-firing prompt afterward.
-- A bound script executes inside a Web Worker (no Node integration) as `(context) => Promise<FileMutation[]>` — the existing `Hook` contract, unchanged.
-- `HookContext` gains pre-resolved, read-only frontmatter for one context-implied path only (the active file's note, via `EngineState.activeFilePath` — `Phase` has no note/file-path field of its own, so there is no second "phase's own note" to resolve) — resolved synchronously on the main thread before the Worker spawns, not via a runtime read bridge.
-- **BREAKING** (internal contract, no shipped callers yet): `HookContext`'s `Session`/`PhaseInstance`-derived `Temporal` values are serialized to plain ISO strings across the Worker boundary and rehydrated inside it — anything holding a raw `HookContext` and expecting live `Temporal.Instant`/`Duration` objects to survive a `postMessage` needs its own rehydration step.
-- `EngineStore.dispatch`'s hook-invocation loop gets a per-invocation `try`/`catch` (plus the Worker's own timeout) so one throwing or hanging script no longer aborts every later hook event's mutations in the same dispatch.
+- A bound script executes in-process (no Worker, no runtime sandbox — see design.md's 2026-07-28 update) as `(context) => Promise<FileMutation[]>` — the existing `Hook` contract, unchanged. The bind-time confirmation gate is the only trust boundary; a confirmed script has the same Node/host access as any other in-process code. Stronger sandboxing is tracked separately (flow-gu1.67), not part of this change.
+- `HookContext` gains pre-resolved, read-only frontmatter for one context-implied path only (the active file's note, via `EngineState.activeFilePath` — `Phase` has no note/file-path field of its own, so there is no second "phase's own note" to resolve) — resolved synchronously before the script runs.
+- `EngineStore.dispatch`'s hook-invocation loop gets a per-invocation `try`/`catch` plus a `Promise.race`-based soft timeout, so one throwing or (asynchronously) hanging script no longer aborts every later hook event's mutations in the same dispatch.
 - Adds a settings-tab list of named `'custom'` predicates, each a small formula string (comparisons, `if(cond, then, else)`, boolean operators — modeled on Obsidian Bases' own formula grammar) evaluated synchronously in-process against `fromPhaseId`/`visitCounts` — no file, no Worker, no isolation machinery.
 - Does not widen `Predicate`'s inputs beyond `fromPhaseId`/`visitCounts` — vault-state-dependent predicates (e.g. `isRestDay`) remain out of reach until a follow-up change adds a pre-resolved snapshot input, tracked separately.
 
@@ -17,7 +16,7 @@ Every Hook (`onEnter`/`onComplete`/`onSkip`/`onExit`) and every `TransitionCondi
 
 ### New Capabilities
 - `script-hook-source`: settings-tab scripts-folder configuration, the script-to-event binding list, and the bind-time confirmation gate — how a vault-authored script becomes a name a `HookRegistry` can resolve.
-- `script-hook-worker-execution`: Worker spawn/terminate/timeout per invocation, the `HookContext` Temporal-serialization boundary, context-implied-path frontmatter enrichment, and the declarative `FileMutation[]` return contract.
+- `script-hook-execution`: in-process invocation with a `Promise.race` soft timeout, context-implied-path frontmatter enrichment, and the declarative `FileMutation[]` return contract.
 - `predicate-expression-grammar`: the restricted formula grammar, its in-repo interpreter, and the settings-tab name+formula registration into a `PredicateRegistry`.
 
 ### Modified Capabilities
@@ -27,7 +26,7 @@ Every Hook (`onEnter`/`onComplete`/`onSkip`/`onExit`) and every `TransitionCondi
 
 - `src/timer/store.ts` (`EngineStore.dispatch`'s hook loop — per-invocation error isolation).
 - `src/domain/hook/hook.ts` (`HookContext` gains enrichment fields; no change to `Hook`'s own type).
-- New: a Worker entry module (script execution sandbox), a Temporal serialize/rehydrate boundary module, a script-hook registry (settings-backed, mutable, plugin-scoped — distinct from today's load-once `HookRegistry`/`PredicateRegistry` pattern), a predicate-expression parser/interpreter, and settings-tab UI for both the script-binding list and the predicate list.
+- New: an in-process script-invocation module (compiles script source, races it against a soft timeout), a script-hook registry (settings-backed, mutable, plugin-scoped — distinct from today's load-once `HookRegistry`/`PredicateRegistry` pattern), a predicate-expression parser/interpreter, and settings-tab UI for both the script-binding list and the predicate list.
 - `src/settings.ts` / `RoutineFlowSettingTab` (new configuration surfaces).
 - `main.ts` (wiring the new registries in place of the current static resolve-only objects).
 - No change to `src/domain/hook/predicate.ts`'s `Predicate` type signature in this change.
