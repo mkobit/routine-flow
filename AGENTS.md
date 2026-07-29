@@ -10,6 +10,7 @@ The project enforces strict Functional Programming principles via `eslint`.
 - **Dependency separation**: State reducer, state store, and execution tickers live in isolated modules.
 - **Dependency Injection**: Inject dispatch handlers and settings instead of binding to global managers.
 - **Date/Time**: Use the `Temporal` API for logic instead of the native `Date`.
+- **Lint quirk**: `eslint-plugin-obsidianmd`'s sentence-case rule can flag or miss `(e.g. someCamelCase)` parentheticals inconsistently depending on surrounding text — before attributing a new warning to your edit, check it wasn't already present on `main`.
 
 ## Commands
 
@@ -82,15 +83,3 @@ bd close <id>         # Complete work
 - A rejected direct push to main is expected, not an error to force past — open a PR instead
 - If a CI check fails, investigate before retrying; a bare re-run is only appropriate for a check already known to be flaky (e.g. flow-gu1.18)
 <!-- END BEADS INTEGRATION -->
-
-## Build & Test
-
-See the Commands table above.
-
-## Architecture Overview
-
-_Add a brief overview of your project architecture_
-
-## Conventions & Patterns
-
-See "Code style and rules" above.
