@@ -32,6 +32,12 @@ updates:
           - "@playwright/test"
           - "obsidian-launcher"
           - "commander"
+    ignore:
+      # typescript-eslint hard-caps its peer dep at "typescript <6.1.0"
+      # (typescript-eslint#12518, closed as not-planned) and ts-node needs
+      # the Compiler API that TS 7.0 drops until 7.1. See flow-268.
+      - dependency-name: "typescript"
+        update-types: ["version-update:semver-major"]
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
