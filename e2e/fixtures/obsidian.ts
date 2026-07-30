@@ -4,6 +4,7 @@ import type { ChildProcess } from 'node:child_process'
 import ObsidianLauncher from 'obsidian-launcher'
 import * as path from 'node:path'
 import * as net from 'node:net'
+import * as fs from 'node:fs/promises'
 import { stripGitignoredVaultState } from '../vault'
 import { terminateProcess } from './process-lifecycle'
 import obsidianVersion from '../obsidian-version.json' with { type: 'json' }
@@ -48,6 +49,26 @@ export type ObsidianPage = {
 type ObsidianResources = ObsidianPage & {
   readonly proc: ChildProcess
   readonly browser: Browser
+  readonly configDir: string
+}
+
+/**
+ * obsidian-launcher doesn't clean up the configDir/vault-copy tmpdirs it creates
+ * per launch -- without this, every test run leaks a fresh configDir and vault
+ * copy into the OS tmpdir forever (confirmed: ~280MB across 100+ leaked dirs in
+ * /tmp from prior runs before this fix). `vaultPath` is only removed when it's
+ * the per-test copy, never the git-tracked VAULT_PATH.
+ */
+async function cleanupObsidianTmpdirs(configDir: string, vaultPath: string): Promise<void> {
+  const results = await Promise.allSettled([
+    fs.rm(configDir, { recursive: true, force: true }),
+    vaultPath === VAULT_PATH ? Promise.resolve() : fs.rm(vaultPath, { recursive: true, force: true }),
+  ])
+  for (const result of results) {
+    if (result.status === 'rejected') {
+      process.stderr.write(`obsidian tmpdir cleanup failed: ${String(result.reason)}\n`)
+    }
+  }
 }
 
 /**
@@ -79,16 +100,20 @@ async function acquireObsidian(
   const copiedVault = await launcher.setupVault({ vault: VAULT_PATH, copy: true })
   await stripGitignoredVaultState(copiedVault)
 
-  const { proc, vault } = await launcher.launch({
+  const { proc, configDir, vault } = await launcher.launch({
     appVersion: obsidianVersion.appVersion,
     installerVersion: obsidianVersion.installerVersion,
     vault: copiedVault,
     copy: false,
     plugins: [ROOT_DIR],
     args: [`--remote-debugging-port=${listenPort}`],
-    spawnOptions: { stdio: 'pipe' },
+    // detached:true makes this process its own group leader so terminateProcess
+    // can SIGTERM/SIGKILL the whole group (including GPU/renderer children), not
+    // just the top-level PID.
+    spawnOptions: { stdio: 'pipe', detached: true },
   })
   onProcSpawned?.(proc)
+  const vaultPath = vault ?? VAULT_PATH
 
   try {
     if (proc.stderr) {
@@ -114,20 +139,22 @@ async function acquireObsidian(
       { timeout: 30_000 },
     )
 
-    return { proc, browser, page, vaultPath: vault ?? VAULT_PATH }
+    return { proc, browser, page, vaultPath, configDir }
   }
   catch (err) {
     await terminateProcess(proc)
+    await cleanupObsidianTmpdirs(configDir, vaultPath)
     throw err
   }
 }
 
-async function releaseObsidian({ proc, browser }: ObsidianResources): Promise<void> {
+async function releaseObsidian({ proc, browser, configDir, vaultPath }: ObsidianResources): Promise<void> {
   try {
     await browser.close()
   }
   finally {
     await terminateProcess(proc)
+    await cleanupObsidianTmpdirs(configDir, vaultPath)
   }
 }
 

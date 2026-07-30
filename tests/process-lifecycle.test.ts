@@ -28,7 +28,9 @@ describe('terminateProcess', () => {
   })
 
   test('exits via SIGTERM when the process cooperates', async () => {
-    const proc = spawn('bun', ['-e', `console.log('${READY_MARKER}'); setInterval(() => {}, 1000)`])
+    // detached:true, matching real callers -- terminateProcess signals the process
+    // group (-pid), which only reaches the target when it's its own group leader.
+    const proc = spawn('bun', ['-e', `console.log('${READY_MARKER}'); setInterval(() => {}, 1000)`], { detached: true })
     await waitForReady(proc)
 
     await terminateProcess(proc, 5000)
@@ -37,7 +39,7 @@ describe('terminateProcess', () => {
   })
 
   test('escalates to SIGKILL if the process ignores SIGTERM', async () => {
-    const proc = spawn('bun', ['-e', `process.on('SIGTERM', () => {}); console.log('${READY_MARKER}'); setInterval(() => {}, 1000)`])
+    const proc = spawn('bun', ['-e', `process.on('SIGTERM', () => {}); console.log('${READY_MARKER}'); setInterval(() => {}, 1000)`], { detached: true })
     await waitForReady(proc)
 
     await terminateProcess(proc, 200)
