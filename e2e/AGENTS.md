@@ -6,8 +6,17 @@ These instructions apply when editing or running end-to-end tests for the Routin
 
 Always interact with the internal Obsidian API using `evaluateObsidian`.
 Avoid scraping browser elements or parsing UI layers unless checking raw HTML rendering.
-Variables must be passed explicitly into the helper callbacks because closures are not preserved during serialization.
 Refer to `e2e/obsidian-internal.d.ts` when adding new API properties.
+
+Variables must be passed explicitly into the helper callbacks because closures are not preserved during serialization -- the function is serialized via `.toString()` and re-evaluated in the renderer:
+
+```typescript
+const filename = 'note.md'
+await evaluateObsidian(page, async (app, args: { filename: string }) => {
+  // 'args.filename' is available here, 'filename' is NOT
+  await app.vault.create(args.filename, '')
+}, { filename })
+```
 
 ## Known gotchas
 
@@ -20,3 +29,5 @@ Refer to `e2e/obsidian-internal.d.ts` when adding new API properties.
 - **Build before testing**: `bunx playwright test` runs Obsidian against whatever `main.js` already sits at repo root — it does not rebuild from `src/` first. Run `bun run build` immediately before any e2e verification pass, or a stale bundle will silently pass against old code.
 - **Driving Obsidian for one-off verification**: use `bunx playwright test <file>` (the real, Node-based test runner). A raw `bun -e`/`bun script.ts` calling `playwright-core`'s `connectOverCDP` directly hangs forever at the websocket handshake — a Bun-runtime incompatibility, not a CDP problem.
 - **Regenerating the generated vault**: always use `rebuildGeneratedVault` (from `e2e/vault/generator.ts`), never `generateVault`+`writeVault` directly. It deletes `GENERATED_VAULT_FOLDERS` before writing; the overlay-only combo leaves stale notes behind whenever a routine's generated note count shrinks between runs.
+- **Obsidian process cleanup**: `e2e/fixtures/obsidian.ts` spawns Obsidian with `detached: true` and `e2e/fixtures/process-lifecycle.ts`'s `terminateProcess` signals the whole process group (`-pid`), not just the top-level PID -- required to reach Obsidian's GPU/renderer children, not only the Electron main process. It also removes the per-launch `configDir` and per-test vault-copy tmpdirs after every run/failed setup; `obsidian-launcher` itself leaks both into the OS tmpdir otherwise (confirmed: ~280MB across 100+ leaked dirs from before this fix).
+- **WSL crash-dump growth**: running Obsidian under `xvfb-run` in this environment can FATAL its GPU process (`GPU process isn't usable. Goodbye.`) and trigger a ~1GB WSL crash-capture dump on the Windows host per occurrence, independent of any bug in this repo -- `--disable-gpu`, forcing Mesa software GL, and `ulimit -c 0` were all tried and none suppress it (flow-1la). Check `du -sh /mnt/c/Users/*/AppData/Local/Temp/wsl-crashes` before/after running the local e2e suite (especially the full suite, not just one spec) and stop to report if it grows by more than a crash or two.
