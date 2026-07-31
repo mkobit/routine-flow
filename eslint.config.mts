@@ -128,11 +128,20 @@ export default tseslint.config(
     },
   },
   // Recommended configs
+  // Note: obsidianmd.configs.recommended is left applying to docs/ too
+  // (it's what registers the @typescript-eslint plugin for the whole repo --
+  // see the comment below). Its Obsidian-specific rules are individually
+  // turned off for docs/ in the dedicated override block further down.
   ...[...obsidianmd.configs.recommended].map(restrictToJs),
   ...yml.configs['flat/recommended'],
-  restrictToJs(functional.configs.strict),
-  restrictToJs(functional.configs.stylistic),
-  restrictToJs(stylistic.configs.recommended),
+  // docs/ is excluded from the FP-purity and repo stylistic presets --
+  // it's a separate Docusaurus/React docs site, not plugin domain code, and
+  // its generated code follows the Docusaurus ecosystem's own conventions
+  // (no semicolons). See the dedicated docs/** override block further
+  // down for the narrower set of rules (e.g. the Date ban) that still apply.
+  { ...restrictToJs(functional.configs.strict), ignores: ['docs/**'] },
+  { ...restrictToJs(functional.configs.stylistic), ignores: ['docs/**'] },
+  { ...restrictToJs(stylistic.configs.recommended), ignores: ['docs/**'] },
   // Note: tseslint.configs.recommended and functional.configs.externalTypeScriptRecommended
   // are intentionally NOT spread here. obsidianmd.configs.recommended already registers the
   // @typescript-eslint plugin via its internal extends. Spreading tseslint.configs.recommended
@@ -448,6 +457,38 @@ export default tseslint.config(
       'no-undef': 'off',
     },
   },
+  // Overrides for docs/ -- a separate Docusaurus/React docs site, not
+  // plugin domain code or an Obsidian API consumer. General hygiene (
+  // no-console, eqeqeq, the Date ban) stays enforced; FP-purity and
+  // type-unsafe-* rules that fight a normal React app are relaxed here,
+  // mirroring the same carve-out already given to tests/e2e above.
+  {
+    files: ['docs/**/*.ts', 'docs/**/*.tsx', 'docs/**/*.mts', 'docs/**/*.cts'],
+    rules: {
+      'obsidianmd/prefer-file-manager-trash-file': 'off',
+      'functional/no-let': 'off',
+      'functional/no-loop-statements': 'off',
+      'functional/no-conditional-statements': 'off',
+      'functional/no-expression-statements': 'off',
+      'functional/no-classes': 'off',
+      'functional/no-this-expressions': 'off',
+      'functional/no-return-void': 'off',
+      'functional/no-mixed-types': 'off',
+      'functional/no-try-statements': 'off',
+      'functional/no-throw-statements': 'off',
+      'functional/no-promise-reject': 'off',
+      'functional/no-class-inheritance': 'off',
+      'functional/functional-parameters': 'off',
+      'functional/immutable-data': 'off',
+      'functional/prefer-immutable-types': 'off',
+      'functional/type-declaration-immutability': 'off',
+      '@typescript-eslint/no-unsafe-assignment': 'off',
+      '@typescript-eslint/no-unsafe-member-access': 'off',
+      '@typescript-eslint/no-unsafe-call': 'off',
+      '@typescript-eslint/no-unsafe-return': 'off',
+      '@typescript-eslint/no-unsafe-argument': 'off',
+    },
+  },
   globalIgnores([
     'node_modules',
     'dist',
@@ -457,5 +498,11 @@ export default tseslint.config(
     'coverage',
     'playwright-report/**',
     'test-results/**',
+    // Docusaurus build output/cache (gitignored, but may exist locally) and
+    // its generated tsconfig.json, which has leading `//` comments that fail
+    // strict (non-JSONC) JSON parsing.
+    'docs/build/**',
+    'docs/.docusaurus/**',
+    'docs/tsconfig.json',
   ]),
 )

@@ -5,7 +5,7 @@ Plugin files are installed by `bun run vault:install` and are excluded from git.
 
 ## Generated content
 
-The `pomodoro/`, `standup/`, `workout/`, `spaced-repetition/`, `stretch-break/`, and `habit-tracking/` folders are generated (not hand-authored, not tracked in git) — one folder per routine in `docs/examples/`.
+The `pomodoro/`, `standup/`, `workout/`, `spaced-repetition/`, `stretch-break/`, and `habit-tracking/` folders are generated (not hand-authored, not tracked in git) — one folder per routine in `dev-docs/examples/`.
 They're written by `e2e/vault/generator.ts` using `fast-check` with a fixed, deterministic default seed, so content is reproducible across runs and machines.
 
 - E2E runs regenerate them automatically once per run via `e2e/global-setup.ts`.

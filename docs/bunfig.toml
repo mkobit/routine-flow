@@ -1,0 +1,2 @@
+[run]
+bun = true # force node-shebang binaries (docusaurus, etc.) to run under Bun's runtime, not a system node
