@@ -1,2 +1,5 @@
 [install]
 minimumReleaseAge = 1209600 # unit is time in seconds
+
+[run]
+bun = true # force node-shebang binaries (eslint, docusaurus, etc.) to run under Bun's runtime, not a system node

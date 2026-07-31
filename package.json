@@ -7,6 +7,8 @@
   "scripts": {
     "build": "bun esbuild.config.mjs production",
     "dev": "bun esbuild.config.mjs",
+    "docs:build": "cd docs && bun run build",
+    "docs:dev": "cd docs && bun run start",
     "lint": "NODE_ENV=test eslint .",
     "test": "bun test ./tests",
     "test:coverage": "bun test ./tests --coverage --coverage-reporter=lcov",

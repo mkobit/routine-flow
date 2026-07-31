@@ -12,7 +12,7 @@ async function main(): Promise<void> {
   const program = new Command()
   program
     .description('Launch a provisioned Obsidian against the example vault. Opens on the real display -- for headless (Xvfb) launches, run `bun run vault:dev:headless` instead.')
-    .option('--generated', 'rebuild the vault\'s per-routine notes (docs/examples/) before launching', false)
+    .option('--generated', 'rebuild the vault\'s per-routine notes (dev-docs/examples/) before launching', false)
     .option('--headless', 'wait for Obsidian to exit instead of detaching -- required under xvfb-run, which tears down the virtual display as soon as the wrapped command exits', false)
   program.parse()
   const { generated, headless } = program.opts<{ generated: boolean, headless: boolean }>()

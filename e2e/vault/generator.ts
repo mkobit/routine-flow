@@ -48,7 +48,7 @@ const POMODORO_CYCLE_STATUSES = ['pending', 'active', 'done', 'skipped', 'deferr
 
 /**
  * Work tasks a `focus` phase's queue pulls from (see the `focus-queue` row in
- * docs/examples/pomodoro.md's domain mapping — this is what the "Default"
+ * dev-docs/examples/pomodoro.md's domain mapping — this is what the "Default"
  * sub-view's Work queue renders, via `focusProperty: note.type`/`focusValue:
  * work`). `routinePriority` is `fc.option`'d so some notes exercise
  * BaseQuerySource's "missing priority sorts as 0" default.
@@ -82,7 +82,7 @@ function generatePomodoroNotes(seed: number): readonly NoteDefinition[] {
       'routine-status': s.routineCycleStatus,
       ...(s.routinePriority === undefined ? {} : { 'routine-priority': s.routinePriority }),
     },
-    'Generated test data for the pomodoro routine (see docs/examples/pomodoro.md).',
+    'Generated test data for the pomodoro routine (see dev-docs/examples/pomodoro.md).',
   ))
 }
 
@@ -95,7 +95,7 @@ function generateStandupNotes(seed: number): readonly NoteDefinition[] {
   return [createNote(
     'standup/Roster.md',
     { members: members ?? [] },
-    'Generated test data for the standup routine (see docs/examples/standup.md) — one PhaseGraph phase per member here.',
+    'Generated test data for the standup routine (see dev-docs/examples/standup.md) — one PhaseGraph phase per member here.',
   )]
 }
 
@@ -108,7 +108,7 @@ function generateWorkoutNotes(seed: number): readonly NoteDefinition[] {
   return [createNote(
     'workout/Exercises.md',
     { sequence: sequence ?? [] },
-    'Generated test data for the workout routine (see docs/examples/workout.md).',
+    'Generated test data for the workout routine (see dev-docs/examples/workout.md).',
   )]
 }
 
@@ -137,7 +137,7 @@ function generateSpacedRepetitionNotes(seed: number): readonly NoteDefinition[] 
       dueDate: ANCHOR_DATE.add({ days: s.dueOffsetDays }),
       ease: s.ease,
     },
-    'Generated test data for the spaced-repetition routine (see docs/examples/spaced-repetition.md).',
+    'Generated test data for the spaced-repetition routine (see dev-docs/examples/spaced-repetition.md).',
   ))
 }
 
@@ -146,11 +146,11 @@ function generateStretchBreakNotes(): readonly NoteDefinition[] {
   return [createNote(
     'stretch-break/README.md',
     {},
-    'The stretch-break routine (see docs/examples/stretch-break.md) has no queue — taskSourceId is null on its one phase, so there is nothing to generate here.',
+    'The stretch-break routine (see dev-docs/examples/stretch-break.md) has no queue — taskSourceId is null on its one phase, so there is nothing to generate here.',
   )]
 }
 
-/** Daily habit notes; onEnter/onExit hooks (see docs/examples/habit-tracking.md) target these. restDay marks days the (currently unimplemented, flow-b74) custom TransitionCondition should skip weights on. */
+/** Daily habit notes; onEnter/onExit hooks (see dev-docs/examples/habit-tracking.md) target these. restDay marks days the (currently unimplemented, flow-b74) custom TransitionCondition should skip weights on. */
 function generateHabitTrackingNotes(seed: number): readonly NoteDefinition[] {
   const arb = fc.record({
     dayOffset: fc.integer({ min: 0, max: 6 }),
@@ -163,7 +163,7 @@ function generateHabitTrackingNotes(seed: number): readonly NoteDefinition[] {
       date: ANCHOR_DATE.add({ days: s.dayOffset }),
       restDay: s.restDay,
     },
-    'Generated test data for the habit-tracking routine (see docs/examples/habit-tracking.md).',
+    'Generated test data for the habit-tracking routine (see dev-docs/examples/habit-tracking.md).',
   ))
 }
 
@@ -176,7 +176,7 @@ const ROUTINE_SEED_OFFSETS = {
   habitTracking: 4,
 } as const
 
-/** All six docs/examples/ routines' vault content, deterministic for a given seed. Defaults to resolveVaultSeed(). */
+/** All six dev-docs/examples/ routines' vault content, deterministic for a given seed. Defaults to resolveVaultSeed(). */
 export function generateVault(seed: number = resolveVaultSeed()): readonly NoteDefinition[] {
   return [
     ...generatePomodoroNotes(seed + ROUTINE_SEED_OFFSETS.pomodoro),
