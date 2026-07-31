@@ -7,9 +7,7 @@ import type { HookEvent, HookName } from './hook-reference'
 export type { HookEvent }
 
 /**
- * What a hook is given to work with. Kept minimal for now — the exact
- * params/args shape hooks receive will get constrained once the execution
- * model is closer to real use, not speculatively designed here.
+ * What a hook is given to work with.
  */
 export interface HookContext {
   readonly phase: Phase
@@ -20,6 +18,8 @@ export interface HookContext {
    * ItemTouch snapshot) -- this is just the raw path, unconditionally present whenever one is set.
    */
   readonly activeFilePath: string | null
+  /** The firing HookReference's own `params`, verbatim -- how a Phase/TransitionCondition config parameterizes the named hook it fires. */
+  readonly params: Readonly<Record<string, unknown>>
 }
 
 /**

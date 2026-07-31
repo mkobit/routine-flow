@@ -191,6 +191,7 @@ export class EngineStore {
         instance: resolveInstance(prevState, this.state, phaseInstanceId, now),
         session: resolveSession(prevState, this.state, now),
         activeFilePath: this.state.activeFilePath,
+        params: reference.params,
       }
       const outcome = await invokeHook(hook, port, context)
       this.applyState(engineReducer(this.state, { type: 'record-hook-outcome', phaseInstanceId, event, outcome }, this.graph, this.deps))

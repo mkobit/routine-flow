@@ -13,8 +13,8 @@ import type { FileMutationPort } from '../src/domain/mutation/apply-mutations'
 
 const breakId = PhaseIdSchema.parse('break')
 
-function hookRef(name: string): HookReference {
-  return HookReferenceSchema.parse({ name: HookNameSchema.parse(name), params: {} })
+function hookRef(name: string, params: Readonly<Record<string, unknown>> = {}): HookReference {
+  return HookReferenceSchema.parse({ name: HookNameSchema.parse(name), params })
 }
 
 function createFakeRegistry(hooks: Record<string, Hook>): HookRegistry {
@@ -415,6 +415,20 @@ describe('EngineStore hook firing', () => {
     expect(hookSpy).toHaveBeenCalledTimes(1)
     const context = hookSpy.mock.calls[0]?.[0]
     expect(context?.phase.id).toBe(breakId)
+  })
+
+  test('the firing HookReference\'s params reach HookContext.params verbatim', async () => {
+    const hookSpy = mock(async (_context: HookContext): Promise<readonly FileMutation[]> => [])
+    const registry = createFakeRegistry({ enter: hookSpy })
+    const graph = buildGraph({ break: { onEnter: hookRef('enter', { property: 'streak', amount: 2 }) } })
+    const store = new EngineStore(graph, { hookRegistry: registry, port: createFakePort() })
+    await store.dispatch({ type: 'start' })
+
+    await store.dispatch({ type: 'advance-phase' })
+
+    expect(hookSpy).toHaveBeenCalledTimes(1)
+    const context = hookSpy.mock.calls[0]?.[0]
+    expect(context?.params).toEqual({ property: 'streak', amount: 2 })
   })
 
   test('a phase with no hook declared for the firing event calls resolve for nothing', async () => {

@@ -106,7 +106,7 @@ const breakPhase: Phase = PhaseSchema.parse({
   label: 'Short break',
   kind: BREAK_PHASE_KIND,
   duration: Temporal.Duration.from({ minutes: 5 }),
-  logTarget: { kind: 'callback', name: 'dailyNote' },
+  logTarget: { kind: 'activeItem' },
   taskSourceId: BREAK_QUEUE_TASK_SOURCE_ID,
 })
 
@@ -116,7 +116,7 @@ const longBreakPhase: Phase = PhaseSchema.parse({
   label: 'Long break',
   kind: BREAK_PHASE_KIND,
   duration: Temporal.Duration.from({ minutes: 15 }),
-  logTarget: { kind: 'callback', name: 'dailyNote' },
+  logTarget: { kind: 'activeItem' },
   taskSourceId: BREAK_QUEUE_TASK_SOURCE_ID,
 })
 

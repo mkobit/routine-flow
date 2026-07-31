@@ -259,6 +259,12 @@ describe('DEFAULT_PHASE_GRAPH write-back wiring', () => {
       expect(phase.onComplete).toEqual({ name: WRITE_BACK_HOOK_NAME, params: {} })
     }
   })
+
+  test('every phase targets activeItem -- no phase references an unregistered callback resolver', () => {
+    for (const phase of DEFAULT_PHASE_GRAPH.phases) {
+      expect(phase.logTarget).toEqual({ kind: 'activeItem' })
+    }
+  })
 })
 
 function hookRef(name: string): HookReference {
