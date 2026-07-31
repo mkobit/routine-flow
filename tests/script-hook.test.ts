@@ -68,11 +68,12 @@ function createDeps(overrides: Partial<ScriptHookDeps> = {}): ScriptHookDeps {
 }
 
 /** Builds a throwaway HookContext for a single script-hook invocation — instance/session content doesn't affect the hook's own behavior. */
-function buildContext(activeFilePath: string | null): HookContext {
+function buildContext(activeFilePath: string | null, params: Readonly<Record<string, unknown>> = {}): HookContext {
   const now = Temporal.Now.instant()
   return {
     phase,
     activeFilePath,
+    params,
     instance: {
       id: PhaseInstanceIdSchema.parse(crypto.randomUUID()),
       phaseId: phase.id,
@@ -174,6 +175,17 @@ describe('createScriptHook', () => {
 
     expect(reader.readAll).toHaveBeenCalledWith('task.md')
     expect(mutations).toEqual([{ kind: 'frontmatter', filePath: 'task.md', property: 'sessions', value: 3 }])
+  })
+
+  test('the script receives the firing HookReference\'s params', async () => {
+    const hook = createScriptHook(
+      `return [{ kind: 'frontmatter', filePath: 'note.md', property: context.params.property, value: context.params.amount }];`,
+      createDeps(),
+    )
+
+    const mutations = await hook(buildContext(null, { property: 'streak', amount: 2 }))
+
+    expect(mutations).toEqual([{ kind: 'frontmatter', filePath: 'note.md', property: 'streak', value: 2 }])
   })
 
   test('activeFileFrontmatter is null and the reader is not consulted when there is no active file', async () => {

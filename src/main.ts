@@ -53,7 +53,10 @@ export default class RoutineFlowPlugin extends Plugin {
     const port = new ObsidianFileMutationPort(this.app)
 
     const writeBackHook = createWriteBackHook({
-      // No named log-target resolver (e.g. 'dailyNote') is registered yet — see design.md decision 2.
+      // No built-in named log-target resolver ships — DEFAULT_PHASE_GRAPH only uses
+      // 'activeItem'. This registry exists for a routine author to register their own
+      // named resolver (e.g. via a script hook reading Obsidian's daily-notes internals)
+      // for phases with no active queue item to write back to.
       logTargetResolverRegistry: { resolve: () => undefined },
       frontmatterReader,
       writeBackPrompt: new ObsidianWriteBackPromptPort(this.app),

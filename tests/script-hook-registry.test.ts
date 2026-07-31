@@ -36,6 +36,7 @@ function buildContext(): HookContext {
   return {
     phase,
     activeFilePath: null,
+    params: {},
     instance: {
       id: PhaseInstanceIdSchema.parse(crypto.randomUUID()),
       phaseId: phase.id,
