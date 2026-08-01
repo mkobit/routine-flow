@@ -9,6 +9,8 @@
     "dev": "bun esbuild.config.mjs",
     "docs:build": "cd docs && bun run build",
     "docs:dev": "cd docs && bun run start",
+    "docs:screenshots": "bun x playwright test --config=e2e/capture-screenshots.playwright.config.ts",
+    "docs:screenshots:headless": "xvfb-run --auto-servernum --server-args=\"-screen 0 1280x1024x24\" bun x playwright test --config=e2e/capture-screenshots.playwright.config.ts",
     "lint": "NODE_ENV=test eslint .",
     "test": "bun test ./tests",
     "test:coverage": "bun test ./tests --coverage --coverage-reporter=lcov",
