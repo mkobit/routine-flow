@@ -1,0 +1,9 @@
+# Image files: treat as binary (no diff, no merge, no line-ending normalization).
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.webp binary
+*.bmp binary
+*.tiff binary
