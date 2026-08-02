@@ -1,0 +1,18 @@
+<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Routine Flow logo">
+  <title>Routine Flow</title>
+  <style>
+    .seg-a { stroke: #205d3b; }
+    .seg-b { stroke: #2e8555; }
+    .seg-c { stroke: #3cad6e; }
+    @media (prefers-color-scheme: dark) {
+      .seg-a { stroke: #1a8870; }
+      .seg-b { stroke: #25c2a0; }
+      .seg-c { stroke: #4fddbf; }
+    }
+  </style>
+  <g fill="none" stroke-width="14" stroke-linecap="round">
+    <path class="seg-a" d="M54.63,12.28 A38,38 0 0 1 84.98,64.85" />
+    <path class="seg-b" d="M80.35,72.87 A38,38 0 0 1 19.65,72.87" />
+    <path class="seg-c" d="M15.02,64.85 A38,38 0 0 1 45.37,12.28" />
+  </g>
+</svg>

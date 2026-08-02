@@ -8,7 +8,7 @@ import type * as Preset from '@docusaurus/preset-classic';
 const config: Config = {
   title: 'Routine Flow',
   tagline: 'A customizable routine timer for Obsidian, built on Bases',
-  favicon: 'img/favicon.ico',
+  favicon: 'img/logo.svg',
 
   // Future flags, see https://docusaurus.io/docs/api/docusaurus-config#future
   future: {
@@ -50,11 +50,16 @@ const config: Config = {
   ],
 
   themeConfig: {
+    image: 'img/social-card.png',
     colorMode: {
       respectPrefersColorScheme: true,
     },
     navbar: {
       title: 'Routine Flow',
+      logo: {
+        src: 'img/logo.svg',
+        alt: 'Routine Flow logo',
+      },
       items: [
         {
           href: 'https://github.com/mkobit/routine-flow',
