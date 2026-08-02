@@ -15,7 +15,6 @@ See the [README](https://github.com/mkobit/routine-flow#installation) for instal
 
 Open an existing `.base` file or create a new one.
 Add a new view and pick the **Routine Timer** view type.
-This is a Bases view type the plugin registers; it shows a `timer` icon in the view-type list.
 
 ## Configure the focus and break queue
 
