@@ -233,3 +233,39 @@
 .routine-queue-empty p {
   margin: 0;
 }
+
+/* ---- WriteBackModal (surface #6) -------------------------------------------------------------- */
+
+.routine-write-back-sentence {
+  margin: 0;
+  font-size: var(--font-ui-small);
+  line-height: 1.6;
+}
+
+/* Content-sized inline "chips", editable in place inside the sentence rather than stacked
+   Setting rows. Obsidian desktop bundles Chromium 142 (well past field-sizing:content's Chrome 123
+   baseline), so no JS fallback is added -- an unsupported mobile WebView just keeps the
+   min/max-inline-size as a fixed width, which still reads and works fine as a chip. */
+.routine-write-back-chip {
+  field-sizing: content;
+  width: auto;
+  min-inline-size: 3ch;
+  max-inline-size: 30ch;
+  padding: 0 var(--size-4-1);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: var(--radius-s);
+  background-color: var(--background-modifier-form-field);
+  color: var(--text-normal);
+  font: inherit;
+}
+
+.routine-write-back-chip-file {
+  max-inline-size: 40ch;
+}
+
+.routine-write-back-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--size-4-2);
+  margin-top: var(--size-4-4);
+}

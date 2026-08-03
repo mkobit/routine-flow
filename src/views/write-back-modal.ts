@@ -1,4 +1,4 @@
-import { Modal, Setting, AbstractInputSuggest } from 'obsidian'
+import { Modal, AbstractInputSuggest } from 'obsidian'
 import type { App, TFile } from 'obsidian'
 import type { WriteBackFormValues, WriteBackPromptPort, WriteBackPromptResult } from '../domain/mutation/write-back-prompt'
 import { coerceWriteBackValue } from '../domain/mutation/write-back-prompt'
@@ -44,32 +44,60 @@ export class WriteBackModal extends Modal {
 
   onOpen(): void {
     this.setTitle('Confirm write-back')
+    this.modalEl.addClass('routine-write-back-modal')
 
-    new Setting(this.contentEl)
-      .setName('File')
-      .addText((text) => {
-        text.setValue(this.filePath).onChange((value) => {
-          this.filePath = value
-        })
-        const suggest = new VaultFileSuggest(this.app, text.inputEl)
-        suggest.onSelect((file) => {
-          text.setValue(file.path)
-          this.filePath = file.path
-          suggest.close()
-        })
-      })
+    const sentence = this.contentEl.createEl('p', { cls: 'routine-write-back-sentence' })
 
-    new Setting(this.contentEl)
-      .setName('Property')
-      .addText(text => text.setValue(this.property).onChange((value) => { this.property = value }))
+    sentence.createSpan({ text: 'Write ' })
+    const valueInput = sentence.createEl('input', {
+      type: 'text',
+      cls: 'routine-write-back-chip',
+      value: this.rawValue,
+      attr: { 'aria-label': 'Value' },
+    })
+    valueInput.addEventListener('input', () => {
+      this.rawValue = valueInput.value
+    })
 
-    new Setting(this.contentEl)
-      .setName('Value')
-      .addText(text => text.setValue(this.rawValue).onChange((value) => { this.rawValue = value }))
+    sentence.createSpan({ text: ' to ' })
+    const propertyInput = sentence.createEl('input', {
+      type: 'text',
+      cls: 'routine-write-back-chip',
+      value: this.property,
+      attr: { 'aria-label': 'Property' },
+    })
+    propertyInput.addEventListener('input', () => {
+      this.property = propertyInput.value
+    })
 
-    new Setting(this.contentEl)
-      .addButton(button => button.setButtonText('Cancel').onClick(() => this.close()))
-      .addButton(button => button.setButtonText('Submit').setCta().onClick(() => this.submit()))
+    sentence.createSpan({ text: ' on ' })
+    const fileInput = sentence.createEl('input', {
+      type: 'text',
+      cls: 'routine-write-back-chip routine-write-back-chip-file',
+      value: this.filePath,
+      attr: { 'aria-label': 'File' },
+    })
+    fileInput.addEventListener('input', () => {
+      this.filePath = fileInput.value
+    })
+    const suggest = new VaultFileSuggest(this.app, fileInput)
+    suggest.onSelect((file) => {
+      fileInput.value = file.path
+      this.filePath = file.path
+      suggest.close()
+    })
+
+    sentence.createSpan({ text: '?' })
+
+    const actions = this.contentEl.createDiv({ cls: 'routine-write-back-actions' })
+    actions.createEl('button', { type: 'button', text: 'Cancel' })
+      .addEventListener('click', () => this.close())
+    actions.createEl('button', { type: 'button', cls: 'mod-cta', text: 'Submit' })
+      .addEventListener('click', () => this.submit())
+
+    // File is the highest-stakes field (design.md #6: wrong file = wrong note edited), so it
+    // keeps initial focus regardless of its position in the sentence's reading order.
+    fileInput.focus()
   }
 
   onClose(): void {
