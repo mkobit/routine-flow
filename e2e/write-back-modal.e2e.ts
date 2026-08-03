@@ -90,7 +90,7 @@ test.describe('write-back confirmation modal', () => {
     await completeFocusPhase(page)
     const modal = modalLocator(page)
 
-    await modal.locator('.setting-item', { hasText: 'Value' }).locator('input').fill('99')
+    await modal.getByRole('textbox', { name: 'Value' }).fill('99')
     await modal.getByRole('button', { name: 'Submit' }).click()
 
     await expect.poll(() => readSessionsValue(page)).toBe(99)
