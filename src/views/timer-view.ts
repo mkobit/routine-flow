@@ -132,6 +132,13 @@ export class RoutineTimerView extends BasesView {
       doneBtn.addEventListener('click', () => void this.plugin.store.dispatch({ type: 'finish-phase' }))
     }
 
+    // status is only ever 'completed' for a manualClear-policy phase (every other policy advances
+    // immediately) -- without this, such a phase has no reachable UI path past it (flow-039).
+    if (isViewRoutineActive && state.status === 'completed') {
+      const clearBtn = controls.createEl('button', { text: 'Clear' })
+      clearBtn.addEventListener('click', () => void this.plugin.store.dispatch({ type: 'advance-phase' }))
+    }
+
     const stopBtn = controls.createEl('button', { text: 'Reset' })
     stopBtn.addEventListener('click', () => void this.handleReset(graph.name))
 

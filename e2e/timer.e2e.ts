@@ -84,6 +84,52 @@ test.describe('duration-less phase (finish-phase / "Done" control)', () => {
   })
 })
 
+test.describe('manualClear phase (advance-phase / "Clear" control)', () => {
+  test.beforeEach(async ({ obsidianPage: { page } }) => {
+    await expect.poll(async () =>
+      evaluateObsidian(
+        page,
+        (app, args: { pluginId: string }) => app.plugins.plugins[args.pluginId] !== undefined,
+        { pluginId: PLUGIN_ID },
+      ),
+    ).toBe(true)
+
+    await evaluateObsidian(page, async (app) => {
+      const file = app.vault.getFileByPath('Tasks.base')
+      if (!file) {
+        throw new Error('Tasks.base not found')
+      }
+      const leaf = app.workspace.getLeavesOfType('bases')[0] ?? app.workspace.getLeaf('tab')
+      await leaf.openFile(file)
+    })
+    await page.locator('.workspace-leaf-content[data-type="bases"] .bases-toolbar-views-menu .text-icon-button').click()
+    await page.locator('.menu .bases-toolbar-menu-item-name', { hasText: 'Manual clear' }).click()
+  })
+
+  test('a Clear button appears once the phase completes, and clicking it advances to the next phase', async ({ obsidianPage: { page } }) => {
+    const view = page.locator('.workspace-leaf-content[data-type="bases"] .routine-timer-view')
+    const panel = page.locator('.workspace-leaf-content[data-type="bases"] .routine-timer-panel')
+    const controls = page.locator('.workspace-leaf-content[data-type="bases"] .routine-controls')
+
+    await expect(view).toHaveAttribute('data-view-graph-id', 'manual-clear')
+
+    await controls.getByRole('button', { name: 'Start' }).click()
+    await expect(panel.locator('h2')).toHaveText(/^Focus: \d{2}:\d{2} \(running\)$/)
+
+    // Force completion directly rather than waiting out the 5s real-world duration -- finish-phase
+    // doesn't tick `remaining` down first, so it stays at whatever it was ("00:05") here.
+    await evaluateObsidian(page, (app, args: { pluginId: typeof PLUGIN_ID }) =>
+      app.plugins.plugins[args.pluginId]!.store.dispatch({ type: 'finish-phase' }), { pluginId: PLUGIN_ID })
+    await expect(panel.locator('h2')).toHaveText(/^Focus: \d{2}:\d{2} \(completed\)$/)
+
+    const clearBtn = controls.getByRole('button', { name: 'Clear' })
+    await expect(clearBtn).toBeVisible()
+    await clearBtn.click()
+
+    await expect(panel.locator('h2')).toHaveText(/^Break: \d{2}:\d{2} \(stopped\)$/)
+  })
+})
+
 test.describe('BaseQuerySource-backed queue (base-query-task-source)', () => {
   test.beforeEach(async ({ obsidianPage: { page } }) => {
     await expect.poll(async () =>

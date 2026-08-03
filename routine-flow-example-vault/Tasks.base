@@ -17,3 +17,6 @@ views:
   - type: routine-timer
     name: Workout
     routineFile: routines/workout-routine.md
+  - type: routine-timer
+    name: Manual clear
+    routineFile: routines/manual-clear-routine.md
