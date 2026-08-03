@@ -1,11 +1,12 @@
-import { BasesView } from 'obsidian'
+import { BasesView, setIcon } from 'obsidian'
 import type { BasesOptions, QueryController, App, TFile, BasesPropertyId, BasesEntry } from 'obsidian'
 import type RoutineFlowPlugin from '../main'
 import type { EngineState } from '../domain/session/engine-state'
 import type { PhaseGraph } from '../domain/phase/phase-graph'
 import type { Phase } from '../domain/phase/phase'
 import { findPhaseById, FOCUS_PHASE_KIND, DEFAULT_PHASE_GRAPH } from '../timer/phase-graph'
-import { formatPhaseHeader } from '../timer/format'
+import { formatCountdown } from '../timer/format'
+import { computeProgressFraction } from '../timer/progress'
 import { decideStartAction, resolveRoutineGraph } from '../timer/routine-selection'
 import type { RoutineResolution } from '../timer/routine-selection'
 import { RoutineReplaceModal } from './routine-replace-modal'
@@ -81,12 +82,16 @@ export class RoutineTimerView extends BasesView {
     }
 
     if (this.routineResolution.kind === 'error') {
-      this.containerEl.createEl('p', { text: `Routine error: ${this.routineResolution.error.message}`, cls: 'routine-error' })
+      const errorEl = this.containerEl.createDiv({ cls: 'routine-error' })
+      this.renderStateIcon(errorEl, ['circle-alert', 'alert-circle'])
+      errorEl.createEl('p', { text: `Routine error: ${this.routineResolution.error.message}` })
       return
     }
 
     if (this.routineResolution.kind === 'loading') {
-      this.containerEl.createEl('p', { text: 'Loading routine…', cls: 'routine-loading' })
+      const loadingEl = this.containerEl.createDiv({ cls: 'routine-loading' })
+      this.renderStateIcon(loadingEl, ['loader-circle', 'loader-2'])
+      loadingEl.createEl('p', { text: 'Loading routine…' })
       return
     }
 
@@ -107,12 +112,50 @@ export class RoutineTimerView extends BasesView {
       this.registerTaskSources(viewGraph)
     }
 
+    // This leaf is a bystander to a routine running elsewhere -- the header/queue below belong to
+    // that *other* routine, not this view's own (see design.md surface #4).
+    const isInert = !isViewRoutineActive && state.status !== 'stopped'
+
     // Timer Panel
     const timerPanel = this.containerEl.createDiv({ cls: 'routine-timer-panel' })
-    timerPanel.createEl('h2', { text: formatPhaseHeader(phase, state.remaining, state.status) })
+    // Discrete transport state as a class (never inline style) so a CSS snippet can retheme each
+    // state -- e.g. the paused accent (see styles.css / DESIGN.md color table).
+    timerPanel.addClass(`is-${state.status}`)
 
-    if (!isViewRoutineActive && state.status !== 'stopped') {
-      timerPanel.createEl('p', { text: `"${graph.name}" is currently active instead of this view's routine ("${viewGraph.name}").`, cls: 'routine-inert' })
+    // Stopwatch header: a single <h2> (what e2e queries) whose child spans read as a watch face --
+    // the phase label above the dial, the mm:ss digits inside/over the progress ring, the status
+    // below. The concatenated text stays byte-identical to formatPhaseHeader() output ("Focus: 25:00
+    // (running)" / "Set (stopped)"), so every existing header assertion still holds -- see format.ts.
+    const countdownTime = formatCountdown(state.remaining)
+    const header = timerPanel.createEl('h2', { cls: 'routine-countdown' })
+    header.createSpan({
+      cls: 'routine-countdown-label',
+      text: countdownTime === null ? phase.label : `${phase.label}: `,
+    })
+    if (countdownTime !== null) {
+      const dial = header.createSpan({ cls: 'routine-countdown-dial' })
+      // Radial progress ring, sized to the dial so it frames just the mm:ss digits. Rendered for
+      // this view's own timed phase; skipped for the inert state (the countdown isn't this view's
+      // own). A stopped phase still shows the ring at 0 as a "ready" backdrop.
+      if (!isInert && phase.duration !== null && state.remaining !== null) {
+        const fraction = computeProgressFraction(phase.duration, state.remaining)
+        // --routine-flow-progress is continuously-varying per-tick runtime data, not a discrete
+        // visual state a snippet should override, so setting it inline is allowed (DESIGN.md). The
+        // ring's appearance (stroke/color/width) stays entirely in styles.css, driven off this value
+        // plus theme vars, so a snippet can still restyle the whole look via classes/vars.
+        dial.style.setProperty('--routine-flow-progress', String(fraction))
+        const ring = dial.createSvg('svg', { cls: 'routine-progress-ring', attr: { viewBox: '0 0 100 100' } })
+        ring.createSvg('circle', { cls: 'routine-progress-track', attr: { cx: 50, cy: 50, r: 45, pathLength: 100 } })
+        ring.createSvg('circle', { cls: 'routine-progress-indicator', attr: { cx: 50, cy: 50, r: 45, pathLength: 100 } })
+      }
+      dial.createSpan({ cls: 'routine-countdown-time', text: countdownTime })
+    }
+    header.createSpan({ cls: 'routine-countdown-status', text: ` (${state.status})` })
+
+    if (isInert) {
+      const inertEl = timerPanel.createEl('p', { cls: 'routine-inert' })
+      this.renderStateIcon(inertEl, ['info'])
+      inertEl.createSpan({ text: `"${graph.name}" is currently active instead of this view's routine ("${viewGraph.name}").` })
     }
 
     // Controls
@@ -155,7 +198,9 @@ export class RoutineTimerView extends BasesView {
     queueEl.createEl('h3', { text: queueTitle })
 
     if (queueItems.length === 0) {
-      queueEl.createEl('p', { text: 'No tasks found.' })
+      const emptyEl = queueEl.createDiv({ cls: 'routine-queue-empty' })
+      this.renderStateIcon(emptyEl, ['inbox', 'list-x'])
+      emptyEl.createEl('p', { text: 'No notes match — check this routine\'s queue filter.' })
       return
     }
 
@@ -169,6 +214,22 @@ export class RoutineTimerView extends BasesView {
       taskBtn.addEventListener('click', () => {
         void this.plugin.store.dispatch({ type: 'start', filePath: item.sourcePath })
       })
+    }
+  }
+
+  /**
+   * Renders the first Lucide icon name that resolves into a fresh child span. `setIcon` no-ops
+   * (leaves the element empty) for an unknown name, so listing fallbacks absorbs Lucide's
+   * cross-version renames (e.g. `loader-2` -> `loader-circle`) without pinning to one alias --
+   * which alias the bundled Obsidian version ships is version-dependent (see DESIGN.md iconography).
+   */
+  private renderStateIcon(parent: HTMLElement, names: readonly string[]): void {
+    const iconEl = parent.createSpan({ cls: 'routine-state-icon' })
+    for (const name of names) {
+      setIcon(iconEl, name)
+      if (iconEl.childElementCount > 0) {
+        return
+      }
     }
   }
 

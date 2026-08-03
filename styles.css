@@ -1,0 +1,235 @@
+/*
+ * Routine Flow — timer panel + shared surface styling.
+ *
+ * Every value below references an Obsidian CSS custom property (theme-native) or a plugin-scoped
+ * custom property that itself resolves to one — no hardcoded hex/px literals — so a user CSS snippet
+ * can override any class or var and restyle the whole surface.
+ * See openspec/changes/design-foundations/DESIGN.md.
+ */
+
+/* Plugin-scoped custom properties, resolved against the active theme. Kept overridable: a snippet
+   can redefine any of these on .routine-timer-view / .routine-side-panel. */
+.routine-timer-view,
+.routine-side-panel {
+  --routine-flow-countdown-size: calc(var(--font-ui-large) * 1.8);
+  --routine-flow-accent-paused: var(--color-orange, var(--text-warning));
+  --routine-flow-ring-size: 150px;
+  --routine-flow-ring-stroke: 6;
+
+  display: flex;
+  flex-direction: column;
+  gap: var(--size-4-4);
+  padding: var(--size-4-4);
+}
+
+/* ---- Timer panel (surface #1: normal/active) ------------------------------------------------ */
+
+.routine-timer-panel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--size-4-2);
+  text-align: center;
+}
+
+/* Stopwatch header (a single <h2>, which is what e2e queries): the phase label sits above the
+   dial, the mm:ss digits inside the ring, the status below -- so the ring frames only the digits,
+   not the whole header string. */
+.routine-countdown {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--size-4-1);
+  margin: 0;
+  margin-block: var(--size-4-3);
+  line-height: 1.1;
+}
+
+.routine-countdown-label,
+.routine-countdown-status {
+  font-size: var(--font-ui-medium);
+  font-weight: var(--font-normal);
+  color: var(--text-muted);
+}
+
+/* The dial stacks the ring and the digits in one square cell so the ring is centred behind just
+   the mm:ss text. */
+.routine-countdown-dial {
+  display: grid;
+  place-items: center;
+  width: var(--routine-flow-ring-size);
+  height: var(--routine-flow-ring-size);
+}
+
+.routine-countdown-dial > * {
+  grid-area: 1 / 1;
+}
+
+.routine-countdown-time {
+  z-index: 1;
+  font-size: var(--routine-flow-countdown-size);
+  font-weight: var(--font-bold);
+  color: var(--text-muted);
+}
+
+.routine-progress-ring {
+  width: 100%;
+  height: 100%;
+  /* Start the sweep at 12 o'clock instead of 3 o'clock. */
+  transform: rotate(-90deg);
+}
+
+.routine-progress-track {
+  fill: none;
+  stroke: var(--background-modifier-border);
+  stroke-width: var(--routine-flow-ring-stroke);
+}
+
+/* pathLength="100" (set in markup) normalises the circle to 100 units, so the dash math is
+   independent of the radius: offset 100 = empty, 0 = full. --routine-flow-progress is the elapsed
+   fraction [0,1] set per tick from JS. */
+.routine-progress-indicator {
+  fill: none;
+  stroke: var(--interactive-accent);
+  stroke-width: var(--routine-flow-ring-stroke);
+  stroke-linecap: round;
+  stroke-dasharray: 100;
+  stroke-dashoffset: calc(100 * (1 - var(--routine-flow-progress, 0)));
+  /* Sweep smoothly between per-second ticks. */
+  transition: stroke-dashoffset 0.95s linear;
+}
+
+/* Transport state (class-driven so a snippet can retheme each). Running = accent; paused = the
+   dedicated paused accent (DESIGN.md color table); stopped/completed keep the muted default. */
+.routine-timer-panel.is-running .routine-countdown-time {
+  color: var(--text-accent);
+}
+
+.routine-timer-panel.is-paused .routine-countdown-time {
+  color: var(--routine-flow-accent-paused);
+}
+
+.routine-timer-panel.is-paused .routine-progress-indicator {
+  stroke: var(--routine-flow-accent-paused);
+}
+
+/* ---- Controls (shared with the side panel) -------------------------------------------------- */
+
+.routine-controls {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--size-4-2);
+}
+
+/* ---- Inert banner (surface #4) -------------------------------------------------------------- */
+
+.routine-inert {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--size-4-1);
+  margin: 0;
+  padding: var(--size-4-2) var(--size-4-3);
+  border-radius: var(--radius-m);
+  background-color: var(--background-secondary);
+  color: var(--text-muted);
+  font-size: var(--font-ui-smaller);
+}
+
+/* ---- Loading (surface #2) and error (surface #3) states ------------------------------------- */
+
+.routine-loading,
+.routine-error {
+  display: flex;
+  align-items: center;
+  gap: var(--size-4-2);
+  padding: var(--size-4-3);
+}
+
+.routine-loading {
+  color: var(--text-muted);
+  font-size: var(--font-ui-medium);
+}
+
+.routine-error {
+  border-radius: var(--radius-m);
+  background-color: var(--background-modifier-error);
+  color: var(--text-error);
+  font-size: var(--font-ui-small);
+}
+
+.routine-loading p,
+.routine-error p {
+  margin: 0;
+}
+
+/* Loading spinner: rotate the Lucide loader icon. */
+.routine-loading .routine-state-icon {
+  display: inline-flex;
+  animation: routine-flow-spin 1s linear infinite;
+}
+
+@keyframes routine-flow-spin {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* State icons inherit their container's color via currentColor (Lucide default). */
+.routine-state-icon {
+  display: inline-flex;
+  color: inherit;
+}
+
+/* ---- Queue (surface #1 tertiary; shared with the side panel) -------------------------------- */
+
+.routine-queue h3 {
+  margin-block: var(--size-4-2);
+  font-size: var(--font-ui-medium);
+  color: var(--text-normal);
+}
+
+.routine-queue ul {
+  display: flex;
+  flex-direction: column;
+  gap: var(--size-4-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.routine-queue li {
+  display: flex;
+}
+
+.routine-queue li button {
+  flex: 1;
+  text-align: start;
+}
+
+/* The active queue item is visually distinct, not just structurally marked (design.md #1). */
+.routine-queue li.is-active-task button {
+  font-weight: var(--font-bold);
+  color: var(--text-on-accent);
+  background-color: var(--interactive-accent);
+}
+
+/* ---- Empty queue (surface #5) --------------------------------------------------------------- */
+
+.routine-queue-empty {
+  display: flex;
+  align-items: center;
+  gap: var(--size-4-2);
+  padding: var(--size-4-3);
+  color: var(--text-muted);
+  font-size: var(--font-ui-smaller);
+}
+
+.routine-queue-empty p {
+  margin: 0;
+}
