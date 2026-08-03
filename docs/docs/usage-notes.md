@@ -11,12 +11,6 @@ Things that trip people up.
 The Settings description reads "Frontmatter property incremented when a focus phase completes," but the shipped default routine wires the same `onComplete` write-back hook on all three phases: focus, short break, and long break.
 Expect the "Confirm write-back" modal after breaks too, whenever a note is active.
 
-## Avoid `completionPolicy: "manualClear"` in a custom routine for now
-
-When a phase with this policy finishes, its status flips to "completed" and stays there.
-No control in the current UI advances past it, so a routine using it can get permanently stuck on that phase.
-Leave `completionPolicy` unset or `"noOp"` for normal auto-advance behavior, which is what the shipped default and the example routines use.
-
 ## `completionPolicy: "queueCycle"` and `"futureDate"` aren't executed yet
 
 A routine file that uses either fails to load, with an error naming the offending phase.
@@ -40,7 +34,7 @@ Don't rely on it for now.
 
 ## The side panel can't start a routine on its own
 
-The side panel mirrors whichever routine is currently running and gives you Pause, Resume, Done, and Reset, but it has no Start control.
+The side panel mirrors whichever routine is currently running and gives you Pause, Resume, Done, Clear, and Reset, but it has no Start control.
 Start a session from a Base's Routine Timer view first; the side panel then stays in sync with it.
 
 ## Resuming from a pause is labeled differently depending on where you click
