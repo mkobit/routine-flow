@@ -106,8 +106,9 @@ This constrains implementation, not just color choice:
 - One stable, documented CSS class namespace, applied consistently as a snippet target.
   `timer-view.ts` carries the `routine-*` prefix (`routine-timer-view`, `-timer-panel`, `-controls`, `-queue`, etc.).
   **Resolved for surface #6** (flow-gu1.19.18): `WriteBackModal` now adds `routine-write-back-modal` via `modalEl.addClass(...)`.
-  `RoutineReplaceModal` (#7) and `RoutineFlowSettingTab` (#8) still add **no plugin-scoped class at all** — they render straight onto `contentEl`/`containerEl`, so a user's snippet could only reach them via Obsidian's generic `.modal`/`.setting-item` selectors, which hit every plugin's modals and settings tabs indiscriminately, not just this one.
-  Adding a root-level scoped class to each (e.g. via `modalEl.addClass(...)`/`containerEl.addClass(...)`) is a prerequisite for snippet-targeting those two remaining surfaces, not something that already exists — treat it as part of each surface's implementation pass (flow-gu1.62 for #7, flow-gu1.58 for #8), not a retrofit deferred to flow-q2p.
+  **Resolved for surface #7** (flow-gu1.62): `RoutineReplaceModal` now adds `routine-replace-modal` via `modalEl.addClass(...)`.
+  `RoutineFlowSettingTab` (#8) still adds **no plugin-scoped class at all** — it renders straight onto `containerEl`, so a user's snippet could only reach it via Obsidian's generic `.setting-item` selector, which hits every plugin's settings tab indiscriminately, not just this one.
+  Adding a root-level scoped class (e.g. via `containerEl.addClass(...)`) is a prerequisite for snippet-targeting that remaining surface, not something that already exists — treat it as part of its implementation pass (flow-gu1.58), not a retrofit deferred to flow-q2p.
 - No JS-driven inline `style=` attributes for anything a snippet should be able to target — route all visual state through class toggles.
 - Any hardcoded fallback (e.g. for the rare theme that doesn't define `--color-orange`) must itself be overridable the same way: a plugin-scoped custom property, e.g. `--routine-flow-accent-paused: var(--color-orange, var(--text-warning));`, never an unconditional literal.
 - flow-q2p ("Custom CSS stylesheet support for user theming") is where an explicit override mechanism gets built.

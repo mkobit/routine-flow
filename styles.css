@@ -269,3 +269,19 @@
   gap: var(--size-4-2);
   margin-top: var(--size-4-4);
 }
+
+/* ---- RoutineReplaceModal (surface #7) -------------------------------------------------------- */
+
+.routine-replace-warning {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--size-4-2);
+}
+
+.routine-replace-warning .routine-state-icon {
+  color: var(--text-warning);
+}
+
+.routine-replace-warning p {
+  margin: 0;
+}
