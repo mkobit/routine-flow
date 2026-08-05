@@ -113,6 +113,51 @@
   stroke: var(--routine-flow-accent-paused);
 }
 
+/* ---- Alternate progress-meter style: fill-bar (flow-gu1.19.15.1) ----------------------------- */
+
+/* Always rendered in markup (dial.createDiv, timer-view.ts) alongside the default ring, but
+   hidden here by default -- the not-yet-built style switcher (flow-gu1.19.15.4) picks the active
+   built-in style by adding `routine-progress-style-fill-bar` to the dial (DESIGN.md: "route all
+   visual state through class toggles"). Nothing sets that class today, so this whole block is
+   currently inert and the ring's own always-on rendering above is untouched. */
+.routine-progress-fill-bar {
+  display: none;
+  align-items: center;
+  width: 100%;
+}
+
+.routine-countdown-dial.routine-progress-style-fill-bar .routine-progress-ring {
+  display: none;
+}
+
+.routine-countdown-dial.routine-progress-style-fill-bar .routine-progress-fill-bar {
+  display: flex;
+}
+
+.routine-progress-fill-bar-track {
+  width: 100%;
+  height: var(--size-4-2);
+  border-radius: var(--radius-s);
+  background-color: var(--background-modifier-border);
+  overflow: hidden;
+}
+
+/* Same --routine-flow-progress elapsed fraction [0,1] the ring's stroke-dashoffset uses (set per
+   tick from JS, timer-view.ts). scaleX (GPU-composited, same as the ring's stroke-dashoffset
+   transition) rather than animating width, which would trigger layout every tick. */
+.routine-progress-fill-bar-indicator {
+  width: 100%;
+  height: 100%;
+  transform-origin: left;
+  transform: scaleX(var(--routine-flow-progress, 0));
+  background-color: var(--interactive-accent);
+  transition: transform 0.95s linear;
+}
+
+.routine-timer-panel.is-paused .routine-progress-fill-bar-indicator {
+  background-color: var(--routine-flow-accent-paused);
+}
+
 /* ---- Controls (shared with the side panel) -------------------------------------------------- */
 
 .routine-controls {
