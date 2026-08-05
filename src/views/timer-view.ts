@@ -157,6 +157,15 @@ export class RoutineTimerView extends BasesView {
         const fillBar = dial.createDiv({ cls: 'routine-progress-fill-bar' })
         const fillBarTrack = fillBar.createDiv({ cls: 'routine-progress-fill-bar-track' })
         fillBarTrack.createDiv({ cls: 'routine-progress-fill-bar-indicator' })
+
+        // Alternate built-in style (flow-gu1.19.15.2): a battery-drain meter, same
+        // --routine-flow-progress contract as the ring/fill-bar above, same inert-until-wired
+        // pattern (routine-progress-style-battery-drain, unset by anything today). The -cap div is
+        // the small terminal nub that reads the shape as a battery rather than a plain bar.
+        const batteryDrain = dial.createDiv({ cls: 'routine-progress-battery-drain' })
+        const batteryDrainTrack = batteryDrain.createDiv({ cls: 'routine-progress-battery-drain-track' })
+        batteryDrainTrack.createDiv({ cls: 'routine-progress-battery-drain-indicator' })
+        batteryDrain.createDiv({ cls: 'routine-progress-battery-drain-cap' })
       }
       dial.createSpan({ cls: 'routine-countdown-time', text: countdownTime })
     }
