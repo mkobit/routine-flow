@@ -42,6 +42,7 @@ export default class RoutineFlowPlugin extends Plugin {
   public taskSourceRegistry: MutableTaskSourceRegistry = createTaskSourceRegistry()
   public formulaPredicateRegistry: MutableFormulaPredicateRegistry = createFormulaPredicateRegistry()
   public scriptHookRegistry!: MutableScriptHookRegistry
+  public hookRegistry!: HookRegistry
   private statusBarItem!: RoutineStatusBarItem
 
   async onload() {
@@ -62,11 +63,11 @@ export default class RoutineFlowPlugin extends Plugin {
       writeBackPrompt: new ObsidianWriteBackPromptPort(this.app),
       getWriteBackProperty: () => this.settings.writeBackProperty,
     })
-    const hookRegistry: HookRegistry = {
+    this.hookRegistry = {
       resolve: name => name === WRITE_BACK_HOOK_NAME ? writeBackHook : this.scriptHookRegistry.resolve(name),
     }
     this.store = new EngineStore(DEFAULT_PHASE_GRAPH, {
-      hookRegistry,
+      hookRegistry: this.hookRegistry,
       port,
       predicateRegistry: this.formulaPredicateRegistry,
       taskSourceRegistry: this.taskSourceRegistry,
