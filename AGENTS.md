@@ -31,6 +31,42 @@ Run devDependency binaries (e.g. `openspec`) via `bun x <name>`, never assume it
 | `bun run vault:dev:headless` | Same, under Xvfb -- use for agent-driven verification so no window appears on the real desktop. Blocks until Obsidian exits (required so Xvfb doesn't tear down mid-run) -- run it with a backgrounding tool and send SIGTERM to end it. |
 | `bun x openspec` | Runs the OpenSpec CLI (proposal/apply/archive workflow). |
 
+## Design work with Stitch
+
+Stitch is the MCP design tool (`mcp__stitch__*`) for generating UI mockups and design systems.
+Use it for UI-facing design work: mocking a new screen or restyling an existing surface before writing any CSS.
+Skip it for logic, state, or non-visual changes.
+
+The shared visual language lives in `openspec/changes/design-foundations/DESIGN.md` — semantic state colors, typography, spacing, iconography, all as Obsidian CSS custom-property references, never resolved hex/px.
+Per-surface briefs live in `openspec/changes/ui-surface-inventory/design.md` and `surface-model.md`, numbered #1–#12.
+Build every Stitch prompt from the surface's brief plus DESIGN.md's vocabulary, so screens stay consistent instead of 12 one-off designs.
+
+### Per-surface workflow
+
+Precedent: the flow-gu1.19 mockup beads (`flow-gu1.19.8`–`.13`).
+Read their close reasons via `bd show <id>` before starting a new surface.
+
+1. Reuse the existing Stitch project (id `11876825961275539533`, bootstrapped in flow-gu1.19.7) — don't create a new one.
+   Inspect it with `list_projects` / `list_screens` / `get_screen`.
+2. Two design systems already exist on it, one per `colorMode`: "Routine Flow — Light" and "Routine Flow — Dark".
+   Both were seeded from DESIGN.md via `create_design_system`'s `designMd` field, then applied with `update_design_system`.
+   `create_design_system_from_design_md` / `upload_design_md` need an existing screen instance (`selectedScreenInstance`), so on a screen-less project only the structured `create_design_system` path works.
+3. Generate the screen with `generate_screen_from_text`, in both light and dark.
+   Pull resolved CSS var values from a running instance (`bun run vault:dev` / `vault:dev:headless`) at generation time — DESIGN.md names variables, not values.
+   Iterate with `edit_screens` / `generate_variants`; `apply_design_system` re-applies a system to existing screens.
+4. Review each mockup against real Obsidian chrome and resolved values, then get Mike's visual sign-off before any implementation.
+5. Implement the CSS pass in a separate bead (e.g. flow-gu1.19.18 followed flow-gu1.19.10).
+
+### Caveats (observed, carry forward)
+
+- Stitch invents chrome the real single-panel model doesn't have — an internal tab bar (Focus/Queue/Stats/Settings), a bottom transport bar, an "Add task to queue" button (the queue is a live Bases query, `src/timer/base-query-task-source.ts`, not manually editable).
+  Disregard these uniformly; they're generation artifacts, not design direction.
+- Stitch can't see Obsidian's actual CSS values or native button styling.
+  Describe them explicitly in the prompt (e.g. spell out the destructive-button look, per flow-gu1.19.11) instead of referencing "Obsidian's own styling".
+- No raster imagery, ever (DESIGN.md) — redesign any raster-style graphic a mockup invents (a rendered ring, an illustration) as inline SVG or CSS during implementation.
+- Design-system color/font seeds (e.g. `#7C3AED`, INTER) are Stitch approximations, labeled as such in the `designMd` — not claims about real Obsidian values.
+- The first call in a session may fail with an "incompatible auth server" error that clears on retry — treat as transient unless it recurs.
+
 <!-- BEGIN BEADS INTEGRATION v:1 profile:minimal hash:ccf33ec3 -->
 ## Beads Issue Tracker
 
