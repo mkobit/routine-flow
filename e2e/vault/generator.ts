@@ -33,6 +33,15 @@ function indexedPath(dir: string, index: number, title: string): string {
   return `${dir}/${String(index + 1).padStart(2, '0')}-${slugify(title)}.md`
 }
 
+/**
+ * An in-vault README, mirroring stretch-break/README.md: a short orientation for
+ * someone browsing the vault, pointing at the full dev-docs/examples/ writeup
+ * rather than reproducing its domain-model detail. Empty frontmatter, prose body.
+ */
+function routineReadme(folder: string, body: string): NoteDefinition {
+  return createNote(`${folder}/README.md`, {}, body)
+}
+
 const POMODORO_TASK_TITLES = [
   'Write the proposal',
   'Refactor auth module',
@@ -71,7 +80,10 @@ function generatePomodoroNotes(seed: number): readonly NoteDefinition[] {
     routinePriority: fc.option(fc.integer({ min: -1000, max: 1000 }), { nil: undefined }),
   })
   const samples = fc.sample(arb, { numRuns: 5, seed })
-  return samples.map((s, i) => createNote(
+  return [routineReadme(
+    'pomodoro',
+    'The pomodoro routine (see dev-docs/examples/pomodoro.md) alternates 25m focus with a 5m break, extending the break to 15m every 4th cycle, repeating until you stop.\nThe notes in this folder are the work-task queue a focus phase pulls from — `type: work` items the shipped default graph\'s `focus-queue` matches.',
+  ), ...samples.map((s, i) => createNote(
     indexedPath('pomodoro', i, s.title),
     {
       'status': s.status,
@@ -83,7 +95,7 @@ function generatePomodoroNotes(seed: number): readonly NoteDefinition[] {
       ...(s.routinePriority === undefined ? {} : { 'routine-priority': s.routinePriority }),
     },
     'Generated test data for the pomodoro routine (see dev-docs/examples/pomodoro.md).',
-  ))
+  ))]
 }
 
 const STANDUP_NAME_POOL = ['Alice', 'Bob', 'Priya', 'Diego', 'Sana', 'Owen'] as const
@@ -92,11 +104,17 @@ const STANDUP_NAME_POOL = ['Alice', 'Bob', 'Priya', 'Diego', 'Sana', 'Owen'] as 
 function generateStandupNotes(seed: number): readonly NoteDefinition[] {
   const arb = fc.uniqueArray(fc.constantFrom(...STANDUP_NAME_POOL), { minLength: 3, maxLength: STANDUP_NAME_POOL.length })
   const [members] = fc.sample(arb, { numRuns: 1, seed })
-  return [createNote(
-    'standup/Roster.md',
-    { members: members ?? [] },
-    'Generated test data for the standup routine (see dev-docs/examples/standup.md) — one PhaseGraph phase per member here.',
-  )]
+  return [
+    routineReadme(
+      'standup',
+      'The standup routine (see dev-docs/examples/standup.md) gives each member a fixed time box, advancing to the next person when their time is up or they finish early.\nNo queue, no write-back — just a rotation through phases; `Roster.md` lists the members, one PhaseGraph phase per person.',
+    ),
+    createNote(
+      'standup/Roster.md',
+      { members: members ?? [] },
+      'Generated test data for the standup routine (see dev-docs/examples/standup.md) — one PhaseGraph phase per member here.',
+    ),
+  ]
 }
 
 const WORKOUT_EXERCISE_POOL = ['Squats', 'Push-ups', 'Lunges', 'Plank', 'Rows', 'Deadlifts', 'Burpees'] as const
@@ -105,11 +123,17 @@ const WORKOUT_EXERCISE_POOL = ['Squats', 'Push-ups', 'Lunges', 'Plank', 'Rows', 
 function generateWorkoutNotes(seed: number): readonly NoteDefinition[] {
   const arb = fc.uniqueArray(fc.constantFrom(...WORKOUT_EXERCISE_POOL), { minLength: 4, maxLength: 6 })
   const [sequence] = fc.sample(arb, { numRuns: 1, seed })
-  return [createNote(
-    'workout/Exercises.md',
-    { sequence: sequence ?? [] },
-    'Generated test data for the workout routine (see dev-docs/examples/workout.md).',
-  )]
+  return [
+    routineReadme(
+      'workout',
+      'The workout routine (see dev-docs/examples/workout.md) runs a warm-up, then loops rep-based set / timed rest cycles, where a set ends when you say you\'re done rather than on a clock.\n`Exercises.md` is the ordered, fixed-sequence exercise list the `set` phase steps through — no Bases query involved.',
+    ),
+    createNote(
+      'workout/Exercises.md',
+      { sequence: sequence ?? [] },
+      'Generated test data for the workout routine (see dev-docs/examples/workout.md).',
+    ),
+  ]
 }
 
 const REVIEW_CARD_TITLES = [
@@ -131,21 +155,23 @@ function generateSpacedRepetitionNotes(seed: number): readonly NoteDefinition[] 
   // uniqueArray by title so each of the REVIEW_CARD_TITLES pool appears at most once per generated vault.
   const arb = fc.uniqueArray(cardArb, { selector: card => card.title, minLength: REVIEW_CARD_TITLES.length, maxLength: REVIEW_CARD_TITLES.length })
   const [cards] = fc.sample(arb, { numRuns: 1, seed })
-  return (cards ?? []).map((s, i) => createNote(
+  return [routineReadme(
+    'spaced-repetition',
+    'The spaced-repetition routine (see dev-docs/examples/spaced-repetition.md) reviews one due card at a time; marking a review done defers that card to a future date, then it reappears.\nThe notes in this folder are review cards carrying a `dueDate` — some due, some not — that a `cards` query pulls from.',
+  ), ...(cards ?? []).map((s, i) => createNote(
     indexedPath('spaced-repetition', i, s.title),
     {
       dueDate: ANCHOR_DATE.add({ days: s.dueOffsetDays }),
       ease: s.ease,
     },
     'Generated test data for the spaced-repetition routine (see dev-docs/examples/spaced-repetition.md).',
-  ))
+  ))]
 }
 
 /** No queue at all (taskSourceId is null) — a descriptive note only, so the folder still exists. */
 function generateStretchBreakNotes(): readonly NoteDefinition[] {
-  return [createNote(
-    'stretch-break/README.md',
-    {},
+  return [routineReadme(
+    'stretch-break',
     'The stretch-break routine (see dev-docs/examples/stretch-break.md) has no queue — taskSourceId is null on its one phase, so there is nothing to generate here.',
   )]
 }
@@ -157,14 +183,17 @@ function generateHabitTrackingNotes(seed: number): readonly NoteDefinition[] {
     restDay: fc.boolean(),
   })
   const samples = fc.sample(arb, { numRuns: 5, seed })
-  return samples.map((s, i) => createNote(
+  return [routineReadme(
+    'habit-tracking',
+    'The habit-tracking routine (see dev-docs/examples/habit-tracking.md) runs a daily weights-then-cardio session, skipping the weights phase entirely on rest days.\nThe `day-*.md` notes are the daily habit notes those hooks target; each carries a `date` and a `restDay` marker.',
+  ), ...samples.map((s, i) => createNote(
     `habit-tracking/day-${i + 1}.md`,
     {
       date: ANCHOR_DATE.add({ days: s.dayOffset }),
       restDay: s.restDay,
     },
     'Generated test data for the habit-tracking routine (see dev-docs/examples/habit-tracking.md).',
-  ))
+  ))]
 }
 
 /** Distinct per-routine offsets so each routine's sampling is independent of the others under the same top-level seed. */
