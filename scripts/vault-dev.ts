@@ -1,6 +1,7 @@
 #!/usr/bin/env bun
 import ObsidianLauncher from 'obsidian-launcher'
 import * as path from 'node:path'
+import * as fs from 'node:fs/promises'
 import { Command } from 'commander'
 import { rebuildGeneratedVault, resolveVaultSeed } from '../e2e/vault'
 
@@ -28,7 +29,7 @@ async function main(): Promise<void> {
 
   const launcher = new ObsidianLauncher({ cacheDir: CACHE_DIR })
 
-  const { proc } = await launcher.launch({
+  const { proc, configDir } = await launcher.launch({
     appVersion: 'latest',
     installerVersion: 'latest',
     vault: VAULT_PATH,
@@ -52,9 +53,19 @@ async function main(): Promise<void> {
     process.on('SIGTERM', () => proc.kill('SIGTERM'))
     console.log(`Obsidian launched under Xvfb (pid ${proc.pid}) — vault: ${VAULT_PATH}. Waiting for exit...`)
     await new Promise<void>(resolve => proc.on('exit', () => resolve()))
+    // obsidian-launcher doesn't clean up the per-launch configDir tmpdir it
+    // creates -- this path already blocks for the whole run, so it can safely
+    // remove it once Obsidian has exited (mirrors e2e/fixtures/obsidian.ts's
+    // cleanupObsidianTmpdirs, fixed there under flow-i43).
+    await fs.rm(configDir, { recursive: true, force: true })
     return
   }
 
+  // Real-display mode detaches and hands the shell back immediately (by design,
+  // see AGENTS.md), so this invocation exits before Obsidian does and has no
+  // way to observe when it's safe to remove configDir -- that tmpdir is
+  // accepted as a leak here (bun run vault:dev:headless does not have this
+  // issue) rather than adding a detached watcher process to close it (flow-t91).
   proc.unref()
   console.log(`Obsidian launched in the background (pid ${proc.pid}) — vault: ${VAULT_PATH}`)
 }
