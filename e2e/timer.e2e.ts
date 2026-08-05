@@ -169,7 +169,7 @@ test.describe('BaseQuerySource-backed queue (base-query-task-source)', () => {
     // missing priority sorts as 0. displayName is the file's basename (indexedPath's slugified
     // filename), not the note's title.
     const expectedDisplayNames = generateVault(resolveVaultSeed())
-      .filter(note => note.relativePath.dir === 'pomodoro')
+      .filter(note => note.relativePath.dir === 'pomodoro' && note.frontmatter['type'] === 'work')
       .toSorted((a, b) => routinePriorityOf(a) - routinePriorityOf(b))
       .map(note => note.relativePath.name)
 
