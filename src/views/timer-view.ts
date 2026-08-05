@@ -147,6 +147,16 @@ export class RoutineTimerView extends BasesView {
         const ring = dial.createSvg('svg', { cls: 'routine-progress-ring', attr: { viewBox: '0 0 100 100' } })
         ring.createSvg('circle', { cls: 'routine-progress-track', attr: { cx: 50, cy: 50, r: 45, pathLength: 100 } })
         ring.createSvg('circle', { cls: 'routine-progress-indicator', attr: { cx: 50, cy: 50, r: 45, pathLength: 100 } })
+
+        // Alternate built-in style (flow-gu1.19.15.1): a linear fill-bar, driven by the same
+        // --routine-flow-progress set above -- no separate JS-side computation. Always rendered
+        // alongside the ring, but hidden by CSS default (styles.css) until the not-yet-built
+        // style switcher (flow-gu1.19.15.4) adds `routine-progress-style-fill-bar` to the dial to
+        // select it, per DESIGN.md's "route all visual state through class toggles" rule. Inert
+        // markup today -- nothing sets that class yet, so the default radial ring is unaffected.
+        const fillBar = dial.createDiv({ cls: 'routine-progress-fill-bar' })
+        const fillBarTrack = fillBar.createDiv({ cls: 'routine-progress-fill-bar-track' })
+        fillBarTrack.createDiv({ cls: 'routine-progress-fill-bar-indicator' })
       }
       dial.createSpan({ cls: 'routine-countdown-time', text: countdownTime })
     }
