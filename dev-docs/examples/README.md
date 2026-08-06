@@ -1,6 +1,6 @@
 # Living examples: routines mapped onto the domain model
 
-Seven real-world routines, each walked from a plain description through to a concrete mapping onto `Phase`/`PhaseGraph`/`CompletionPolicy`/`TransitionCondition`/`Hook`/`TaskSource`.
+Eight real-world routines, each walked from a plain description through to a concrete mapping onto `Phase`/`PhaseGraph`/`CompletionPolicy`/`TransitionCondition`/`Hook`/`TaskSource`.
 The goal is to surface where current primitives strain using concrete referents, instead of debating abstractions with nothing to point at.
 Tracked by flow-gu1.21.
 Feeds flow-gu1.10 (transition hook script runner), which depends on this doc.
@@ -24,14 +24,16 @@ Every file follows the same four sections.
 - [Stretch break](stretch-break.md) — a phase with no queue at all.
 - [Habit tracking](habit-tracking.md) — a conditionally-skipped phase (`TransitionCondition` `'custom'`) plus `onEnter`/`onExit` hooks.
 - [Chore list](chore-list.md) — duration-less phases cleared manually (`manualClear`), firing `onComplete` via `finish-phase`.
+- [Frontmatter write-back](write-back.md) — the `write-back` `Hook` as a configuration surface: per-phase opt-in, `activeItem` vs `callback` targets, and the confirm-before-write modal.
 
 ## Known gaps this doc surfaces repeatedly
 
 `completePhase` in `src/timer/reducer.ts` only implements `manualClear` and `noOp`/`null` — `queueCycle` and `futureDate` completion policies throw (`CompletionPolicy`'s `'custom'` variant was removed as redundant with `onComplete`, see `habit-tracking.md`).
 `resolveNextPhaseId` in `src/timer/phase-graph.ts` now resolves a `custom` transition condition via a `PredicateRegistry` instead of throwing (flow-b74) — but no real predicate is registered anywhere yet, and a predicate's context is deliberately too narrow to check vault content, so `habit-tracking.md`'s `isRestDay` still can't be built end to end (see flow-gu1.10).
 
-`HookRegistry` and `LogTargetResolverRegistry` are both wired up in `src/main.ts`, but populated with no entries (`resolve: () => undefined`).
-Every `onEnter`/`onComplete`/`onSkip`/`onExit` hook and every `callback` log target currently resolves to nothing and silently no-ops.
+`src/main.ts` now registers the built-in `write-back` hook (plus settings-bound script hooks) in its `HookRegistry`, so a phase's `onComplete: write-back` fires for real — see [write-back.md](write-back.md).
+`LogTargetResolverRegistry` is still wired to `resolve: () => undefined`, so every `callback` log target resolves to nothing and silently no-ops.
+Some older examples (`pomodoro.md`, `stretch-break.md`, `chore-list.md`) still describe the pre-registration state where every hook no-ops; that write-back claim is now stale (tracked separately).
 
 A duration-less (manual/rep-based) phase never reaches `completePhase` at all — `engineReducer`'s `tick` case returns early when `remaining` is `null`, so the phase only ever ends via `advance-phase`, which is derived as `onSkip` whenever the phase was `running`.
 There is no event for "a manual phase finished on purpose," distinct from "a manual phase was abandoned."
