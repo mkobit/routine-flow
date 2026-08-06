@@ -196,6 +196,25 @@ function generateHabitTrackingNotes(seed: number): readonly NoteDefinition[] {
   ))]
 }
 
+const CHORE_POOL = ['Dishes', 'Laundry', 'Tidy up', 'Vacuum', 'Water plants', 'Take out trash'] as const
+
+/** A chores note — descriptive only; chore-list phases are hand-mapped one per chore, not queue-driven (same shape as the standup roster). */
+function generateChoreListNotes(seed: number): readonly NoteDefinition[] {
+  const arb = fc.uniqueArray(fc.constantFrom(...CHORE_POOL), { minLength: 3, maxLength: CHORE_POOL.length })
+  const [chores] = fc.sample(arb, { numRuns: 1, seed })
+  return [
+    routineReadme(
+      'chore-list',
+      'The chore-list routine (see dev-docs/examples/chore-list.md) rotates through a fixed list of chores, one duration-less phase per chore, each cleared manually (Done, then Clear) rather than on a timer.\nNo queue, no write-back — `Chores.md` lists the chores, one PhaseGraph phase per chore.',
+    ),
+    createNote(
+      'chore-list/Chores.md',
+      { chores: chores ?? [] },
+      'Generated test data for the chore-list routine (see dev-docs/examples/chore-list.md) — one PhaseGraph phase per chore here.',
+    ),
+  ]
+}
+
 /** Distinct per-routine offsets so each routine's sampling is independent of the others under the same top-level seed. */
 const ROUTINE_SEED_OFFSETS = {
   pomodoro: 0,
@@ -203,9 +222,10 @@ const ROUTINE_SEED_OFFSETS = {
   workout: 2,
   spacedRepetition: 3,
   habitTracking: 4,
+  choreList: 5,
 } as const
 
-/** All six dev-docs/examples/ routines' vault content, deterministic for a given seed. Defaults to resolveVaultSeed(). */
+/** All seven dev-docs/examples/ routines' vault content, deterministic for a given seed. Defaults to resolveVaultSeed(). */
 export function generateVault(seed: number = resolveVaultSeed()): readonly NoteDefinition[] {
   return [
     ...generatePomodoroNotes(seed + ROUTINE_SEED_OFFSETS.pomodoro),
@@ -214,6 +234,7 @@ export function generateVault(seed: number = resolveVaultSeed()): readonly NoteD
     ...generateSpacedRepetitionNotes(seed + ROUTINE_SEED_OFFSETS.spacedRepetition),
     ...generateStretchBreakNotes(),
     ...generateHabitTrackingNotes(seed + ROUTINE_SEED_OFFSETS.habitTracking),
+    ...generateChoreListNotes(seed + ROUTINE_SEED_OFFSETS.choreList),
   ]
 }
 
@@ -225,6 +246,7 @@ export const GENERATED_VAULT_FOLDERS = [
   'spaced-repetition',
   'stretch-break',
   'habit-tracking',
+  'chore-list',
 ] as const
 
 /** Deletes any previously generated routine folders, then writes a fresh generateVault(seed) — a rebuild, not an overlay. */

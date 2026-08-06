@@ -20,3 +20,6 @@ views:
   - type: routine-timer
     name: Manual clear
     routineFile: routines/manual-clear-routine.md
+  - type: routine-timer
+    name: Chore list
+    routineFile: routines/chore-list-routine.md

@@ -1,6 +1,6 @@
 # Living examples: routines mapped onto the domain model
 
-Six real-world routines, each walked from a plain description through to a concrete mapping onto `Phase`/`PhaseGraph`/`CompletionPolicy`/`TransitionCondition`/`Hook`/`TaskSource`.
+Seven real-world routines, each walked from a plain description through to a concrete mapping onto `Phase`/`PhaseGraph`/`CompletionPolicy`/`TransitionCondition`/`Hook`/`TaskSource`.
 The goal is to surface where current primitives strain using concrete referents, instead of debating abstractions with nothing to point at.
 Tracked by flow-gu1.21.
 Feeds flow-gu1.10 (transition hook script runner), which depends on this doc.
@@ -23,6 +23,7 @@ Every file follows the same four sections.
 - [Spaced repetition](spaced-repetition.md) — future-dating a queue item on completion.
 - [Stretch break](stretch-break.md) — a phase with no queue at all.
 - [Habit tracking](habit-tracking.md) — a conditionally-skipped phase (`TransitionCondition` `'custom'`) plus `onEnter`/`onExit` hooks.
+- [Chore list](chore-list.md) — duration-less phases cleared manually (`manualClear`), firing `onComplete` via `finish-phase`.
 
 ## Known gaps this doc surfaces repeatedly
 
