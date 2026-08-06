@@ -40,6 +40,7 @@ routine-flow-example-vault/workout/
 routine-flow-example-vault/spaced-repetition/
 routine-flow-example-vault/stretch-break/
 routine-flow-example-vault/habit-tracking/
+routine-flow-example-vault/chore-list/
 
 # Claude Code local-only settings
 .claude/settings.local.json
