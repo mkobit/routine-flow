@@ -15,6 +15,8 @@
   --routine-flow-accent-paused: var(--color-orange, var(--text-warning));
   --routine-flow-ring-size: 150px;
   --routine-flow-ring-stroke: 6;
+  --routine-flow-tick-count: 12;
+  --routine-flow-tick-mark-fraction: 0.6;
 
   display: flex;
   flex-direction: column;
@@ -215,6 +217,76 @@
 
 .routine-timer-panel.is-paused .routine-progress-battery-drain-indicator {
   background-color: var(--routine-flow-accent-paused);
+}
+
+/* ---- Alternate progress-meter style: tick-marks (flow-gu1.19.15.3) --------------------------- */
+
+/* Same rendering contract as the fill-bar/battery-drain styles above: always rendered in markup
+   (dial.createDiv, timer-view.ts) alongside the default ring, hidden here by default -- the
+   not-yet-built style switcher (flow-gu1.19.15.4) picks this style by adding
+   `routine-progress-style-tick-marks` to the dial. Nothing sets that class today, so this whole
+   block is inert and the ring/fill-bar/battery-drain above are unaffected. This is the last of the
+   three alternate styles named in flow-gu1.19.15. */
+.routine-progress-tick-marks {
+  display: none;
+  align-items: center;
+  width: 100%;
+}
+
+.routine-countdown-dial.routine-progress-style-tick-marks .routine-progress-ring {
+  display: none;
+}
+
+.routine-countdown-dial.routine-progress-style-tick-marks .routine-progress-tick-marks {
+  display: flex;
+}
+
+/* Discrete segments, unlike the fill-bar's continuous fill or the battery-drain's continuous
+   drain: a row of --routine-flow-tick-count evenly-sized slots, each drawing
+   --routine-flow-tick-mark-fraction of its own width as a mark and leaving the remainder as the
+   gap to the next one. The muted track (this layer) and the accent indicator (below) share this
+   exact gradient shape in different colors, so their marks always line up. */
+.routine-progress-tick-marks-track {
+  position: relative;
+  width: 100%;
+  height: var(--size-4-3);
+  border-radius: var(--radius-s);
+  overflow: hidden;
+  background-image: repeating-linear-gradient(
+    to right,
+    var(--background-modifier-border) 0,
+    var(--background-modifier-border) calc(100% / var(--routine-flow-tick-count) * var(--routine-flow-tick-mark-fraction)),
+    transparent calc(100% / var(--routine-flow-tick-count) * var(--routine-flow-tick-mark-fraction)),
+    transparent calc(100% / var(--routine-flow-tick-count))
+  );
+}
+
+/* The lit marks: an overlay the same size as the track, drawing the identical gradient shape in
+   the accent color, then clip-path-revealed from the left up to the --routine-flow-progress
+   elapsed fraction the ring/fill-bar/battery-drain all set per tick (JS, timer-view.ts). clip-path
+   (rather than the fill-bar's scaleX) so the gradient itself never stretches as progress advances
+   -- each mark stays a fixed width and simply comes into view, instead of the whole tick pattern
+   rescaling. --routine-flow-tick-color is the paused-state override hook below, since the color
+   lives inside a background-image (a bare background-color swap, as the other two styles use,
+   can't reach into a gradient function). */
+.routine-progress-tick-marks-indicator {
+  --routine-flow-tick-color: var(--interactive-accent);
+
+  position: absolute;
+  inset: 0;
+  background-image: repeating-linear-gradient(
+    to right,
+    var(--routine-flow-tick-color) 0,
+    var(--routine-flow-tick-color) calc(100% / var(--routine-flow-tick-count) * var(--routine-flow-tick-mark-fraction)),
+    transparent calc(100% / var(--routine-flow-tick-count) * var(--routine-flow-tick-mark-fraction)),
+    transparent calc(100% / var(--routine-flow-tick-count))
+  );
+  clip-path: inset(0 calc(100% * (1 - var(--routine-flow-progress, 0))) 0 0);
+  transition: clip-path 0.95s linear;
+}
+
+.routine-timer-panel.is-paused .routine-progress-tick-marks-indicator {
+  --routine-flow-tick-color: var(--routine-flow-accent-paused);
 }
 
 /* ---- Controls (shared with the side panel) -------------------------------------------------- */
