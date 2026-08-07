@@ -1,6 +1,6 @@
 # Living examples: routines mapped onto the domain model
 
-Ten real-world routines, each walked from a plain description through to a concrete mapping onto `Phase`/`PhaseGraph`/`CompletionPolicy`/`TransitionCondition`/`Hook`/`TaskSource`.
+Eleven real-world routines, each walked from a plain description through to a concrete mapping onto `Phase`/`PhaseGraph`/`CompletionPolicy`/`TransitionCondition`/`Hook`/`TaskSource`.
 The goal is to surface where current primitives strain using concrete referents, instead of debating abstractions with nothing to point at.
 Tracked by flow-gu1.21.
 Feeds flow-gu1.10 (transition hook script runner), which depends on this doc.
@@ -25,6 +25,7 @@ Every file follows the same four sections.
 - [Stretch break](stretch-break.md) — a phase with no queue at all.
 - [Habit tracking](habit-tracking.md) — a conditionally-skipped phase (`TransitionCondition` `'custom'`) plus `onEnter`/`onExit` hooks.
 - [Chore list](chore-list.md) — duration-less phases cleared manually (`manualClear`), firing `onComplete` via `finish-phase`.
+- [Sprint retrospective](sprint-retrospective.md) — a fixed, facilitator-paced sequence of `manualClear` segments that terminates rather than loops; the wrap-back edge exists only to pass `checkPhaseGraphIntegrity`.
 - [Frontmatter write-back](write-back.md) — the `write-back` `Hook` as a configuration surface: per-phase opt-in, `activeItem` vs `callback` targets, and the confirm-before-write modal.
 - [Shared routine definitions](shared-routines.md) — the same routine file, defined once, referenced from more than one Base view in more than one folder via the `routineFile` view option; reuse is by `PhaseGraph.id`, not file or object identity.
 
