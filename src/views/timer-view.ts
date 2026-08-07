@@ -166,6 +166,15 @@ export class RoutineTimerView extends BasesView {
         const batteryDrainTrack = batteryDrain.createDiv({ cls: 'routine-progress-battery-drain-track' })
         batteryDrainTrack.createDiv({ cls: 'routine-progress-battery-drain-indicator' })
         batteryDrain.createDiv({ cls: 'routine-progress-battery-drain-cap' })
+
+        // Alternate built-in style (flow-gu1.19.15.3): a tick-marks meter -- a row of discrete
+        // segments that light up left-to-right as --routine-flow-progress advances, same contract
+        // as the ring/fill-bar/battery-drain above and the same inert-until-wired pattern
+        // (routine-progress-style-tick-marks, unset by anything today). Last of the three
+        // alternate styles named in flow-gu1.19.15.
+        const tickMarks = dial.createDiv({ cls: 'routine-progress-tick-marks' })
+        const tickMarksTrack = tickMarks.createDiv({ cls: 'routine-progress-tick-marks-track' })
+        tickMarksTrack.createDiv({ cls: 'routine-progress-tick-marks-indicator' })
       }
       dial.createSpan({ cls: 'routine-countdown-time', text: countdownTime })
     }
