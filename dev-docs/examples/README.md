@@ -1,6 +1,6 @@
 # Living examples: routines mapped onto the domain model
 
-Eight real-world routines, each walked from a plain description through to a concrete mapping onto `Phase`/`PhaseGraph`/`CompletionPolicy`/`TransitionCondition`/`Hook`/`TaskSource`.
+Nine real-world routines, each walked from a plain description through to a concrete mapping onto `Phase`/`PhaseGraph`/`CompletionPolicy`/`TransitionCondition`/`Hook`/`TaskSource`.
 The goal is to surface where current primitives strain using concrete referents, instead of debating abstractions with nothing to point at.
 Tracked by flow-gu1.21.
 Feeds flow-gu1.10 (transition hook script runner), which depends on this doc.
@@ -18,6 +18,7 @@ Every file follows the same four sections.
 ## Use cases
 
 - [Pomodoro](pomodoro.md) — the shipped default graph; alternating focus/break with a long break every 4th cycle.
+- [Variable break durations](break-duration-variants.md) — break *length* chosen by stacked `everyNth` transitions; generalises the shipped default's single long-break-every-4th selector into a short/medium/long ladder.
 - [Standup per-person turns](standup.md) — a queue with no completion semantics (`noOp`).
 - [Workout warm-up/set/rest](workout.md) — a branching graph with a rep-based, duration-less phase.
 - [Spaced repetition](spaced-repetition.md) — future-dating a queue item on completion.
