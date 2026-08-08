@@ -14,7 +14,12 @@ function hasFormulaPredicateNamed(page: Page, name: string): Promise<boolean> {
     app.plugins.plugins[args.pluginId]?.settings.formulaPredicates.some(p => p.name === args.name) ?? false, { pluginId: PLUGIN_ID, name })
 }
 
-test.describe('settings tab', () => {
+// Skipped: app.setting.open() reliably FATALs Obsidian's GPU process under Xvfb, both locally
+// and in CI (flow-1la) -- confirmed deterministic (10/10 launches across all 5 tests here failed
+// identically, sandwiched between clean passes on either side in the same CI run), not ordinary
+// flakiness. Re-enable once flow-1la resolves or isolates the trigger to something other than
+// opening the settings modal itself.
+test.describe.skip('settings tab', () => {
   test.beforeEach(async ({ obsidianPage: { page } }) => {
     await expect.poll(async () =>
       evaluateObsidian(
