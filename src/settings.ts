@@ -1,14 +1,14 @@
 import { z } from 'zod'
-import type { App, TFile } from 'obsidian'
-import { AbstractInputSuggest, PluginSettingTab, Setting } from 'obsidian'
+import type { App, Setting, SettingDefinitionItem, TFile } from 'obsidian'
+import { AbstractInputSuggest, PluginSettingTab } from 'obsidian'
 import type RoutineFlowPlugin from './main'
 import { PredicateNameSchema } from './domain/hook/predicate'
 import { compileFormula } from './domain/hook/formula/evaluator'
-import type { FormulaPredicateSetting } from './timer/formula-predicate-registry'
+import { formulaPredicatesToListItems } from './settings-predicate-list'
 import { HookNameSchema } from './domain/hook/hook-reference'
-import type { ScriptHookBindingSetting } from './timer/script-hook-registry'
+import { scriptHookBindingsToListItems } from './settings-script-hook-list'
 import { ScriptHookConfirmModal } from './views/script-hook-confirm-modal'
-import { PROGRESS_METER_STYLES, PROGRESS_METER_STYLE_LABELS, ProgressMeterStyleSchema } from './timer/progress-meter-style'
+import { PROGRESS_METER_STYLE_LABELS, ProgressMeterStyleSchema } from './timer/progress-meter-style'
 
 /** A settings-authored name+formula pair for a 'custom' TransitionCondition predicate — see FormulaPredicateSetting (src/timer/formula-predicate-registry.ts), which this schema's parsed shape matches structurally. */
 export const FormulaPredicateSettingSchema = z.object({
@@ -74,99 +74,99 @@ export class RoutineFlowSettingTab extends PluginSettingTab {
     this.plugin = plugin
   }
 
-  display(): void {
-    const { containerEl } = this
-    containerEl.empty()
-
-    new Setting(containerEl)
-      .setName('Write-back property')
-      .setDesc('Frontmatter property incremented when a focus phase completes.')
-      .addText(text =>
-        text
-          .setPlaceholder('Property name')
-          .setValue(this.plugin.settings.writeBackProperty)
-          .onChange(async (value) => {
-            this.plugin.settings.writeBackProperty = value
-            await this.plugin.saveSettings()
-          }),
-      )
-
-    new Setting(containerEl)
-      .setName('Progress meter style')
-      .setDesc('Visual style for the timer panel\'s progress meter.')
-      .addDropdown((dropdown) => {
-        for (const style of PROGRESS_METER_STYLES) {
-          dropdown.addOption(style, PROGRESS_METER_STYLE_LABELS[style])
-        }
-        dropdown
-          .setValue(this.plugin.settings.progressMeterStyle)
-          .onChange(async (value) => {
-            this.plugin.settings.progressMeterStyle = ProgressMeterStyleSchema.parse(value)
-            await this.plugin.saveSettings()
-          })
-      })
-
-    new Setting(containerEl).setName('Custom rules').setHeading()
-
-    for (const predicate of this.plugin.settings.formulaPredicates) {
-      this.renderFormulaPredicateRow(containerEl, predicate)
-    }
-
-    this.renderAddFormulaPredicateRow(containerEl)
-
-    new Setting(containerEl).setName('Script hooks').setHeading()
-
-    new Setting(containerEl)
-      .setName('Scripts folder')
-      .setDesc('Vault folder to select .js script hooks from. A script becomes usable once bound below.')
-      .addText(text =>
-        text
-          .setPlaceholder('Scripts')
-          .setValue(this.plugin.settings.scriptsFolder)
-          .onChange(async (value) => {
-            this.plugin.settings.scriptsFolder = value
-            await this.plugin.saveSettings()
-          }),
-      )
-
-    for (const binding of this.plugin.settings.scriptHookBindings) {
-      this.renderScriptHookBindingRow(containerEl, binding)
-    }
-
-    this.renderAddScriptHookBindingRow(containerEl)
+  /**
+   * Declarative replacement for the deprecated imperative display() — see
+   * openspec/changes/declarative-settings-api/design.md. writeBackProperty/
+   * progressMeterStyle/scriptsFolder bind through PluginSettingTab's
+   * inherited getControlValue/setControlValue (no override needed: both
+   * already read/write this.plugin.settings[key]). The two add-rows stay
+   * imperative `render` escape hatches so their existing two-field-plus-
+   * validation UX carries over unchanged.
+   */
+  getSettingDefinitions(): SettingDefinitionItem[] {
+    return [
+      {
+        name: 'Write-back property',
+        desc: 'Frontmatter property incremented when a focus phase completes.',
+        control: {
+          type: 'text',
+          key: 'writeBackProperty',
+          placeholder: 'Property name',
+        },
+      },
+      {
+        name: 'Progress meter style',
+        desc: 'Visual style for the timer panel\'s progress meter.',
+        control: {
+          type: 'dropdown',
+          key: 'progressMeterStyle',
+          options: PROGRESS_METER_STYLE_LABELS,
+        },
+      },
+      {
+        type: 'list',
+        heading: 'Custom rules',
+        items: formulaPredicatesToListItems(this.plugin.settings.formulaPredicates),
+        onDelete: (index: number): void => {
+          void this.deleteFormulaPredicate(index)
+        },
+      },
+      {
+        name: 'Add rule',
+        desc: 'Name and condition (e.g. visitCounts.focus >= 4) for a new custom rule.',
+        render: (setting): void => {
+          this.renderAddFormulaPredicateRow(setting)
+        },
+      },
+      {
+        type: 'group',
+        heading: 'Script hooks',
+        items: [
+          {
+            name: 'Scripts folder',
+            desc: 'Vault folder to select .js script hooks from. A script becomes usable once bound below.',
+            control: {
+              type: 'text',
+              key: 'scriptsFolder',
+              placeholder: 'Scripts',
+            },
+          },
+        ],
+      },
+      {
+        type: 'list',
+        items: scriptHookBindingsToListItems(this.plugin.settings.scriptHookBindings),
+        onDelete: (index: number): void => {
+          void this.deleteScriptHookBinding(index)
+        },
+      },
+      {
+        name: 'Add script hook',
+        desc: 'Name it, then pick a .js file from the scripts folder above -- referenced from a routine\'s onEnter/onComplete/onSkip/onExit by this name, the same way the built-in write-back hook is.',
+        render: (setting): void => {
+          this.renderAddScriptHookBindingRow(setting)
+        },
+      },
+    ]
   }
 
-  /** Refreshes the plugin's live MutableFormulaPredicateRegistry from the current settings list, then re-renders this tab. */
+  /** Refreshes the plugin's live MutableFormulaPredicateRegistry from the current settings list, then re-renders this tab's declarative definitions. */
   private async saveAndRefreshFormulaPredicates(): Promise<void> {
     await this.plugin.saveSettings()
     this.plugin.formulaPredicateRegistry.setFormulas(this.plugin.settings.formulaPredicates)
-    this.display()
+    this.update()
   }
 
-  private renderFormulaPredicateRow(containerEl: HTMLElement, predicate: FormulaPredicateSetting): void {
-    new Setting(containerEl)
-      .setName(predicate.name)
-      .setDesc(predicate.formula)
-      .addExtraButton(button =>
-        button
-          .setIcon('trash')
-          .setTooltip('Remove rule')
-          .onClick(async () => {
-            this.plugin.settings.formulaPredicates = this.plugin.settings.formulaPredicates.filter(p => p.name !== predicate.name)
-            await this.saveAndRefreshFormulaPredicates()
-          }),
-      )
+  private async deleteFormulaPredicate(index: number): Promise<void> {
+    this.plugin.settings.formulaPredicates = this.plugin.settings.formulaPredicates.filter((_, i) => i !== index)
+    await this.saveAndRefreshFormulaPredicates()
   }
 
-  private renderAddFormulaPredicateRow(containerEl: HTMLElement): void {
+  private renderAddFormulaPredicateRow(setting: Setting): void {
     let name = ''
     let formula = ''
-    const errorEl = containerEl.createDiv({ cls: 'routine-formula-predicate-error' })
-    errorEl.hide()
 
-    new Setting(containerEl)
-      .setName('Add rule')
-      .setDesc('Name and condition (e.g. visitCounts.focus >= 4) for a new custom rule.')
+    setting
       .addText(text =>
         text
           .setPlaceholder('Name')
@@ -186,17 +186,15 @@ export class RoutineFlowSettingTab extends PluginSettingTab {
           .setButtonText('Add')
           .setCta()
           .onClick(async () => {
-            errorEl.hide()
+            setting.setErrorMessage(null)
             const parsedName = PredicateNameSchema.safeParse(name)
             if (!parsedName.success) {
-              errorEl.setText('Enter a rule name.')
-              errorEl.show()
+              setting.setErrorMessage('Enter a rule name.')
               return
             }
             const compiled = compileFormula(formula)
             if (!compiled.ok) {
-              errorEl.setText(compiled.error)
-              errorEl.show()
+              setting.setErrorMessage(compiled.error)
               return
             }
             this.plugin.settings.formulaPredicates = [
@@ -208,37 +206,23 @@ export class RoutineFlowSettingTab extends PluginSettingTab {
       )
   }
 
-  /** Refreshes the plugin's live MutableScriptHookRegistry from the current settings list, then re-renders this tab. */
+  /** Refreshes the plugin's live MutableScriptHookRegistry from the current settings list, then re-renders this tab's declarative definitions. */
   private async saveAndRefreshScriptHookBindings(): Promise<void> {
     await this.plugin.saveSettings()
     this.plugin.scriptHookRegistry.setBindings(this.plugin.settings.scriptHookBindings)
-    this.display()
+    this.update()
   }
 
-  private renderScriptHookBindingRow(containerEl: HTMLElement, binding: ScriptHookBindingSetting): void {
-    new Setting(containerEl)
-      .setName(binding.name)
-      .setDesc(binding.scriptPath)
-      .addExtraButton(button =>
-        button
-          .setIcon('trash')
-          .setTooltip('Remove binding')
-          .onClick(async () => {
-            this.plugin.settings.scriptHookBindings = this.plugin.settings.scriptHookBindings.filter(b => b.name !== binding.name)
-            await this.saveAndRefreshScriptHookBindings()
-          }),
-      )
+  private async deleteScriptHookBinding(index: number): Promise<void> {
+    this.plugin.settings.scriptHookBindings = this.plugin.settings.scriptHookBindings.filter((_, i) => i !== index)
+    await this.saveAndRefreshScriptHookBindings()
   }
 
-  private renderAddScriptHookBindingRow(containerEl: HTMLElement): void {
+  private renderAddScriptHookBindingRow(setting: Setting): void {
     let name = ''
     let scriptPath = ''
-    const errorEl = containerEl.createDiv({ cls: 'routine-script-hook-error' })
-    errorEl.hide()
 
-    new Setting(containerEl)
-      .setName('Add script hook')
-      .setDesc('Name it, then pick a .js file from the scripts folder above -- referenced from a routine\'s onEnter/onComplete/onSkip/onExit by this name, the same way the built-in write-back hook is.')
+    setting
       .addText(text =>
         text
           .setPlaceholder('Name')
@@ -264,17 +248,15 @@ export class RoutineFlowSettingTab extends PluginSettingTab {
           .setButtonText('Add')
           .setCta()
           .onClick(async () => {
-            errorEl.hide()
+            setting.setErrorMessage(null)
             const parsedName = HookNameSchema.safeParse(name)
             if (!parsedName.success) {
-              errorEl.setText('Enter a hook name.')
-              errorEl.show()
+              setting.setErrorMessage('Enter a hook name.')
               return
             }
             const file = this.app.vault.getFileByPath(scriptPath)
             if (file === null || file.extension !== 'js' || file.parent?.path !== this.plugin.settings.scriptsFolder.trim()) {
-              errorEl.setText('Pick a .js file from the scripts folder above.')
-              errorEl.show()
+              setting.setErrorMessage('Pick a .js file from the scripts folder above.')
               return
             }
             const scriptSource = await this.app.vault.cachedRead(file)
