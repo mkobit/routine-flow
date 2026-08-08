@@ -9,6 +9,7 @@ Resumed 2026-08-07 (see proposal.md "Status"). All tasks below were completed on
 
 - [x] 2.1 ~~Add `getControlValue`/`setControlValue` overrides~~ — not needed: `PluginSettingTab`'s inherited defaults already read/write `this.plugin.settings[key]` and persist identically to `saveSettings()` (discovered during the 2026-07-27 pass; see design.md Decision 2 revision). `writeBackProperty` control just declares `key: 'writeBackProperty'` and relies on the inherited binding.
 - [x] 2.2 Implement `getSettingDefinitions()` returning: the `writeBackProperty` text control, a `SettingDefinitionList` (heading "Custom rules") built from `formulaPredicates`, and the add-rule `render` row -- plus, extending the same pattern to the script-hooks settings added by #121 (see design.md's third discovery): a `scriptsFolder` text control (in a `type: 'group'` heading "Script hooks"), a second `SettingDefinitionList` built from `scriptHookBindings`, and the add-script-hook `render` row
+- [x] 2.2a Fold in the `progressMeterStyle` dropdown (flow-gu1.19.15.4, `#157`, merged to `main` while this branch was deferred): a `SettingDropdownControl` keyed the same bound-control way as `writeBackProperty`/`scriptsFolder` (see design.md's fourth discovery)
 - [x] 2.3 Port `renderFormulaPredicateRow`'s delete behavior into the list's `onDelete(index)`: remove from `formulaPredicates`, save, refresh `formulaPredicateRegistry`, call `this.update()`. Same for `scriptHookBindings`/`scriptHookRegistry`.
 - [x] 2.4 Port `renderAddFormulaPredicateRow` into the `render`-type definition, using the `Setting` instance the framework provides instead of `new Setting(containerEl)`; keep existing `PredicateNameSchema`/`compileFormula` validation, using `Setting.setErrorMessage()` (new in 1.13.0) instead of a hand-rolled error `<div>`; on success call `this.update()` instead of `this.display()`. Same port for `renderAddScriptHookBindingRow`.
 - [x] 2.5 Delete `display()` and any now-unused imperative-rendering helpers it exclusively depended on
@@ -20,15 +21,15 @@ Resumed 2026-08-07 (see proposal.md "Status"). All tasks below were completed on
 
 ## 4. E2E coverage
 
-- [ ] 4.1 Add `e2e/settings-tab.e2e.ts` following the `e2e/routine-replace-modal.e2e.ts` pattern: open Obsidian's settings modal and navigate to the plugin's tab via `evaluateObsidian`/`page.locator`. `app.setting.open()`/`openTabById(id)` were already present in `e2e/obsidian-internal.d.ts`'s `SettingManager` augmentation (added earlier for `capture-screenshots.manual.ts`); no `close()` was needed.
-- [ ] 4.2 E2E: editing the write-back property field persists the new value (verify via `evaluateObsidian` reading `plugin.settings.writeBackProperty`, or by reopening the tab)
-- [ ] 4.3 E2E: adding a valid rule shows it in the list; adding an invalid name or non-compiling formula shows the inline error and does not add a row
-- [ ] 4.4 E2E: deleting a rule removes its row
+- [x] 4.1 Add `e2e/settings-tab.e2e.ts` following the `e2e/routine-replace-modal.e2e.ts` pattern: open Obsidian's settings modal and navigate to the plugin's tab via `evaluateObsidian`/`page.locator`. `app.setting.open()`/`openTabById(id)` were already present in `e2e/obsidian-internal.d.ts`'s `SettingManager` augmentation (added earlier for `capture-screenshots.manual.ts`); no `close()` was needed.
+- [x] 4.2 E2E: editing the write-back property field persists the new value (verify via `evaluateObsidian` reading `plugin.settings.writeBackProperty`, or by reopening the tab)
+- [x] 4.3 E2E: adding a valid rule shows it in the list; adding an invalid name or non-compiling formula shows the inline error and does not add a row
+- [x] 4.4 E2E: deleting a rule removes its row (via the Delete/Backspace keyboard shortcut `SettingDefinitionList.onDelete` enables, not the icon button -- its class/aria-label isn't pinned down in the type declarations; see design.md's fifth discovery)
 
 ## 5. Verification and ship
 
 - [x] 5.1 `bun run build` succeeds
 - [x] 5.2 `bun run test` (unit) passes
-- [ ] 5.3 `bun run test:e2e:headless` passes locally under Xvfb, including the new `settings-tab.e2e.ts`, against the freshly-pinned Obsidian binary
+- [ ] 5.3 ~~`bun run test:e2e:headless` passes locally under Xvfb~~ -- not attempted this pass. flow-1la's WSL GPU-process crash is confirmed local-environment-specific (not reproduced in GitHub Actions CI, which ran this repo's full e2e suite cleanly on `#157` the same day); relying on CI as the real gate instead of repeating a local run already known to crash for no new information. If CI's `settings-tab.e2e.ts` run surfaces a wrong selector, iterate from the CI failure's `playwright-report` artifact (trace/screenshot/video, all captured `on-failure` per `playwright.config.ts`), not a local run.
 - [ ] 5.4 Open PR, get CI green (`gh pr checks --watch --fail-fast`), merge per AGENTS.md session-completion workflow
 - [ ] 5.5 Archive this OpenSpec change (`bun x openspec archive declarative-settings-api` or equivalent) after merge
