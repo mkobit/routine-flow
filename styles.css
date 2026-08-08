@@ -118,10 +118,9 @@
 /* ---- Alternate progress-meter style: fill-bar (flow-gu1.19.15.1) ----------------------------- */
 
 /* Always rendered in markup (dial.createDiv, timer-view.ts) alongside the default ring, but
-   hidden here by default -- the not-yet-built style switcher (flow-gu1.19.15.4) picks the active
+   hidden here by default -- the style switcher setting (flow-gu1.19.15.4) picks the active
    built-in style by adding `routine-progress-style-fill-bar` to the dial (DESIGN.md: "route all
-   visual state through class toggles"). Nothing sets that class today, so this whole block is
-   currently inert and the ring's own always-on rendering above is untouched. */
+   visual state through class toggles"). */
 .routine-progress-fill-bar {
   display: none;
   align-items: center;
@@ -163,10 +162,9 @@
 /* ---- Alternate progress-meter style: battery-drain (flow-gu1.19.15.2) ------------------------ */
 
 /* Same rendering contract as the fill-bar style above: always rendered in markup (dial.createDiv,
-   timer-view.ts) alongside the default ring, hidden here by default -- the not-yet-built style
-   switcher (flow-gu1.19.15.4) picks this style by adding `routine-progress-style-battery-drain` to
-   the dial. Nothing sets that class today, so this whole block is inert and the ring/fill-bar
-   above are unaffected. */
+   timer-view.ts) alongside the default ring, hidden here by default -- the style switcher setting
+   (flow-gu1.19.15.4) picks this style by adding `routine-progress-style-battery-drain` to the
+   dial. */
 .routine-progress-battery-drain {
   display: none;
   align-items: center;
@@ -222,11 +220,10 @@
 /* ---- Alternate progress-meter style: tick-marks (flow-gu1.19.15.3) --------------------------- */
 
 /* Same rendering contract as the fill-bar/battery-drain styles above: always rendered in markup
-   (dial.createDiv, timer-view.ts) alongside the default ring, hidden here by default -- the
-   not-yet-built style switcher (flow-gu1.19.15.4) picks this style by adding
-   `routine-progress-style-tick-marks` to the dial. Nothing sets that class today, so this whole
-   block is inert and the ring/fill-bar/battery-drain above are unaffected. This is the last of the
-   three alternate styles named in flow-gu1.19.15. */
+   (dial.createDiv, timer-view.ts) alongside the default ring, hidden here by default -- the style
+   switcher setting (flow-gu1.19.15.4) picks this style by adding
+   `routine-progress-style-tick-marks` to the dial. This is the last of the three alternate styles
+   named in flow-gu1.19.15. */
 .routine-progress-tick-marks {
   display: none;
   align-items: center;

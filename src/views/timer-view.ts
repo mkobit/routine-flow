@@ -7,6 +7,7 @@ import type { Phase } from '../domain/phase/phase'
 import { findPhaseById, FOCUS_PHASE_KIND, DEFAULT_PHASE_GRAPH } from '../timer/phase-graph'
 import { formatCountdown } from '../timer/format'
 import { computeProgressFraction } from '../timer/progress'
+import { progressMeterStyleClass } from '../timer/progress-meter-style'
 import { decideStartAction, resolveRoutineGraph } from '../timer/routine-selection'
 import type { RoutineResolution } from '../timer/routine-selection'
 import { RoutineReplaceModal } from './routine-replace-modal'
@@ -134,6 +135,13 @@ export class RoutineTimerView extends BasesView {
     })
     if (countdownTime !== null) {
       const dial = header.createSpan({ cls: 'routine-countdown-dial' })
+      // Selects the active built-in style (flow-gu1.19.15.4 setting) via a class toggle on the
+      // dial (DESIGN.md: "route all visual state through class toggles") -- 'radial' is the CSS
+      // default and needs no class.
+      const styleClass = progressMeterStyleClass(this.plugin.settings.progressMeterStyle)
+      if (styleClass !== null) {
+        dial.addClass(styleClass)
+      }
       // Radial progress ring, sized to the dial so it frames just the mm:ss digits. Rendered for
       // this view's own timed phase; skipped for the inert state (the countdown isn't this view's
       // own). A stopped phase still shows the ring at 0 as a "ready" backdrop.
@@ -150,18 +158,16 @@ export class RoutineTimerView extends BasesView {
 
         // Alternate built-in style (flow-gu1.19.15.1): a linear fill-bar, driven by the same
         // --routine-flow-progress set above -- no separate JS-side computation. Always rendered
-        // alongside the ring, but hidden by CSS default (styles.css) until the not-yet-built
-        // style switcher (flow-gu1.19.15.4) adds `routine-progress-style-fill-bar` to the dial to
-        // select it, per DESIGN.md's "route all visual state through class toggles" rule. Inert
-        // markup today -- nothing sets that class yet, so the default radial ring is unaffected.
+        // alongside the ring; CSS hides it by default and shows it instead of the ring only when
+        // the style-class toggle set above selects it (styles.css).
         const fillBar = dial.createDiv({ cls: 'routine-progress-fill-bar' })
         const fillBarTrack = fillBar.createDiv({ cls: 'routine-progress-fill-bar-track' })
         fillBarTrack.createDiv({ cls: 'routine-progress-fill-bar-indicator' })
 
         // Alternate built-in style (flow-gu1.19.15.2): a battery-drain meter, same
-        // --routine-flow-progress contract as the ring/fill-bar above, same inert-until-wired
-        // pattern (routine-progress-style-battery-drain, unset by anything today). The -cap div is
-        // the small terminal nub that reads the shape as a battery rather than a plain bar.
+        // --routine-flow-progress contract and always-rendered/CSS-selected pattern as the
+        // fill-bar above. The -cap div is the small terminal nub that reads the shape as a battery
+        // rather than a plain bar.
         const batteryDrain = dial.createDiv({ cls: 'routine-progress-battery-drain' })
         const batteryDrainTrack = batteryDrain.createDiv({ cls: 'routine-progress-battery-drain-track' })
         batteryDrainTrack.createDiv({ cls: 'routine-progress-battery-drain-indicator' })
@@ -169,9 +175,8 @@ export class RoutineTimerView extends BasesView {
 
         // Alternate built-in style (flow-gu1.19.15.3): a tick-marks meter -- a row of discrete
         // segments that light up left-to-right as --routine-flow-progress advances, same contract
-        // as the ring/fill-bar/battery-drain above and the same inert-until-wired pattern
-        // (routine-progress-style-tick-marks, unset by anything today). Last of the three
-        // alternate styles named in flow-gu1.19.15.
+        // as the ring/fill-bar/battery-drain above. Last of the three alternate styles named in
+        // flow-gu1.19.15.
         const tickMarks = dial.createDiv({ cls: 'routine-progress-tick-marks' })
         const tickMarksTrack = tickMarks.createDiv({ cls: 'routine-progress-tick-marks-track' })
         tickMarksTrack.createDiv({ cls: 'routine-progress-tick-marks-indicator' })
