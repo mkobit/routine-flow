@@ -8,6 +8,7 @@ import type { FormulaPredicateSetting } from './timer/formula-predicate-registry
 import { HookNameSchema } from './domain/hook/hook-reference'
 import type { ScriptHookBindingSetting } from './timer/script-hook-registry'
 import { ScriptHookConfirmModal } from './views/script-hook-confirm-modal'
+import { PROGRESS_METER_STYLES, PROGRESS_METER_STYLE_LABELS, ProgressMeterStyleSchema } from './timer/progress-meter-style'
 
 /** A settings-authored name+formula pair for a 'custom' TransitionCondition predicate — see FormulaPredicateSetting (src/timer/formula-predicate-registry.ts), which this schema's parsed shape matches structurally. */
 export const FormulaPredicateSettingSchema = z.object({
@@ -25,6 +26,8 @@ export const ScriptHookBindingSettingSchema = z.object({
 export const RoutineFlowSettingsSchema = z.object({
   /** Frontmatter property to increment when a focus phase completes. */
   writeBackProperty: z.string().default('sessions'),
+  /** Active built-in progress-meter visualization for the timer panel's dial (see flow-gu1.19.15 family). */
+  progressMeterStyle: ProgressMeterStyleSchema.default('radial'),
   /** Named formula-authored 'custom' TransitionCondition predicates, evaluated via MutableFormulaPredicateRegistry. */
   formulaPredicates: z.array(FormulaPredicateSettingSchema).default([]),
   /** Vault folder .js script hooks are selected from — see script-hook-source. */
@@ -37,6 +40,7 @@ export type RoutineFlowSettings = z.infer<typeof RoutineFlowSettingsSchema>
 
 export const DEFAULT_SETTINGS: RoutineFlowSettings = {
   writeBackProperty: 'sessions',
+  progressMeterStyle: 'radial',
   formulaPredicates: [],
   scriptsFolder: '',
   scriptHookBindings: [],
@@ -86,6 +90,21 @@ export class RoutineFlowSettingTab extends PluginSettingTab {
             await this.plugin.saveSettings()
           }),
       )
+
+    new Setting(containerEl)
+      .setName('Progress meter style')
+      .setDesc('Visual style for the timer panel\'s progress meter.')
+      .addDropdown((dropdown) => {
+        for (const style of PROGRESS_METER_STYLES) {
+          dropdown.addOption(style, PROGRESS_METER_STYLE_LABELS[style])
+        }
+        dropdown
+          .setValue(this.plugin.settings.progressMeterStyle)
+          .onChange(async (value) => {
+            this.plugin.settings.progressMeterStyle = ProgressMeterStyleSchema.parse(value)
+            await this.plugin.saveSettings()
+          })
+      })
 
     new Setting(containerEl).setName('Custom rules').setHeading()
 
