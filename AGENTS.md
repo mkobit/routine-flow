@@ -27,7 +27,7 @@ Run devDependency binaries (e.g. `openspec`) via `bun x <name>`, never assume it
 | `bun run lint` | Lints with `eslint .`. |
 | `bun run docs:dev` | Runs the docs site (`docs/`, a separate Docusaurus project with its own `package.json`/lockfile) locally at http://localhost:3000. Run `bun install` inside `docs/` first. |
 | `bun run docs:build` | Builds the docs site to `docs/build/`; also runs as a PR check on changes under `docs/**`. See `docs/AGENTS.md` for sidebar/nav conventions and the docs-specific eslint/bunfig carve-outs. |
-| `bun run vault:dev` | Launches sandboxed Obsidian against the testing vault (real display); detaches immediately, hands the shell back. |
+| `bun run vault:dev` | Launches sandboxed Obsidian against the testing vault (real display) at 2560x1440; detaches immediately, hands the shell back. Add `-- --theme light` to override the default dark color scheme. |
 | `bun run vault:dev:headless` | Same, under Xvfb -- use for agent-driven verification so no window appears on the real desktop. Blocks until Obsidian exits (required so Xvfb doesn't tear down mid-run) -- run it with a backgrounding tool and send SIGTERM to end it. |
 | `bun x openspec` | Runs the OpenSpec CLI (proposal/apply/archive workflow). |
 
