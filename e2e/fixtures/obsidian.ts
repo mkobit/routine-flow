@@ -106,7 +106,23 @@ async function acquireObsidian(
     vault: copiedVault,
     copy: false,
     plugins: [ROOT_DIR],
-    args: [`--remote-debugging-port=${listenPort}`],
+    // Avoids the "GPU process isn't usable" FATAL abort under sustained CDP+canvas
+    // activity in WSL2/Xvfb (flow-1la): bare --disable-gpu alone still spawns a GPU
+    // process for OOP rasterization via SwiftShader, which can hit Chromium's
+    // GPU-process crash-retry ceiling just as fast or faster than with no flag at
+    // all. These four keep Chromium off that GPU-process path entirely for canvas
+    // compositing instead. Root-caused and validated (3 consecutive clean e2e
+    // trials, then a week+ of clean use in production) in the sibling bases-chartkit
+    // repo, which shares this exact obsidian-launcher/Playwright harness -- see
+    // bck-to4/bck-cyz there. A workaround for the crash-retry ceiling, not a fix for
+    // the underlying WSL2/Xvfb GL-context failure itself.
+    args: [
+      `--remote-debugging-port=${listenPort}`,
+      '--disable-gpu',
+      '--disable-gpu-compositing',
+      '--disable-software-rasterizer',
+      '--disable-gpu-sandbox',
+    ],
     // detached:true makes this process its own group leader so terminateProcess
     // can SIGTERM/SIGKILL the whole group (including GPU/renderer children), not
     // just the top-level PID.

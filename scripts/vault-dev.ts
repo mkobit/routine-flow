@@ -35,7 +35,16 @@ async function main(): Promise<void> {
     vault: VAULT_PATH,
     copy: false,
     plugins: [ROOT_DIR],
-    args: ['--disable-gpu'],
+    // See e2e/fixtures/obsidian.ts's identical args for the full rationale (flow-1la,
+    // bases-chartkit's bck-to4/bck-cyz) -- bare --disable-gpu alone is insufficient
+    // and can crash faster than no flag at all; these four are the validated
+    // workaround for Chromium's GPU-process crash-retry ceiling under WSL2/Xvfb.
+    args: [
+      '--disable-gpu',
+      '--disable-gpu-compositing',
+      '--disable-software-rasterizer',
+      '--disable-gpu-sandbox',
+    ],
     // Headless (under xvfb-run) stays attached to the same process group so
     // this script can wait for and signal-relay to it below; real-display
     // mode detaches so the shell is handed back immediately.
