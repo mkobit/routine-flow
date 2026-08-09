@@ -18,7 +18,7 @@
     "test:e2e:headless": "xvfb-run --auto-servernum --server-args=\"-screen 0 1280x1024x24\" bun x playwright test",
     "typecheck": "tsc --noEmit",
     "vault:dev": "bun scripts/vault-dev.ts",
-    "vault:dev:headless": "xvfb-run --auto-servernum --server-args=\"-screen 0 1280x1024x24\" bun scripts/vault-dev.ts --headless",
+    "vault:dev:headless": "xvfb-run --auto-servernum --server-args=\"-screen 0 2560x1440x24\" bun scripts/vault-dev.ts --headless",
     "vault:install": "bun scripts/vault-install.ts",
     "vault:sync": "bun scripts/vault-sync.ts"
   },
