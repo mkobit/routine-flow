@@ -32,5 +32,5 @@ Resumed 2026-08-07 (see proposal.md "Status"). All tasks below were completed on
 - [x] 5.1 `bun run build` succeeds
 - [x] 5.2 `bun run test` (unit) passes
 - [x] 5.3 ~~`bun run test:e2e:headless` passes locally under Xvfb~~ -- superseded by 4.5's finding: the relevant tests are skipped, so neither a local nor CI e2e run exercises them right now. Nothing left to verify until flow-1la unblocks this.
-- [ ] 5.4 Open PR, get CI green (`gh pr checks --watch --fail-fast`), merge per AGENTS.md session-completion workflow
-- [ ] 5.5 Archive this OpenSpec change (`bun x openspec archive declarative-settings-api` or equivalent) after merge
+- [x] 5.4 Open PR, get CI green (`gh pr checks --watch --fail-fast`), merge per AGENTS.md session-completion workflow — #156 merged to `main` @ `aceb10a`
+- [x] 5.5 Archive this OpenSpec change (`bun x openspec archive declarative-settings-api` or equivalent) after merge
