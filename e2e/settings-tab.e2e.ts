@@ -14,11 +14,15 @@ function hasFormulaPredicateNamed(page: Page, name: string): Promise<boolean> {
     app.plugins.plugins[args.pluginId]?.settings.formulaPredicates.some(p => p.name === args.name) ?? false, { pluginId: PLUGIN_ID, name })
 }
 
-// Skipped: app.setting.open() reliably FATALs Obsidian's GPU process under Xvfb, both locally
-// and in CI (flow-1la) -- confirmed deterministic (10/10 launches across all 5 tests here failed
-// identically, sandwiched between clean passes on either side in the same CI run), not ordinary
-// flakiness. Re-enable once flow-1la resolves or isolates the trigger to something other than
-// opening the settings modal itself.
+// Skipped: the GPU-crash fix (flow-1la, e2e/fixtures/obsidian.ts's --disable-gpu-compositing
+// et al.) eliminated the FATAL crash, confirmed via a local run of exactly this file -- zero
+// FATAL, zero crash-dump growth across all 5 tests, vs. 10/10 crashed before. But that same
+// run showed a new, distinct problem: opening the settings modal now takes close to or beyond
+// the 120s test timeout to first paint (trace timeline: the first `.setting-item` locator
+// waited from 29.9s to 122.5s and never resolved), a rendering-performance cost of running
+// fully uncomposited rather than a hang or a wrong selector. Re-enable once that's understood
+// or worked around (e.g. a much longer explicit wait, or a lighter-weight compositing flag
+// combination) -- see flow-ac5.
 test.describe.skip('settings tab', () => {
   test.beforeEach(async ({ obsidianPage: { page } }) => {
     await expect.poll(async () =>
