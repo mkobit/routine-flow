@@ -29,7 +29,12 @@ Run devDependency binaries (e.g. `openspec`) via `bun x <name>`, never assume it
 | `bun run docs:build` | Builds the docs site to `docs/build/`; also runs as a PR check on changes under `docs/**`. See `docs/AGENTS.md` for sidebar/nav conventions and the docs-specific eslint/bunfig carve-outs. |
 | `bun run vault:dev` | Launches sandboxed Obsidian against the testing vault (real display) at 2560x1440; detaches immediately, hands the shell back. Add `-- --theme light` to override the default dark color scheme. |
 | `bun run vault:dev:headless` | Same, under Xvfb -- use for agent-driven verification so no window appears on the real desktop. Blocks until Obsidian exits (required so Xvfb doesn't tear down mid-run) -- run it with a backgrounding tool and send SIGTERM to end it. |
+| `bun run vault:eval '<js>'` | Evaluates a JS expression in the running `vault:dev` instance via Obsidian's official CLI (no CDP) -- e.g. drive/inspect app state without clicking. |
+| `bun run vault:screenshot [path]` | Screenshots the running `vault:dev` window via the same CLI (default `.test-output/vault-screenshot.png`) -- the way to actually see rendered UI when driving Obsidian headlessly or agent-side. |
+| `bun run vault:reload` | Copies freshly built `main.js`/`manifest.json`/`styles.css` into the *running* vault's plugin dir and reloads it via CLI, no relaunch needed. Pair with `bun run dev` (esbuild watch). |
 | `bun x openspec` | Runs the OpenSpec CLI (proposal/apply/archive workflow). |
+
+`vault:eval`/`vault:screenshot`/`vault:reload` all shell out to `obsidian-cli`, which targets a single globally-active Obsidian instance -- with more than one `vault:dev` running at once (from this repo or a sibling sharing the same obsidian-launcher harness, e.g. bases-chartkit), which instance responds is undefined.
 
 ## Design work with Stitch
 
