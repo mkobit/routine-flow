@@ -28,8 +28,9 @@ declare module 'obsidian' {
 
   interface SettingManager {
     readonly pluginTabs: readonly { readonly id: string }[]
-    // Opens the settings modal and switches to the tab with the given id
-    // (capture-screenshots.manual.ts uses these to screenshot the settings tab).
+    // Opens the Settings UI (a separate Electron BrowserWindow, not an in-page modal -- see
+    // e2e/AGENTS.md) and switches to the tab with the given id. capture-screenshots.manual.ts
+    // uses these to screenshot the settings tab.
     open: () => void
     openTabById: (id: string) => void
   }

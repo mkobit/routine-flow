@@ -25,7 +25,12 @@ export async function evaluateObsidian<T, A>(
     // has no cast-free option — this is the one genuine boundary case.
     // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- Function's return type is untyped, no cast-free option
     const fnObj = new Function(`return (${src})`)() as (app: App, a?: unknown) => T | Promise<T>
-    const obsidianApp = activeWindow.app
+    // `activeWindow` (Obsidian's currently-focused-window global) is unreliable here: once the
+    // Settings UI opens in its own BrowserWindow (flow-ac5), `activeWindow` on every page can
+    // point at that window, which has no `app` of its own. `window.app` is scoped to the actual
+    // renderer this code runs in and is what the obsidianPage fixture itself waits on
+    // (fixtures/obsidian.ts), so it stays correct regardless of which window currently has focus.
+    const obsidianApp = window.app
     if (!obsidianApp) {
       throw new Error('evaluateObsidian: window.app is not ready — Obsidian has not finished loading')
     }

@@ -92,12 +92,17 @@ test.describe('capture screenshots for docs', () => {
 
   test('settings tab', async ({ obsidianPage: { page } }) => {
     await waitForPluginReady(page)
+    // Settings opens in its own Electron BrowserWindow, not an in-page modal over `page`
+    // (flow-ac5) -- wait for and screenshot that window instead.
+    const settingsPagePromise = page.context().waitForEvent('page')
     await evaluateObsidian(page, (app, args: { pluginId: typeof PLUGIN_ID }) => {
       app.setting.open()
       app.setting.openTabById(args.pluginId)
     }, { pluginId: PLUGIN_ID })
-    await expect(page.locator('.modal.mod-settings')).toBeVisible()
-    await page.screenshot({ path: shot('settings-tab.png') })
+    const settingsPage = await settingsPagePromise
+    await settingsPage.waitForLoadState('domcontentloaded')
+    await expect(settingsPage.locator('.setting-item').first()).toBeVisible()
+    await settingsPage.screenshot({ path: shot('settings-tab.png') })
   })
 
   test('write-back confirmation modal', async ({ obsidianPage: { page, vaultPath } }) => {

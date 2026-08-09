@@ -1,5 +1,5 @@
 import type { Page } from '@playwright/test'
-import { test, expect } from './fixtures/obsidian'
+import { test as obsidianTest, expect } from './fixtures/obsidian'
 import { evaluateObsidian } from './helpers/evaluate'
 
 const PLUGIN_ID = 'routine-flow'
@@ -14,17 +14,23 @@ function hasFormulaPredicateNamed(page: Page, name: string): Promise<boolean> {
     app.plugins.plugins[args.pluginId]?.settings.formulaPredicates.some(p => p.name === args.name) ?? false, { pluginId: PLUGIN_ID, name })
 }
 
-// Skipped: the GPU-crash fix (flow-1la, e2e/fixtures/obsidian.ts's --disable-gpu-compositing
-// et al.) eliminated the FATAL crash, confirmed via a local run of exactly this file -- zero
-// FATAL, zero crash-dump growth across all 5 tests, vs. 10/10 crashed before. But that same
-// run showed a new, distinct problem: opening the settings modal now takes close to or beyond
-// the 120s test timeout to first paint (trace timeline: the first `.setting-item` locator
-// waited from 29.9s to 122.5s and never resolved), a rendering-performance cost of running
-// fully uncomposited rather than a hang or a wrong selector. Re-enable once that's understood
-// or worked around (e.g. a much longer explicit wait, or a lighter-weight compositing flag
-// combination) -- see flow-ac5.
-test.describe.skip('settings tab', () => {
-  test.beforeEach(async ({ obsidianPage: { page } }) => {
+type SettingsFixtures = {
+  /**
+   * Obsidian's Settings UI renders in a genuinely separate Electron BrowserWindow, not an
+   * in-page `.modal` over `obsidianPage.page` -- confirmed via `context.pages()` growing from
+   * 1 to 2 the instant `app.setting.open()` runs (flow-ac5). Previously misdiagnosed as a
+   * render-latency cost of the flow-1la GPU-crash-fix flags: the original `.setting-item`
+   * locator was scoped to `obsidianPage.page`, which never receives the settings DOM, so it
+   * waited out the full test timeout regardless of length (confirmed hanging past even a 300s
+   * timeout, i.e. not "slow", just looking in the wrong window). `evaluateObsidian` calls must
+   * still target the original `obsidianPage.page` -- the settings window has no `window.app`
+   * of its own -- but all UI locators need this second page.
+   */
+  settingsPage: Page
+}
+
+const test = obsidianTest.extend<SettingsFixtures>({
+  settingsPage: async ({ obsidianPage: { page } }, use) => {
     await expect.poll(async () =>
       evaluateObsidian(
         page,
@@ -33,62 +39,69 @@ test.describe.skip('settings tab', () => {
       ),
     ).toBe(true)
 
+    const settingsPagePromise = page.context().waitForEvent('page')
     await evaluateObsidian(page, (app, args: { pluginId: string }) => {
       app.setting.open()
       app.setting.openTabById(args.pluginId)
     }, { pluginId: PLUGIN_ID })
-  })
 
-  test('editing the write-back property field persists the new value', async ({ obsidianPage: { page } }) => {
-    const field = page.locator('.setting-item', { hasText: 'Write-back property' }).locator('input[type="text"]')
+    const settingsPage = await settingsPagePromise
+    await settingsPage.waitForLoadState('domcontentloaded')
+    await use(settingsPage)
+  },
+})
+
+test.describe('settings tab', () => {
+  test('editing the write-back property field persists the new value', async ({ obsidianPage: { page }, settingsPage }) => {
+    const field = settingsPage.locator('.setting-item', { hasText: 'Write-back property' }).locator('input[type="text"]')
     await field.fill('e2e-sessions')
     await field.blur()
 
     await expect.poll(() => getWriteBackProperty(page)).toBe('e2e-sessions')
   })
 
-  test('adding a valid rule shows it in the list', async ({ obsidianPage: { page } }) => {
-    const addRow = page.locator('.setting-item', { hasText: 'Add rule' })
+  test('adding a valid rule shows it in the list', async ({ obsidianPage: { page }, settingsPage }) => {
+    const addRow = settingsPage.locator('.setting-item', { hasText: 'Add rule' })
     await addRow.getByPlaceholder('Name').fill('e2e-valid-rule')
     await addRow.getByPlaceholder('Condition').fill('true')
     await addRow.getByRole('button', { name: 'Add' }).click()
 
-    await expect(page.locator('.setting-item', { hasText: 'e2e-valid-rule' })).toBeVisible()
+    await expect(settingsPage.locator('.setting-item', { hasText: 'e2e-valid-rule' })).toBeVisible()
     await expect.poll(() => hasFormulaPredicateNamed(page, 'e2e-valid-rule')).toBe(true)
   })
 
-  test('an empty rule name shows an inline error and does not add a row', async ({ obsidianPage: { page } }) => {
-    const addRow = page.locator('.setting-item', { hasText: 'Add rule' })
+  test('an empty rule name shows an inline error and does not add a row', async ({ settingsPage }) => {
+    const addRow = settingsPage.locator('.setting-item', { hasText: 'Add rule' })
     await addRow.getByPlaceholder('Condition').fill('true')
     await addRow.getByRole('button', { name: 'Add' }).click()
 
-    await expect(page.getByText('Enter a rule name.')).toBeVisible()
+    await expect(settingsPage.getByText('Enter a rule name.')).toBeVisible()
   })
 
-  test('a non-compiling formula shows an inline error and does not add a row', async ({ obsidianPage: { page } }) => {
-    const addRow = page.locator('.setting-item', { hasText: 'Add rule' })
+  test('a non-compiling formula shows an inline error and does not add a row', async ({ obsidianPage: { page }, settingsPage }) => {
+    const addRow = settingsPage.locator('.setting-item', { hasText: 'Add rule' })
     await addRow.getByPlaceholder('Name').fill('e2e-bad-rule')
     await addRow.getByPlaceholder('Condition').fill('this is not a valid formula ((')
     await addRow.getByRole('button', { name: 'Add' }).click()
 
-    await expect(page.locator('.setting-item', { hasText: 'e2e-bad-rule' })).toHaveCount(0)
+    await expect(settingsPage.locator('.setting-item', { hasText: 'e2e-bad-rule' })).toHaveCount(0)
     await expect.poll(() => hasFormulaPredicateNamed(page, 'e2e-bad-rule')).toBe(false)
   })
 
-  test('deleting a rule removes its row', async ({ obsidianPage: { page } }) => {
-    const addRow = page.locator('.setting-item', { hasText: 'Add rule' })
+  test('deleting a rule removes its row', async ({ obsidianPage: { page }, settingsPage }) => {
+    const addRow = settingsPage.locator('.setting-item', { hasText: 'Add rule' })
     await addRow.getByPlaceholder('Name').fill('e2e-delete-me')
     await addRow.getByPlaceholder('Condition').fill('true')
     await addRow.getByRole('button', { name: 'Add' }).click()
 
-    const row = page.locator('.setting-item', { hasText: 'e2e-delete-me' })
+    const row = settingsPage.locator('.setting-item', { hasText: 'e2e-delete-me' })
     await expect(row).toBeVisible()
 
     // SettingDefinitionList's onDelete renders a delete affordance per item and also enables the
     // Delete/Backspace keyboard shortcut (obsidian.d.ts) -- click the row to focus it, then use the
     // keyboard path rather than guessing the icon button's class/aria-label.
     await row.click()
-    await page.keyboard.press('Delete')
+    await settingsPage.keyboard.press('Delete')
 
     await expect(row).toHaveCount(0)
     await expect.poll(() => hasFormulaPredicateNamed(page, 'e2e-delete-me')).toBe(false)
