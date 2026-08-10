@@ -18,6 +18,9 @@ export type PredicateName = z.infer<typeof PredicateNameSchema>
  * EngineState.currentPhaseId itself), before any next-state HookContext
  * could exist to hand it. Predicates needing richer/async context (vault
  * content, wall-clock date) aren't expressible here; see flow-gu1.10.
+ *
+ * Purity contract: Predicates are invoked synchronously inside `engineReducer`
+ * and MUST be pure, deterministic, and free of side-effects or I/O.
  */
 export type Predicate = (
   fromPhaseId: PhaseId,
