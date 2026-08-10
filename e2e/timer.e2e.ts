@@ -41,8 +41,7 @@ test.describe('Routine Timer View', () => {
 test.describe('duration-less phase (finish-phase / "Done" control)', () => {
   test.beforeEach(async ({ obsidianPage: { page } }) => {
     // Tasks.base's "Workout" view (routines/workout-routine.md) has a duration-less "Set" phase.
-    // Reuse the bases leaf the vault's persisted workspace.json already restores on launch (rather
-    // than opening a second tab) so exactly one bases leaf exists to select below.
+    // Ensure Tasks.base is opened in a bases leaf before selecting the Workout view.
     await evaluateObsidian(page, async (app) => {
       const file = app.vault.getFileByPath('Tasks.base')
       if (!file) {
