@@ -48,4 +48,4 @@ Each `onComplete`/`onExit`/`onEnter` is resolved through `HookRegistry` and appl
 - `break`/`long-break` use `logTarget: { kind: 'callback', name: 'dailyNote' }`, but `src/main.ts` wires `logTargetResolverRegistry: { resolve: () => undefined }`.
   No `'dailyNote'` resolver is registered anywhere, so break-phase write-back silently no-ops today.
 - No phase here sets `onEnter`/`onComplete`/`onSkip`/`onExit`.
-  Even if one did, `main.ts` wires `hookRegistry = { resolve: () => undefined }`, so it would resolve to nothing and no-op, same as the log target.
+  If one set `onComplete: write-back`, `main.ts` would resolve it through `writeBackHook`; however, `break`/`long-break` use `logTarget: { kind: 'callback', name: 'dailyNote' }`, which still resolves to nothing because `LogTargetResolverRegistry` is unpopulated.

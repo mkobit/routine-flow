@@ -53,5 +53,5 @@ The same two controls express both "did this chore" and "skipping this one today
 - Hand-authoring one phase per chore doesn't scale and doesn't vary the content between runs — same limitation as `standup.md`'s per-person phases.
   A real chore list wants a queue of chore notes (a `taskSourceId` plus `completionPolicy: { kind: 'queueCycle' }`) cycling one item at a time, not a fixed phase per chore.
   But `completePhase` only implements `manualClear` and `noOp`/`null` — a `queueCycle` phase throws the moment it completes (see `pomodoro.md`), so the version that works end to end today is the fixed per-chore graph above.
-- Write-back is inert here for the same reasons as `standup.md` and `stretch-break.md`: no queue, no active item, no hook attached, and `main.ts` wires both `HookRegistry` and `LogTargetResolverRegistry` to `resolve: () => undefined`.
-  A chore list that wanted to check items off in a note would need a resolvable `onComplete` hook and a registered `LogTargetResolverRegistry` entry, neither of which exists yet.
+- Write-back is inert here for similar reasons as `stretch-break.md`: no queue, no active item, no hook attached, and `main.ts` wires `LogTargetResolverRegistry` to `resolve: () => undefined`.
+  A chore list that wanted to check items off in a note would need an attached `onComplete` hook and a registered `LogTargetResolverRegistry` entry.
