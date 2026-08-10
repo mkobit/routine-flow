@@ -18,4 +18,40 @@ describe('scriptHookBindingsToListItems', () => {
   test('an empty binding list maps to an empty item list', () => {
     expect(scriptHookBindingsToListItems([])).toEqual([])
   })
+
+  test('attaches re-confirm extra button when onReconfirm is provided', () => {
+    let reconfirmedIndex: number | undefined
+    const items = scriptHookBindingsToListItems(
+      [{ name: HookNameSchema.parse('log-focus-complete'), scriptPath: 'Scripts/log.js', scriptSource: 'console.log(1)' }],
+      (index) => {
+        reconfirmedIndex = index
+      },
+    )
+
+    expect(items).toHaveLength(1)
+    expect(items[0]?.name).toBe('log-focus-complete')
+    expect(items[0]?.desc).toBe('Scripts/log.js')
+    expect(items[0]?.render).toBeDefined()
+
+    let onClickHandler: (() => void) | undefined
+    const mockSetting = {
+      addExtraButton: (cb: (btn: { setIcon: (icon: string) => unknown, setTooltip: (tooltip: string) => unknown, onClick: (fn: () => void) => unknown }) => void) => {
+        const mockBtn = {
+          setIcon: () => mockBtn,
+          setTooltip: () => mockBtn,
+          onClick: (fn: () => void) => {
+            onClickHandler = fn
+            return mockBtn
+          },
+        }
+        cb(mockBtn)
+      },
+    }
+
+    // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- mock object for Setting component in unit test
+    items[0]?.render?.(mockSetting as never, {} as never)
+    expect(onClickHandler).toBeDefined()
+    onClickHandler?.()
+    expect(reconfirmedIndex).toBe(0)
+  })
 })

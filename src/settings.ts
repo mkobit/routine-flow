@@ -1,6 +1,6 @@
 import { z } from 'zod'
 import type { App, Setting, SettingDefinitionItem, TFile } from 'obsidian'
-import { AbstractInputSuggest, PluginSettingTab } from 'obsidian'
+import { AbstractInputSuggest, Notice, PluginSettingTab } from 'obsidian'
 import type RoutineFlowPlugin from './main'
 import { PredicateNameSchema } from './domain/hook/predicate'
 import { compileFormula } from './domain/hook/formula/evaluator'
@@ -135,7 +135,9 @@ export class RoutineFlowSettingTab extends PluginSettingTab {
       },
       {
         type: 'list',
-        items: scriptHookBindingsToListItems(this.plugin.settings.scriptHookBindings),
+        items: scriptHookBindingsToListItems(this.plugin.settings.scriptHookBindings, (index: number) => {
+          void this.reconfirmScriptHookBinding(index)
+        }),
         onDelete: (index: number): void => {
           void this.deleteScriptHookBinding(index)
         },
@@ -215,6 +217,27 @@ export class RoutineFlowSettingTab extends PluginSettingTab {
 
   private async deleteScriptHookBinding(index: number): Promise<void> {
     this.plugin.settings.scriptHookBindings = this.plugin.settings.scriptHookBindings.filter((_, i) => i !== index)
+    await this.saveAndRefreshScriptHookBindings()
+  }
+
+  private async reconfirmScriptHookBinding(index: number): Promise<void> {
+    const binding = this.plugin.settings.scriptHookBindings[index]
+    if (!binding) {
+      return
+    }
+    const file = this.app.vault.getFileByPath(binding.scriptPath)
+    if (file === null || file.extension !== 'js' || file.parent?.path !== this.plugin.settings.scriptsFolder.trim()) {
+      new Notice(`Routine Flow: script file "${binding.scriptPath}" not found in scripts folder.`)
+      return
+    }
+    const latestScriptSource = await this.app.vault.cachedRead(file)
+    const result = await new ScriptHookConfirmModal(this.app, binding.scriptPath, latestScriptSource).waitForResult()
+    if (result === 'cancelled') {
+      return
+    }
+    this.plugin.settings.scriptHookBindings = this.plugin.settings.scriptHookBindings.map((b, i) =>
+      i === index ? { name: b.name, scriptPath: b.scriptPath, scriptSource: latestScriptSource } : b,
+    )
     await this.saveAndRefreshScriptHookBindings()
   }
 

@@ -8,9 +8,7 @@ import type { ScriptHookDeps } from './script-hook'
  * settings tab. `scriptSource` is the snapshot reviewed and confirmed at
  * bind time (script-hook-source's bind-time confirmation gate) -- a later
  * on-disk edit to `scriptPath`'s file has no effect on what actually runs
- * until the binding is removed and re-added. Re-confirming in place when a
- * bound file's content changes is a known follow-up (see design.md's Open
- * Questions), not implemented here.
+ * until the binding is re-confirmed in place or removed and re-added.
  */
 export interface ScriptHookBindingSetting {
   readonly name: HookName

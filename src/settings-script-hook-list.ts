@@ -1,20 +1,35 @@
-import type { SettingDefinition } from 'obsidian'
+import type { Setting, SettingDefinition } from 'obsidian'
 import type { ScriptHookBindingSetting } from './timer/script-hook-registry'
 
 /**
  * Maps settings-authored script-hook bindings to declarative
- * SettingDefinitionList items -- name/scriptPath become name/desc, both
- * display-only (no control/action/render), matching SettingDefinitionEmpty.
- * Same rationale and file split as settings-predicate-list.ts's
- * formulaPredicatesToListItems -- script-hook bindings (flow-gu1.10) were
- * added to the settings tab after this file's sibling was designed, but
- * follow the identical settings-driven-list shape, so get the same treatment.
+ * SettingDefinitionList items -- name/scriptPath become name/desc.
+ * When onReconfirm is provided, a re-confirm extra button is attached to the setting item.
  */
-// See settings-predicate-list.ts's formulaPredicatesToListItems for why this
-// returns a mutable array: it matches Obsidian's own SettingDefinitionList['items'] type.
-export function scriptHookBindingsToListItems(bindings: readonly ScriptHookBindingSetting[]): SettingDefinition[] {
-  return bindings.map(binding => ({
-    name: binding.name,
-    desc: binding.scriptPath,
-  }))
+export function scriptHookBindingsToListItems(
+  bindings: readonly ScriptHookBindingSetting[],
+  onReconfirm?: (index: number) => void,
+): SettingDefinition[] {
+  return bindings.map((binding, index) => {
+    if (!onReconfirm) {
+      return {
+        name: binding.name,
+        desc: binding.scriptPath,
+      }
+    }
+    return {
+      name: binding.name,
+      desc: binding.scriptPath,
+      render: (setting: Setting): void => {
+        setting.addExtraButton(button =>
+          button
+            .setIcon('refresh-cw')
+            .setTooltip('Re-confirm script content')
+            .onClick(() => {
+              onReconfirm(index)
+            }),
+        )
+      },
+    }
+  })
 }
