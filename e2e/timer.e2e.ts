@@ -14,14 +14,12 @@ function routinePriorityOf(note: NoteDefinition): number {
 
 test.describe('Routine Timer View', () => {
   test('registers bases view and can start a timer', async ({ obsidianPage: { page } }) => {
-    // Assert registration exists
-    await expect.poll(async () =>
-      evaluateObsidian(
-        page,
-        (app, args: { pluginId: string }) => app.plugins.plugins[args.pluginId] !== undefined,
-        { pluginId: PLUGIN_ID },
-      ),
-    ).toBe(true)
+    const isLoaded = await evaluateObsidian(
+      page,
+      (app, args: { pluginId: string }) => app.plugins.plugins[args.pluginId] !== undefined,
+      { pluginId: PLUGIN_ID },
+    )
+    expect(isLoaded).toBe(true)
   })
 
   test('displays next phase indicator in the timer panel', async ({ obsidianPage: { page } }) => {
@@ -42,14 +40,6 @@ test.describe('Routine Timer View', () => {
 
 test.describe('duration-less phase (finish-phase / "Done" control)', () => {
   test.beforeEach(async ({ obsidianPage: { page } }) => {
-    await expect.poll(async () =>
-      evaluateObsidian(
-        page,
-        (app, args: { pluginId: string }) => app.plugins.plugins[args.pluginId] !== undefined,
-        { pluginId: PLUGIN_ID },
-      ),
-    ).toBe(true)
-
     // Tasks.base's "Workout" view (routines/workout-routine.md) has a duration-less "Set" phase.
     // Reuse the bases leaf the vault's persisted workspace.json already restores on launch (rather
     // than opening a second tab) so exactly one bases leaf exists to select below.
@@ -101,14 +91,6 @@ test.describe('duration-less phase (finish-phase / "Done" control)', () => {
 
 test.describe('manualClear phase (advance-phase / "Clear" control)', () => {
   test.beforeEach(async ({ obsidianPage: { page } }) => {
-    await expect.poll(async () =>
-      evaluateObsidian(
-        page,
-        (app, args: { pluginId: string }) => app.plugins.plugins[args.pluginId] !== undefined,
-        { pluginId: PLUGIN_ID },
-      ),
-    ).toBe(true)
-
     await evaluateObsidian(page, async (app) => {
       const file = app.vault.getFileByPath('Tasks.base')
       if (!file) {
@@ -146,14 +128,6 @@ test.describe('manualClear phase (advance-phase / "Clear" control)', () => {
 
 test.describe('BaseQuerySource-backed queue (base-query-task-source)', () => {
   test.beforeEach(async ({ obsidianPage: { page } }) => {
-    await expect.poll(async () =>
-      evaluateObsidian(
-        page,
-        (app, args: { pluginId: string }) => app.plugins.plugins[args.pluginId] !== undefined,
-        { pluginId: PLUGIN_ID },
-      ),
-    ).toBe(true)
-
     // .obsidian/workspace.json is gitignored (runtime state, not canonical vault content) -- a
     // fresh checkout (CI, or any new clone) has no persisted leaf, so Tasks.base must be opened and
     // its "Default" sub-view selected explicitly, same as the "Workout" sub-view below.

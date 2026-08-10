@@ -2,18 +2,8 @@ import { test, expect } from './fixtures/obsidian'
 import { evaluateObsidian } from './helpers/evaluate'
 import { selectBasesSubView } from './helpers/bases'
 
-const PLUGIN_ID = 'routine-flow'
-
 test.describe('routine replace confirmation modal', () => {
   test.beforeEach(async ({ obsidianPage: { page } }) => {
-    await expect.poll(async () =>
-      evaluateObsidian(
-        page,
-        (app, args: { pluginId: string }) => app.plugins.plugins[args.pluginId] !== undefined,
-        { pluginId: PLUGIN_ID },
-      ),
-    ).toBe(true)
-
     // .obsidian/workspace.json is gitignored -- open Tasks.base and select the "Default"
     // sub-view explicitly rather than relying on a persisted leaf (e2e-bases-view-testing-gotchas).
     await evaluateObsidian(page, async (app) => {

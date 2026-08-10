@@ -155,6 +155,12 @@ async function acquireObsidian(
       { timeout: 30_000 },
     )
 
+    // Wait for the routine-flow plugin to be loaded into Obsidian's plugin registry
+    await page.waitForFunction(
+      () => window.app!.plugins?.plugins['routine-flow'] !== undefined,
+      { timeout: 30_000 },
+    )
+
     return { proc, browser, page, vaultPath, configDir }
   }
   catch (err) {

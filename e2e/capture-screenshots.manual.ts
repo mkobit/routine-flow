@@ -27,16 +27,6 @@ function dispatchAction(page: Page, action: EngineAction): Promise<unknown> {
     app.plugins.plugins[args.pluginId]!.store.dispatch(args.action), { pluginId: PLUGIN_ID, action })
 }
 
-async function waitForPluginReady(page: Page): Promise<void> {
-  await expect.poll(async () =>
-    evaluateObsidian(
-      page,
-      (app, args: { pluginId: string }) => app.plugins.plugins[args.pluginId] !== undefined,
-      { pluginId: PLUGIN_ID },
-    ),
-  ).toBe(true)
-}
-
 async function openDefaultBasesView(page: Page): Promise<void> {
   await evaluateObsidian(page, async (app) => {
     const file = app.vault.getFileByPath('Tasks.base')
@@ -51,7 +41,6 @@ async function openDefaultBasesView(page: Page): Promise<void> {
 
 test.describe('capture screenshots for docs', () => {
   test('Bases timer view -- idle and running', async ({ obsidianPage: { page } }) => {
-    await waitForPluginReady(page)
     await openDefaultBasesView(page)
 
     const view = page.locator('.workspace-leaf-content[data-type="bases"] .routine-timer-view')
@@ -68,7 +57,6 @@ test.describe('capture screenshots for docs', () => {
   })
 
   test('side panel and status bar', async ({ obsidianPage: { page } }) => {
-    await waitForPluginReady(page)
     await dispatchAction(page, { type: 'stop' })
 
     // Start via the Bases view (not a bare dispatchAction) so the side panel's Work queue is
@@ -91,7 +79,6 @@ test.describe('capture screenshots for docs', () => {
   })
 
   test('settings tab', async ({ obsidianPage: { page } }) => {
-    await waitForPluginReady(page)
     // Settings opens in its own Electron BrowserWindow, not an in-page modal over `page`
     // (flow-ac5) -- wait for and screenshot that window instead.
     const settingsPagePromise = page.context().waitForEvent('page')
@@ -107,7 +94,6 @@ test.describe('capture screenshots for docs', () => {
 
   test('write-back confirmation modal', async ({ obsidianPage: { page, vaultPath } }) => {
     const TASK_PATH = 'screenshot-write-back-task.md'
-    await waitForPluginReady(page)
     const note = createNote(TASK_PATH, { type: 'work', sessions: 3 })
     const writeError = await writeNoteToVault(vaultPath, note)
     expect(writeError).toBeUndefined()
@@ -152,7 +138,6 @@ test.describe('capture screenshots for docs', () => {
   })
 
   test('routine-replace confirmation modal', async ({ obsidianPage: { page } }) => {
-    await waitForPluginReady(page)
     await openDefaultBasesView(page)
     const view = page.locator('.workspace-leaf-content[data-type="bases"] .routine-timer-view')
     await expect(view).toHaveAttribute('data-view-graph-id', 'default')

@@ -31,14 +31,6 @@ type SettingsFixtures = {
 
 const test = obsidianTest.extend<SettingsFixtures>({
   settingsPage: async ({ obsidianPage: { page } }, use) => {
-    await expect.poll(async () =>
-      evaluateObsidian(
-        page,
-        (app, args: { pluginId: string }) => app.plugins.plugins[args.pluginId] !== undefined,
-        { pluginId: PLUGIN_ID },
-      ),
-    ).toBe(true)
-
     const settingsPagePromise = page.context().waitForEvent('page')
     await evaluateObsidian(page, (app, args: { pluginId: string }) => {
       app.setting.open()

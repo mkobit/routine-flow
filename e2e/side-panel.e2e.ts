@@ -18,13 +18,6 @@ function panelOf(page: Page) {
 
 test.describe('workspace-wide side panel view', () => {
   test.beforeEach(async ({ obsidianPage: { page } }) => {
-    await expect.poll(async () =>
-      evaluateObsidian(
-        page,
-        (app, args: { pluginId: string }) => app.plugins.plugins[args.pluginId] !== undefined,
-        { pluginId: PLUGIN_ID },
-      ),
-    ).toBe(true)
     await dispatchAction(page, { type: 'stop' })
   })
 
