@@ -4,7 +4,7 @@ import type RoutineFlowPlugin from '../main'
 import type { EngineState } from '../domain/session/engine-state'
 import type { PhaseGraph } from '../domain/phase/phase-graph'
 import type { Phase } from '../domain/phase/phase'
-import { findPhaseById, FOCUS_PHASE_KIND, DEFAULT_PHASE_GRAPH } from '../timer/phase-graph'
+import { findNextPhase, findPhaseById, FOCUS_PHASE_KIND, DEFAULT_PHASE_GRAPH } from '../timer/phase-graph'
 import { formatCountdown } from '../timer/format'
 import { computeProgressFraction } from '../timer/progress'
 import { progressMeterStyleClass } from '../timer/progress-meter-style'
@@ -184,6 +184,12 @@ export class RoutineTimerView extends BasesView {
       dial.createSpan({ cls: 'routine-countdown-time', text: countdownTime })
     }
     header.createSpan({ cls: 'routine-countdown-status', text: ` (${state.status})` })
+
+    const nextPhase = findNextPhase(graph, state, this.plugin.formulaPredicateRegistry)
+    if (nextPhase !== undefined) {
+      const nextPhaseEl = timerPanel.createDiv({ cls: 'routine-next-phase' })
+      nextPhaseEl.createSpan({ text: `Next: ${nextPhase.label}` })
+    }
 
     if (isInert) {
       const inertEl = timerPanel.createEl('p', { cls: 'routine-inert' })

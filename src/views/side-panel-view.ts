@@ -2,7 +2,7 @@ import { ItemView } from 'obsidian'
 import type { WorkspaceLeaf } from 'obsidian'
 import type RoutineFlowPlugin from '../main'
 import type { EngineState } from '../domain/session/engine-state'
-import { findPhaseById, FOCUS_PHASE_KIND } from '../timer/phase-graph'
+import { findNextPhase, findPhaseById, FOCUS_PHASE_KIND } from '../timer/phase-graph'
 import { formatPhaseHeader } from '../timer/format'
 import { ResetConfirmModal } from './reset-confirm-modal'
 
@@ -59,6 +59,12 @@ export class RoutineSidePanelView extends ItemView {
     }
 
     this.contentEl.createEl('h2', { text: formatPhaseHeader(phase, state.remaining, state.status) })
+
+    const nextPhase = findNextPhase(graph, state, this.plugin.formulaPredicateRegistry)
+    if (nextPhase !== undefined) {
+      const nextPhaseEl = this.contentEl.createDiv({ cls: 'routine-next-phase' })
+      nextPhaseEl.createSpan({ text: `Next: ${nextPhase.label}` })
+    }
 
     const controls = this.contentEl.createDiv({ cls: 'routine-controls' })
 
