@@ -11,6 +11,7 @@ The project enforces strict Functional Programming principles via `eslint`.
 - **Dependency Injection**: Inject dispatch handlers and settings instead of binding to global managers.
 - **Date/Time**: Use the `Temporal` API for logic instead of the native `Date`.
 - **Lint quirk**: `eslint-plugin-obsidianmd`'s sentence-case rule can flag or miss `(e.g. someCamelCase)` parentheticals inconsistently depending on surrounding text — before attributing a new warning to your edit, check it wasn't already present on `main`.
+- **Lint FP carve-outs**: `eslint.config.mts` relaxes `functional/no-try-statements`, `functional/no-expression-statements`, and `functional/prefer-immutable-types` across `src/**` so domain code can wrap throwing stdlib/parser APIs (e.g. `JSON.parse`) in try/catch blocks and use expression statements, while maintaining immutability via `functional/immutable-data` and pure state reducers.
 
 ## Commands
 

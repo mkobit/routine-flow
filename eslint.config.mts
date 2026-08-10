@@ -405,6 +405,11 @@ export default tseslint.config(
       '@stylistic/indent': ['error', 2],
     },
   },
+  // General overrides for src/ code
+  // Relax select functional rules across src/ (e.g. no-try-statements, no-expression-statements)
+  // to allow domain parsing logic to safely wrap throwing stdlib/parser APIs (e.g. JSON.parse,
+  // Temporal.Duration.from in routine-file.ts) and permit procedural expression statements,
+  // while preserving immutability and reducer-purity constraints (immutable-data).
   {
     files: ['src/**/*.ts', 'src/**/*.tsx'],
     rules: {
