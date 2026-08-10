@@ -10,6 +10,7 @@ import { Command, Option } from 'commander'
 import { rebuildGeneratedVault, resolveVaultSeed, stripGitignoredVaultState } from '../e2e/vault'
 import { applyViewMode } from './appearance'
 import type { ViewMode } from './appearance'
+import { applyInitialWorkspace } from './initial-workspace'
 
 const ROOT_DIR = path.resolve(import.meta.dirname, '..')
 const VAULT_PATH = path.join(ROOT_DIR, 'routine-flow-example-vault')
@@ -89,8 +90,9 @@ async function main(): Promise<void> {
     .option('--generated', 'rebuild the vault\'s per-routine notes (dev-docs/examples/) before launching', false)
     .option('--headless', 'wait for Obsidian to exit instead of detaching -- required under xvfb-run, which tears down the virtual display as soon as the wrapped command exits', false)
     .addOption(new Option('--theme <mode>', 'preset Obsidian\'s color scheme before launch').choices(['light', 'dark']).default('dark'))
+    .addOption(new Option('--open <target>', 'preset initial open view or file on launch (e.g. default, standup, workout, chore-list, manual-clear, table, shared-routines, or a vault path)').default('default'))
   program.parse()
-  const { generated, headless, theme } = program.opts<{ generated: boolean, headless: boolean, theme: ViewMode }>()
+  const { generated, headless, theme, open } = program.opts<{ generated: boolean, headless: boolean, theme: ViewMode, open: string }>()
 
   if (generated) {
     const seed = resolveVaultSeed()
@@ -115,6 +117,7 @@ async function main(): Promise<void> {
   const copiedVault = await launcher.setupVault({ vault: VAULT_PATH, copy: true })
   await stripGitignoredVaultState(copiedVault)
   await applyViewMode(copiedVault, theme)
+  await applyInitialWorkspace(copiedVault, open)
 
   const { proc, configDir, vault } = await launcher.launch({
     appVersion: 'latest',
