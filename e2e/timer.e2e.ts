@@ -1,5 +1,6 @@
 import { test, expect } from './fixtures/obsidian'
 import { evaluateObsidian } from './helpers/evaluate'
+import { selectBasesSubView } from './helpers/bases'
 import { generateVault, resolveVaultSeed } from './vault'
 import type { NoteDefinition } from './vault'
 
@@ -32,8 +33,7 @@ test.describe('Routine Timer View', () => {
       const leaf = app.workspace.getLeavesOfType('bases')[0] ?? app.workspace.getLeaf('tab')
       await leaf.openFile(file)
     })
-    await page.locator('.workspace-leaf-content[data-type="bases"] .bases-toolbar-views-menu .text-icon-button').click()
-    await page.locator('.menu .bases-toolbar-menu-item-name', { hasText: 'Default' }).click()
+    await selectBasesSubView(page, 'Default')
 
     const panel = page.locator('.workspace-leaf-content[data-type="bases"] .routine-timer-panel')
     await expect(panel.locator('.routine-next-phase')).toHaveText('Next: Short break')
@@ -61,8 +61,7 @@ test.describe('duration-less phase (finish-phase / "Done" control)', () => {
       const leaf = app.workspace.getLeavesOfType('bases')[0] ?? app.workspace.getLeaf('tab')
       await leaf.openFile(file)
     })
-    await page.locator('.workspace-leaf-content[data-type="bases"] .bases-toolbar-views-menu .text-icon-button').click()
-    await page.locator('.menu .bases-toolbar-menu-item-name', { hasText: 'Workout' }).click()
+    await selectBasesSubView(page, 'Workout')
   })
 
   test('renders the phase (not blank) and a Done button appears once running, completing the phase on click', async ({ obsidianPage: { page } }) => {
@@ -118,8 +117,7 @@ test.describe('manualClear phase (advance-phase / "Clear" control)', () => {
       const leaf = app.workspace.getLeavesOfType('bases')[0] ?? app.workspace.getLeaf('tab')
       await leaf.openFile(file)
     })
-    await page.locator('.workspace-leaf-content[data-type="bases"] .bases-toolbar-views-menu .text-icon-button').click()
-    await page.locator('.menu .bases-toolbar-menu-item-name', { hasText: 'Manual clear' }).click()
+    await selectBasesSubView(page, 'Manual clear')
   })
 
   test('a Clear button appears once the phase completes, and clicking it advances to the next phase', async ({ obsidianPage: { page } }) => {
@@ -167,8 +165,7 @@ test.describe('BaseQuerySource-backed queue (base-query-task-source)', () => {
       const leaf = app.workspace.getLeavesOfType('bases')[0] ?? app.workspace.getLeaf('tab')
       await leaf.openFile(file)
     })
-    await page.locator('.workspace-leaf-content[data-type="bases"] .bases-toolbar-views-menu .text-icon-button').click()
-    await page.locator('.menu .bases-toolbar-menu-item-name', { hasText: 'Default' }).click()
+    await selectBasesSubView(page, 'Default')
   })
 
   test('Work queue renders real Bases entries sorted by routine-priority', async ({ obsidianPage: { page } }) => {

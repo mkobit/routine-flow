@@ -1,5 +1,6 @@
 import { test, expect } from './fixtures/obsidian'
 import { evaluateObsidian } from './helpers/evaluate'
+import { selectBasesSubView } from './helpers/bases'
 
 const PLUGIN_ID = 'routine-flow'
 
@@ -23,8 +24,7 @@ test.describe('routine replace confirmation modal', () => {
       const leaf = app.workspace.getLeavesOfType('bases')[0] ?? app.workspace.getLeaf('tab')
       await leaf.openFile(file)
     })
-    await page.locator('.workspace-leaf-content[data-type="bases"] .bases-toolbar-views-menu .text-icon-button').click()
-    await page.locator('.menu .bases-toolbar-menu-item-name', { hasText: 'Default' }).click()
+    await selectBasesSubView(page, 'Default')
 
     const view = page.locator('.workspace-leaf-content[data-type="bases"] .routine-timer-view')
     await expect(view).toHaveAttribute('data-view-graph-id', 'default')
@@ -38,8 +38,7 @@ test.describe('routine replace confirmation modal', () => {
     // Switch to the "Workout" sub-view (routines/workout-routine.md, graph id "workout") while
     // the default routine is still running -- wait for its own async routine-file load to
     // settle before the tests below click Start against it (flow-6v7).
-    await page.locator('.workspace-leaf-content[data-type="bases"] .bases-toolbar-views-menu .text-icon-button').click()
-    await page.locator('.menu .bases-toolbar-menu-item-name', { hasText: 'Workout' }).click()
+    await selectBasesSubView(page, 'Workout')
     await expect(view).toHaveAttribute('data-view-graph-id', 'workout')
   })
 
