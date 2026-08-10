@@ -22,6 +22,22 @@ test.describe('Routine Timer View', () => {
       ),
     ).toBe(true)
   })
+
+  test('displays next phase indicator in the timer panel', async ({ obsidianPage: { page } }) => {
+    await evaluateObsidian(page, async (app) => {
+      const file = app.vault.getFileByPath('Tasks.base')
+      if (!file) {
+        throw new Error('Tasks.base not found')
+      }
+      const leaf = app.workspace.getLeavesOfType('bases')[0] ?? app.workspace.getLeaf('tab')
+      await leaf.openFile(file)
+    })
+    await page.locator('.workspace-leaf-content[data-type="bases"] .bases-toolbar-views-menu .text-icon-button').click()
+    await page.locator('.menu .bases-toolbar-menu-item-name', { hasText: 'Default' }).click()
+
+    const panel = page.locator('.workspace-leaf-content[data-type="bases"] .routine-timer-panel')
+    await expect(panel.locator('.routine-next-phase')).toHaveText('Next: Short break')
+  })
 })
 
 test.describe('duration-less phase (finish-phase / "Done" control)', () => {

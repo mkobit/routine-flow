@@ -3,6 +3,7 @@ import { PhaseKindSchema, PhaseSchema } from '../domain/phase/phase'
 import type { Phase, PhaseId } from '../domain/phase/phase'
 import { PhaseGraphIdSchema, PhaseGraphSchema } from '../domain/phase/phase-graph'
 import type { PhaseGraph, TransitionCondition } from '../domain/phase/phase-graph'
+import type { EngineState } from '../domain/session/engine-state'
 import type { PredicateRegistry } from '../domain/hook/predicate'
 import { TaskSourceIdSchema } from '../domain/queue/task-source'
 import { WRITE_BACK_HOOK_NAME } from './write-back'
@@ -27,6 +28,33 @@ export const BREAK_QUEUE_TASK_SOURCE_ID = TaskSourceIdSchema.parse('break-queue'
  */
 export function findPhaseById(graph: PhaseGraph, id: PhaseId): Phase | undefined {
   return graph.phases.find(phase => phase.id === id)
+}
+
+/**
+ * Resolves the next phase that will be entered after the current phase in `state`
+ * completes or advances, using `state.phaseVisitCounts` incremented for `state.currentPhaseId`.
+ * Returns undefined if `state.currentPhaseId` is not in the graph or if resolution fails.
+ */
+export function findNextPhase(
+  graph: PhaseGraph,
+  state: EngineState,
+  predicateRegistry?: PredicateRegistry,
+): Phase | undefined {
+  const currentPhase = findPhaseById(graph, state.currentPhaseId)
+  if (!currentPhase) {
+    return undefined
+  }
+  const updatedCounts: Record<PhaseId, number> = {
+    ...state.phaseVisitCounts,
+    [state.currentPhaseId]: (state.phaseVisitCounts[state.currentPhaseId] ?? 0) + 1,
+  }
+  try {
+    const nextPhaseId = resolveNextPhaseId(graph, state.currentPhaseId, updatedCounts, predicateRegistry, state.queueExhausted)
+    return findPhaseById(graph, nextPhaseId)
+  }
+  catch {
+    return undefined
+  }
 }
 
 /**

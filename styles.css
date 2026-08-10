@@ -48,8 +48,9 @@
 }
 
 .routine-countdown-label,
-.routine-countdown-status {
-  font-size: var(--font-ui-medium);
+.routine-countdown-status,
+.routine-next-phase {
+  font-size: var(--font-ui-small);
   font-weight: var(--font-normal);
   color: var(--text-muted);
 }
