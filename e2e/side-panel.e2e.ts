@@ -1,6 +1,7 @@
 import type { Page } from '@playwright/test'
 import { test, expect } from './fixtures/obsidian'
 import { evaluateObsidian } from './helpers/evaluate'
+import { selectBasesSubView } from './helpers/bases'
 import type { EngineAction } from '../src/timer/reducer'
 
 const PLUGIN_ID = 'routine-flow'
@@ -93,8 +94,7 @@ test.describe('workspace-wide side panel view', () => {
       const leaf = app.workspace.getLeavesOfType('bases')[0] ?? app.workspace.getLeaf('tab')
       await leaf.openFile(file)
     })
-    await page.locator('.workspace-leaf-content[data-type="bases"] .bases-toolbar-views-menu .text-icon-button').click()
-    await page.locator('.menu .bases-toolbar-menu-item-name', { hasText: 'Default' }).click()
+    await selectBasesSubView(page, 'Default')
 
     await page.locator('.workspace-leaf-content[data-type="bases"] .routine-controls').getByRole('button', { name: 'Start' }).click()
 
@@ -112,8 +112,7 @@ test.describe('workspace-wide side panel view', () => {
       const leaf = app.workspace.getLeavesOfType('bases')[0] ?? app.workspace.getLeaf('tab')
       await leaf.openFile(file)
     })
-    await page.locator('.workspace-leaf-content[data-type="bases"] .bases-toolbar-views-menu .text-icon-button').click()
-    await page.locator('.menu .bases-toolbar-menu-item-name', { hasText: 'Default' }).click()
+    await selectBasesSubView(page, 'Default')
 
     await page.locator(RIBBON_ICON).click()
     await dispatchAction(page, { type: 'start' })

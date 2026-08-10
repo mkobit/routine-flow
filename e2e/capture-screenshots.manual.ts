@@ -11,6 +11,7 @@ import type { Page } from '@playwright/test'
 import * as path from 'node:path'
 import { test, expect } from './fixtures/obsidian'
 import { evaluateObsidian } from './helpers/evaluate'
+import { selectBasesSubView } from './helpers/bases'
 import { createNote, writeNoteToVault } from './vault'
 import type { EngineAction } from '../src/timer/reducer'
 
@@ -45,8 +46,7 @@ async function openDefaultBasesView(page: Page): Promise<void> {
     const leaf = app.workspace.getLeavesOfType('bases')[0] ?? app.workspace.getLeaf('tab')
     await leaf.openFile(file)
   })
-  await page.locator('.workspace-leaf-content[data-type="bases"] .bases-toolbar-views-menu .text-icon-button').click()
-  await page.locator('.menu .bases-toolbar-menu-item-name', { hasText: 'Default' }).click()
+  await selectBasesSubView(page, 'Default')
 }
 
 test.describe('capture screenshots for docs', () => {
@@ -160,8 +160,7 @@ test.describe('capture screenshots for docs', () => {
     await page.locator('.workspace-leaf-content[data-type="bases"] .routine-controls').getByRole('button', { name: 'Start' }).click()
     await expect(page.locator('.workspace-leaf-content[data-type="bases"] .routine-timer-panel h2')).toHaveText(/^Focus: \d{2}:\d{2} \(running\)$/)
 
-    await page.locator('.workspace-leaf-content[data-type="bases"] .bases-toolbar-views-menu .text-icon-button').click()
-    await page.locator('.menu .bases-toolbar-menu-item-name', { hasText: 'Workout' }).click()
+    await selectBasesSubView(page, 'Workout')
     await expect(view).toHaveAttribute('data-view-graph-id', 'workout')
 
     await page.locator('.workspace-leaf-content[data-type="bases"] .routine-controls').getByRole('button', { name: 'Start' }).click()
