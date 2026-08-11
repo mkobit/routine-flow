@@ -1,4 +1,5 @@
 import { test, expect, describe } from 'bun:test'
+import { Temporal } from 'temporal-polyfill'
 import { parseRoutineFile } from '../src/domain/routine/routine-file'
 import { PhaseGraphIdSchema } from '../src/domain/phase/phase-graph'
 
@@ -60,6 +61,41 @@ describe('parseRoutineFile', () => {
     expect(result.success && result.graph.phases[0]?.completionPolicy?.kind).toBe(kind)
   })
 
+  test('defaults actions to an empty array when omitted from a phase definition', () => {
+    const result = parseRoutineFile(routineFile(validPhaseGraph))
+
+    expect(result.success).toBe(true)
+    expect(result.success && result.graph.phases[0]?.actions).toEqual([])
+  })
+
+  test('parses a phase with actions including queueCycle, markDone, setFrontmatter, and deferDuration', () => {
+    const actions = [
+      { id: 'act-1', label: 'Cycle', payload: { kind: 'queueCycle' } },
+      { id: 'act-2', label: 'Done', style: 'primary', payload: { kind: 'markDone' } },
+      { id: 'act-3', label: 'Priority', payload: { kind: 'setFrontmatter', property: 'priority', value: 1 } },
+      { id: 'act-4', label: 'Defer 1 day', payload: { kind: 'deferDuration', after: 'P1D' } },
+    ]
+    const graph = {
+      ...validPhaseGraph,
+      phases: [{ ...validPhaseGraph.phases[0], actions }],
+    }
+    const result = parseRoutineFile(routineFile(graph))
+
+    expect(result.success).toBe(true)
+    if (result.success) {
+      const parsedActions = result.graph.phases[0]?.actions
+      expect(parsedActions).toHaveLength(4)
+      expect(parsedActions?.[0]).toEqual({ id: 'act-1', label: 'Cycle', payload: { kind: 'queueCycle' } })
+      expect(parsedActions?.[1]).toEqual({ id: 'act-2', label: 'Done', style: 'primary', payload: { kind: 'markDone' } })
+      expect(parsedActions?.[2]).toEqual({ id: 'act-3', label: 'Priority', payload: { kind: 'setFrontmatter', property: 'priority', value: 1 } })
+      expect(parsedActions?.[3]?.id).toBe('act-4')
+      expect(parsedActions?.[3]?.payload.kind).toBe('deferDuration')
+      if (parsedActions?.[3]?.payload.kind === 'deferDuration') {
+        expect(parsedActions[3].payload.after).toEqual(Temporal.Duration.from('P1D'))
+      }
+    }
+  })
+
   test('a malformed ISO 8601 duration string fails with a RoutineParseError, not a throw', () => {
     const graph = { ...validPhaseGraph, phases: [{ ...validPhaseGraph.phases[0], duration: '25 minutes' }] }
 
@@ -73,6 +109,23 @@ describe('parseRoutineFile', () => {
     const graph = {
       ...validPhaseGraph,
       phases: [{ ...validPhaseGraph.phases[0], completionPolicy: { kind: 'futureDate', after: 'not-a-duration' } }],
+    }
+
+    const result = parseRoutineFile(routineFile(graph))
+
+    expect(result.success).toBe(false)
+    expect(result.success === false && result.error.message).toContain('Invalid ISO 8601 duration')
+  })
+
+  test('a malformed deferDuration action duration string fails with a RoutineParseError', () => {
+    const graph = {
+      ...validPhaseGraph,
+      phases: [
+        {
+          ...validPhaseGraph.phases[0],
+          actions: [{ id: 'act-bad', label: 'Bad Defer', payload: { kind: 'deferDuration', after: 'invalid-iso' } }],
+        },
+      ],
     }
 
     const result = parseRoutineFile(routineFile(graph))

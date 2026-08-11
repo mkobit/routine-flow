@@ -91,19 +91,47 @@ function convertCompletionPolicy(value: unknown): Result<unknown, RoutineParseEr
     : convertFutureDatePolicy(value)
 }
 
+function convertActionPayload(payload: unknown): Result<unknown, RoutineParseError> {
+  return !isRecord(payload) || payload.kind !== 'deferDuration'
+    ? { success: true, value: payload }
+    : map(convertDurationField(payload.after), after => ({ ...payload, after }))
+}
+
+function convertAction(action: unknown): Result<unknown, RoutineParseError> {
+  return !isRecord(action)
+    ? { success: true, value: action }
+    : map(convertActionPayload(action.payload), payload => ({ ...action, payload }))
+}
+
+function convertActions(actions: unknown): Result<unknown, RoutineParseError> {
+  return !Array.isArray(actions)
+    ? { success: true, value: actions }
+    : actions.reduce<Result<readonly unknown[], RoutineParseError>>(
+        (acc, action) => andThen(acc, converted => map(convertAction(action), value => [...converted, value])),
+        { success: true, value: [] },
+      )
+}
+
 function mergePhaseFields(
   phase: Record<string, unknown>,
   durationResult: Result<unknown, RoutineParseError>,
   policyResult: Result<unknown, RoutineParseError>,
+  actionsResult: Result<unknown, RoutineParseError>,
 ): Result<unknown, RoutineParseError> {
   return andThen(durationResult, duration =>
-    map(policyResult, completionPolicy => ({ ...phase, duration, completionPolicy })))
+    andThen(policyResult, completionPolicy =>
+      map(actionsResult, actions => ({ ...phase, duration, completionPolicy, actions }))))
 }
 
 function convertPhase(phase: unknown): Result<unknown, RoutineParseError> {
   return !isRecord(phase)
     ? { success: true, value: phase }
-    : mergePhaseFields(phase, convertDurationField(phase.duration), convertCompletionPolicy(phase.completionPolicy))
+    : mergePhaseFields(
+        phase,
+        convertDurationField(phase.duration),
+        convertCompletionPolicy(phase.completionPolicy),
+        convertActions(phase.actions),
+      )
 }
 
 function convertPhaseList(phases: readonly unknown[]): Result<readonly unknown[], RoutineParseError> {

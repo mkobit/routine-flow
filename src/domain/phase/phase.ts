@@ -4,6 +4,7 @@ import { TaskSourceIdSchema } from '../queue/task-source'
 import { CompletionPolicySchema } from '../policy/completion-policy'
 import { HookReferenceSchema } from '../hook/hook-reference'
 import { NotificationPolicySchema } from '../notification-policy'
+import { QueueItemActionSchema } from '../action/queue-item-action'
 
 /**
  * Identifier for a phase within a PhaseGraph. Branded so a PhaseId can't be
@@ -71,6 +72,8 @@ export const PhaseSchema = z.object({
   onSkip: HookReferenceSchema.nullable(),
   /** Hook fired when this phase stops being active, regardless of how it ended. */
   onExit: HookReferenceSchema.nullable(),
+  /** Custom interactive actions available on active queue items during this phase. */
+  actions: z.array(QueueItemActionSchema).optional().default([]),
 }).readonly()
 
 export type Phase = z.infer<typeof PhaseSchema>
