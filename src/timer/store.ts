@@ -191,13 +191,23 @@ export class EngineStore {
     this.applyState(nextState)
     this.syncItemTouch()
 
-    const { hookRegistry, port } = this.deps
-    if (port === undefined) {
-      return []
+    const { hookRegistry, port, notificationPort } = this.deps
+
+    if (notificationPort !== undefined && prevState.currentPhaseId !== nextState.currentPhaseId) {
+      const newPhase = findPhaseById(this.graph, nextState.currentPhaseId)
+      if (newPhase !== undefined) {
+        notificationPort.notifyInApp(`Routine Flow: ${newPhase.label} phase started`)
+        if (newPhase.notification?.systemNotification === true) {
+          notificationPort.notifySystem('Routine Flow', `${newPhase.label} phase started`)
+        }
+      }
     }
 
     let applications: readonly HookEventApplication[] = []
     for (const { event, phase, phaseInstanceId } of deriveHookEvents(prevState, this.state, action, this.graph)) {
+      if (port === undefined) {
+        continue
+      }
       if (event === 'onComplete') {
         const completionMutations = deriveCompletionMutations(phase, prevState.activeFilePath, now)
         if (completionMutations.length > 0) {

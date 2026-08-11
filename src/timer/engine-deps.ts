@@ -2,6 +2,7 @@ import type { HookRegistry } from '../domain/hook/hook'
 import type { PredicateRegistry } from '../domain/hook/predicate'
 import type { FileMutationPort } from '../domain/mutation/apply-mutations'
 import type { TaskSourceRegistry } from '../domain/queue/task-source'
+import type { NotificationPort } from './notification-port'
 
 /**
  * Optional collaborators shared by engineReducer and EngineStore. A single
@@ -17,4 +18,5 @@ export interface EngineDeps {
   readonly port?: FileMutationPort
   readonly predicateRegistry?: PredicateRegistry
   readonly taskSourceRegistry?: TaskSourceRegistry
+  readonly notificationPort?: NotificationPort
 }
