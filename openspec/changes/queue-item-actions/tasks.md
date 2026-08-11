@@ -7,9 +7,9 @@
 
 ## 2. Phase & Routine Parser Integration
 
-- [ ] 2.1 Update `PhaseSchema` in `src/domain/phase/phase.ts` to include optional `actions` field
-- [ ] 2.2 Update routine parser in `src/domain/routine/routine-file.ts` to parse raw `actions` array
-- [ ] 2.3 Add unit tests for routine parsing with `actions` in `test/domain/routine/`
+- [x] 2.1 Update `PhaseSchema` in `src/domain/phase/phase.ts` to include optional `actions` field
+- [x] 2.2 Update routine parser in `src/domain/routine/routine-file.ts` to parse raw `actions` array
+- [x] 2.3 Add unit tests for routine parsing with `actions` in `test/domain/routine/`
 
 ## 3. UI & Dispatcher Wiring
 
