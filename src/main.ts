@@ -14,6 +14,7 @@ import { createFormulaPredicateRegistry } from './timer/formula-predicate-regist
 import type { MutableFormulaPredicateRegistry } from './timer/formula-predicate-registry'
 import { createScriptHookRegistry } from './timer/script-hook-registry'
 import type { MutableScriptHookRegistry } from './timer/script-hook-registry'
+import { ObsidianNotificationPort } from './timer/obsidian-notification-port'
 import { RoutineTimerView } from './views/timer-view'
 import { ObsidianWriteBackPromptPort } from './views/write-back-modal'
 import { RoutineStatusBarItem } from './views/status-bar'
@@ -71,6 +72,7 @@ export default class RoutineFlowPlugin extends Plugin {
       port,
       predicateRegistry: this.formulaPredicateRegistry,
       taskSourceRegistry: this.taskSourceRegistry,
+      notificationPort: new ObsidianNotificationPort(),
     })
     this.ticker = new TimerTicker((action) => {
       void this.store.dispatch(action).then(reportFailedHookApplications, (cause: unknown) => {

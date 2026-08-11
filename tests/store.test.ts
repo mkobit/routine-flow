@@ -557,3 +557,73 @@ describe('EngineStore action execution', () => {
     ])
   })
 })
+
+describe('EngineStore notifications', () => {
+  test('dispatches in-app Notice on phase transition', async () => {
+    let inAppMessages: readonly string[] = []
+    let systemNotifications: readonly { title: string, body: string }[] = []
+    const notificationPort = {
+      notifyInApp: (msg: string) => {
+        inAppMessages = [...inAppMessages, msg]
+      },
+      notifySystem: (title: string, body: string) => {
+        systemNotifications = [...systemNotifications, { title, body }]
+      },
+    }
+    const store = new EngineStore(buildGraph('a'), { notificationPort })
+    await store.dispatch({ type: 'start' })
+
+    expect(inAppMessages).toEqual([])
+    expect(systemNotifications).toEqual([])
+
+    await store.dispatch({ type: 'advance-phase' })
+
+    expect(inAppMessages).toEqual(['Routine Flow: Break phase started'])
+  })
+
+  test('dispatches system notification when phase systemNotification policy is enabled on transition', async () => {
+    let systemNotifications: readonly { title: string, body: string }[] = []
+    const notificationPort = {
+      notifyInApp: () => {},
+      notifySystem: (title: string, body: string) => {
+        systemNotifications = [...systemNotifications, { title, body }]
+      },
+    }
+    const graphWithNotification = PhaseGraphSchema.parse({
+      id: 'notif-graph',
+      name: 'Notification Graph',
+      phases: [
+        PhaseSchema.parse({
+          ...phaseDefaults,
+          id: 'focus',
+          label: 'Focus',
+          kind: 'focus',
+          duration: Temporal.Duration.from({ seconds: 10 }),
+          notification: { sound: null, systemNotification: false },
+          logTarget: { kind: 'activeItem' },
+        }),
+        PhaseSchema.parse({
+          ...phaseDefaults,
+          id: 'break',
+          label: 'Break',
+          kind: 'break',
+          duration: Temporal.Duration.from({ seconds: 5 }),
+          notification: { sound: null, systemNotification: true },
+          logTarget: { kind: 'activeItem' },
+        }),
+      ],
+      transitions: [
+        { fromPhaseId: 'focus', toPhaseId: 'break', condition: { kind: 'always' } },
+      ],
+    })
+    const store = new EngineStore(graphWithNotification, { notificationPort })
+    await store.dispatch({ type: 'start' })
+
+    expect(systemNotifications).toEqual([])
+
+    await store.dispatch({ type: 'advance-phase' })
+
+    // Break phase has systemNotification: true, so system notification is emitted when entering Break
+    expect(systemNotifications).toEqual([{ title: 'Routine Flow', body: 'Break phase started' }])
+  })
+})
