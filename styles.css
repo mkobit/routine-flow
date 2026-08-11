@@ -379,18 +379,31 @@
 
 .routine-queue li {
   display: flex;
+  flex-direction: column;
 }
 
-.routine-queue li button {
+.routine-queue li > button {
   flex: 1;
   text-align: start;
 }
 
 /* The active queue item is visually distinct, not just structurally marked (design.md #1). */
-.routine-queue li.is-active-task button {
+.routine-queue li.is-active-task > button:not(.routine-action-btn) {
   font-weight: var(--font-bold);
   color: var(--text-on-accent);
   background-color: var(--interactive-accent);
+}
+
+.routine-queue-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--size-4-1);
+  margin-top: var(--size-4-1);
+}
+
+.routine-action-btn {
+  font-size: var(--font-ui-smaller);
+  padding: var(--size-4-1) var(--size-4-2);
 }
 
 /* ---- Empty queue (surface #5) --------------------------------------------------------------- */

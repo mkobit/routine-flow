@@ -1,4 +1,4 @@
-import { ItemView } from 'obsidian'
+import { ItemView, Notice } from 'obsidian'
 import type { WorkspaceLeaf } from 'obsidian'
 import type RoutineFlowPlugin from '../main'
 import type { EngineState } from '../domain/session/engine-state'
@@ -114,6 +114,31 @@ export class RoutineSidePanelView extends ItemView {
       const taskBtn = li.createEl('button', { text: item.displayName })
       if (state.activeFilePath === item.sourcePath) {
         li.addClass('is-active-task')
+        if (phase.actions.length > 0) {
+          const actionsEl = li.createDiv({ cls: 'routine-queue-actions' })
+          for (const action of phase.actions) {
+            const actionBtn = actionsEl.createEl('button', {
+              cls: `routine-action-btn${action.style ? ` mod-${action.style === 'primary' ? 'cta' : action.style === 'destructive' ? 'warning' : action.style}` : ''}`,
+              text: action.label,
+            })
+            actionBtn.addEventListener('click', (e) => {
+              e.stopPropagation()
+              void (async () => {
+                try {
+                  const result = await this.plugin.store.executeAction(action)
+                  if (result !== null && !result.success) {
+                    const causeMsg = result.cause instanceof Error ? result.cause.message : String(result.cause)
+                    new Notice(`Routine Flow: action failed (${action.label}) — ${causeMsg}`)
+                  }
+                }
+                catch (cause: unknown) {
+                  const causeMsg = cause instanceof Error ? cause.message : String(cause)
+                  new Notice(`Routine Flow: action failed (${action.label}) — ${causeMsg}`)
+                }
+              })()
+            })
+          }
+        }
       }
       taskBtn.addEventListener('click', () => {
         void this.plugin.store.dispatch({ type: 'start', filePath: item.sourcePath })

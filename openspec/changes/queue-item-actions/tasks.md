@@ -13,6 +13,6 @@
 
 ## 3. UI & Dispatcher Wiring
 
-- [ ] 3.1 Render action buttons for active queue item in `PomodoroTimerView`
-- [ ] 3.2 Wire action button clicks to derive mutations and apply via `FileMutationPort`
-- [ ] 3.3 Add tests for action button dispatching
+- [x] 3.1 Render action buttons for active queue item in `PomodoroTimerView`
+- [x] 3.2 Wire action button clicks to derive mutations and apply via `FileMutationPort`
+- [x] 3.3 Add tests for action button dispatching
