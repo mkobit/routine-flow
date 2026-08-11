@@ -1,4 +1,5 @@
 import { Temporal } from 'temporal-polyfill'
+import { deriveCompletionMutations } from './completion-policy-executor'
 import { deriveHookEvents, engineReducer, initialEngineState } from './reducer'
 import type { EngineAction, StampedEngineAction } from './reducer'
 import type { EngineState } from '../domain/session/engine-state'
@@ -172,12 +173,21 @@ export class EngineStore {
     this.syncItemTouch()
 
     const { hookRegistry, port } = this.deps
-    if (hookRegistry === undefined || port === undefined) {
+    if (port === undefined) {
       return []
     }
 
     let applications: readonly HookEventApplication[] = []
     for (const { event, phase, phaseInstanceId } of deriveHookEvents(prevState, this.state, action, this.graph)) {
+      if (event === 'onComplete') {
+        const completionMutations = deriveCompletionMutations(phase, prevState.activeFilePath, now)
+        if (completionMutations.length > 0) {
+          await applyMutations(port, completionMutations)
+        }
+      }
+      if (hookRegistry === undefined) {
+        continue
+      }
       const reference = hookReferenceFor(phase, event)
       if (reference === null) {
         continue
