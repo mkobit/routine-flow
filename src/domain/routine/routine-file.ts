@@ -1,7 +1,6 @@
 import { Temporal } from 'temporal-polyfill'
 import { PhaseGraphSchema, checkPhaseGraphIntegrity } from '../phase/phase-graph'
 import type { PhaseGraph } from '../phase/phase-graph'
-import type { Phase } from '../phase/phase'
 import { map, andThen } from '../result'
 import type { Result } from '../result'
 
@@ -114,30 +113,6 @@ function convertPhaseList(phases: readonly unknown[]): Result<readonly unknown[]
   )
 }
 
-/** completePhase (src/timer/reducer.ts) has no execution path for these yet — see flow-gu1.25. */
-function unimplementedPolicyKindOf(phase: Phase): string | null {
-  const kind = phase.completionPolicy?.kind
-  return kind === 'queueCycle' || kind === 'futureDate' ? kind : null
-}
-
-/** Rejects at load time rather than letting completePhase throw on every tick once the phase is reached. */
-function rejectUnimplementedPolicies(graph: PhaseGraph): RoutineParseResult {
-  const phase = graph.phases.find(p => unimplementedPolicyKindOf(p) !== null)
-  return phase === undefined
-    ? { success: true, graph }
-    : {
-        success: false,
-        error: {
-          message: `Phase "${phase.id}" has completionPolicy "${unimplementedPolicyKindOf(phase)}", which the engine doesn't execute yet.`,
-        },
-      }
-}
-
-/** Only reached once the prior step succeeded — passes its failure through untouched otherwise. */
-function andThenRejectUnimplementedPolicies(result: RoutineParseResult): RoutineParseResult {
-  return result.success ? rejectUnimplementedPolicies(result.graph) : result
-}
-
 /** See checkPhaseGraphIntegrity's own doc comment for why this lives here rather than on PhaseGraphSchema itself. */
 function rejectIntegrityIssues(graph: PhaseGraph): RoutineParseResult {
   const issues = checkPhaseGraphIntegrity(graph)
@@ -155,7 +130,7 @@ function rejectIntegrityIssues(graph: PhaseGraph): RoutineParseResult {
 function runSchema(converted: unknown): RoutineParseResult {
   const schemaResult = PhaseGraphSchema.safeParse(converted)
   return schemaResult.success
-    ? andThenRejectUnimplementedPolicies(rejectIntegrityIssues(schemaResult.data))
+    ? rejectIntegrityIssues(schemaResult.data)
     : {
         success: false,
         error: {
@@ -192,11 +167,8 @@ function parseExtractedJson(json: string): RoutineParseResult {
  * to Temporal.Duration, then validates via PhaseGraphSchema unchanged. Also
  * rejects graphs that are schema-valid but referentially broken — duplicate
  * phase ids, dangling transition references, or a reachable phase with no
- * (or no unconditional) way out (flow-gu1.31, see checkPhaseGraphIntegrity)
- * — and `completionPolicy.kind: 'queueCycle' | 'futureDate'`, schema-valid
- * but not yet executed by completePhase (flow-gu1.25). Both gaps surface
- * once here rather than as a runtime throw reached mid-session. Never
- * throws — every failure path returns a RoutineParseError (see design.md
+ * (or no unconditional) way out (flow-gu1.31, see checkPhaseGraphIntegrity).
+ * Never throws — every failure path returns a RoutineParseError (see design.md
  * decisions 3-4).
  */
 export function parseRoutineFile(content: string): RoutineParseResult {

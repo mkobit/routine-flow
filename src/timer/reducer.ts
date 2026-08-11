@@ -220,7 +220,7 @@ function requireLastClosedInstanceId(state: EngineState, phase: Phase): PhaseIns
 function completePhase(state: EngineState, graph: PhaseGraph, predicateRegistry: PredicateRegistry | undefined, now: Temporal.Instant): EngineState {
   const phase = requirePhaseById(graph, state.currentPhaseId)
   const policy = phase.completionPolicy
-  if (policy === null || policy.kind === 'noOp') {
+  if (policy === null || policy.kind === 'noOp' || policy.kind === 'queueCycle' || policy.kind === 'futureDate') {
     return advancePhase(state, graph, predicateRegistry, now, 'completed')
   }
   if (policy.kind === 'manualClear') {
@@ -228,8 +228,9 @@ function completePhase(state: EngineState, graph: PhaseGraph, predicateRegistry:
     // on -- its instance stays open (session.currentInstance unchanged), not closed here.
     return { ...state, status: 'completed' }
   }
+  const unexpectedPolicy: { kind: string } = policy
   throw new Error(
-    `Phase "${phase.id}" has completionPolicy "${policy.kind}", which the engine doesn't execute yet.`,
+    `Phase "${phase.id}" has completionPolicy "${unexpectedPolicy.kind}", which the engine doesn't execute yet.`,
   )
 }
 

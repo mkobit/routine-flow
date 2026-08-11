@@ -400,8 +400,8 @@ describe('engineReducer', () => {
   test.each([
     ['queueCycle', { kind: 'queueCycle' } as const],
     ['futureDate', { kind: 'futureDate', after: Temporal.Duration.from({ days: 1 }) } as const],
-  ])('tick at 0 throws for the not-yet-implemented %s completion policy', (_name, completionPolicy) => {
-    const unimplementedGraph: PhaseGraph = PhaseGraphSchema.parse({
+  ])('tick at 0 auto-advances for %s completion policy', (_name, completionPolicy) => {
+    const policyGraph: PhaseGraph = PhaseGraphSchema.parse({
       id: 'test',
       name: 'Test graph',
       phases: [
@@ -414,13 +414,13 @@ describe('engineReducer', () => {
       ],
     })
     const state: EngineState = {
-      ...initialEngineState(unimplementedGraph),
+      ...initialEngineState(policyGraph),
       status: 'running',
       remaining: Temporal.Duration.from({ seconds: 0 }),
     }
-    expect(() => engineReducer(state, { type: 'tick', now }, unimplementedGraph)).toThrow(
-      `Phase "focus" has completionPolicy "${completionPolicy.kind}", which the engine doesn't execute yet.`,
-    )
+    const next = engineReducer(state, { type: 'tick', now }, policyGraph)
+    expect(next.status).toBe('stopped')
+    expect(next.currentPhaseId).toBe(breakId)
   })
 
   test('finish-phase halts at status "completed" for a manualClear phase, without advancing', () => {
@@ -469,8 +469,8 @@ describe('engineReducer', () => {
   test.each([
     ['queueCycle', { kind: 'queueCycle' } as const],
     ['futureDate', { kind: 'futureDate', after: Temporal.Duration.from({ days: 1 }) } as const],
-  ])('finish-phase throws for the not-yet-implemented %s completion policy', (_name, completionPolicy) => {
-    const unimplementedGraph: PhaseGraph = PhaseGraphSchema.parse({
+  ])('finish-phase auto-advances for %s completion policy', (_name, completionPolicy) => {
+    const policyGraph: PhaseGraph = PhaseGraphSchema.parse({
       id: 'test',
       name: 'Test graph',
       phases: [
@@ -482,10 +482,10 @@ describe('engineReducer', () => {
         { fromPhaseId: 'break', toPhaseId: 'focus', condition: { kind: 'always' } },
       ],
     })
-    const state: EngineState = { ...initialEngineState(unimplementedGraph), status: 'running' }
-    expect(() => engineReducer(state, { type: 'finish-phase', now }, unimplementedGraph)).toThrow(
-      `Phase "focus" has completionPolicy "${completionPolicy.kind}", which the engine doesn't execute yet.`,
-    )
+    const state: EngineState = { ...initialEngineState(policyGraph), status: 'running' }
+    const next = engineReducer(state, { type: 'finish-phase', now }, policyGraph)
+    expect(next.status).toBe('stopped')
+    expect(next.currentPhaseId).toBe(breakId)
   })
 
   test('advance-phase throws when no transition is eligible from the current phase', () => {

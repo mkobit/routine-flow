@@ -47,19 +47,17 @@ describe('parseRoutineFile', () => {
   })
 
   test.each([
-    ['queueCycle', { kind: 'queueCycle' }],
-    ['futureDate', { kind: 'futureDate', after: 'P1D' }],
-  ])('rejects a %s completionPolicy with a RoutineParseError, since the engine doesn\'t execute it yet', (kind, completionPolicy) => {
+    ['queueCycle' as const, { kind: 'queueCycle' as const }],
+    ['futureDate' as const, { kind: 'futureDate' as const, after: 'P1D' }],
+  ])('parses a %s completionPolicy successfully', (kind, completionPolicy) => {
     const graph = {
       ...validPhaseGraph,
       phases: [{ ...validPhaseGraph.phases[0], completionPolicy }],
     }
     const result = parseRoutineFile(routineFile(graph))
 
-    expect(result.success).toBe(false)
-    expect(result.success === false && result.error.message).toBe(
-      `Phase "turn" has completionPolicy "${kind}", which the engine doesn't execute yet.`,
-    )
+    expect(result.success).toBe(true)
+    expect(result.success && result.graph.phases[0]?.completionPolicy?.kind).toBe(kind)
   })
 
   test('a malformed ISO 8601 duration string fails with a RoutineParseError, not a throw', () => {
