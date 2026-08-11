@@ -10,7 +10,9 @@ import type { PhaseInstance, PhaseInstanceId, Session } from '../domain/session/
 import type { Hook, HookContext, HookEvent, HookInvocationOutcome } from '../domain/hook/hook'
 import type { HookReference } from '../domain/hook/hook-reference'
 import { applyMutations } from '../domain/mutation/apply-mutations'
-import type { FileMutationPort } from '../domain/mutation/apply-mutations'
+import type { FileMutationPort, ApplyMutationsResult } from '../domain/mutation/apply-mutations'
+import { deriveActionMutations } from '../domain/action/derive-action-mutations'
+import type { QueueItemAction } from '../domain/action/queue-item-action'
 import type { EngineDeps } from './engine-deps'
 import { findPhaseById } from './phase-graph'
 
@@ -160,6 +162,23 @@ export class EngineStore {
     const result = this.pendingDispatch.then(() => this.runDispatch(action))
     this.pendingDispatch = result.then(() => undefined, () => undefined)
     return result
+  }
+
+  /**
+   * Executes a QueueItemAction against the active item's path, deriving its
+   * FileMutations and applying them via the configured FileMutationPort. Returns
+   * null if no port is configured or activeFilePath is null.
+   */
+  public async executeAction(action: QueueItemAction): Promise<ApplyMutationsResult | null> {
+    const { port } = this.deps
+    if (port === undefined || this.state.activeFilePath === null) {
+      return null
+    }
+    const mutations = deriveActionMutations(action, this.state.activeFilePath, Temporal.Now.instant())
+    if (mutations.length === 0) {
+      return null
+    }
+    return applyMutations(port, mutations)
   }
 
   private async runDispatch(action: EngineAction): Promise<readonly HookEventApplication[]> {

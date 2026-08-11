@@ -14,6 +14,7 @@ import type { Hook, HookRegistry } from '../src/domain/hook/hook'
 import type { FileMutationPort } from '../src/domain/mutation/apply-mutations'
 import { FileMutationSchema } from '../src/domain/mutation/file-mutation'
 import type { FileMutation } from '../src/domain/mutation/file-mutation'
+import { QueueItemActionSchema } from '../src/domain/action/queue-item-action'
 
 const phaseDefaults = {
   taskSourceId: null,
@@ -513,5 +514,46 @@ describe('EngineStore hook-outcome folding', () => {
     expect(applications.map(a => a.event)).toEqual(['onExit'])
     expect(applications[0]?.outcome.stage).toBe('applied')
     expect(store.getState().session).toBeNull()
+  })
+})
+
+describe('EngineStore action execution', () => {
+  test('returns null when activeFilePath is null or port is undefined', async () => {
+    const action = QueueItemActionSchema.parse({
+      id: 'mark-done',
+      label: 'Done',
+      payload: { kind: 'markDone' },
+    })
+    const storeWithoutPort = new EngineStore(buildGraph('a'))
+    expect(await storeWithoutPort.executeAction(action)).toBeNull()
+
+    const port = createNoopPort()
+    const storeWithPort = new EngineStore(buildGraph('a'), { port })
+    expect(await storeWithPort.executeAction(action)).toBeNull()
+  })
+
+  test('derives mutations and applies them via FileMutationPort when activeFilePath is set', async () => {
+    const action = QueueItemActionSchema.parse({
+      id: 'custom-priority',
+      label: 'Priority 1',
+      style: 'primary',
+      payload: { kind: 'setFrontmatter', property: 'priority', value: 1 },
+    })
+    let mutationsApplied: readonly FileMutation[] = []
+    const port: FileMutationPort = {
+      ...createNoopPort(),
+      writeFrontmatter: async (mutation) => {
+        mutationsApplied = [...mutationsApplied, mutation]
+      },
+    }
+    const store = new EngineStore(buildGraph('a'), { port })
+    await store.dispatch({ type: 'start', filePath: 'tasks/item-1.md' })
+
+    const result = await store.executeAction(action)
+
+    expect(result).toEqual({ success: true })
+    expect(mutationsApplied).toEqual([
+      { kind: 'frontmatter', filePath: 'tasks/item-1.md', property: 'priority', value: 1 },
+    ])
   })
 })
