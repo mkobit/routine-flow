@@ -1,8 +1,9 @@
 ## 1. Domain Models & Schemas
 
-- [ ] 1.1 Implement `QueueItemActionSchema` and `QueueItemActionPayloadSchema` in `src/domain/action/queue-item-action.ts`
-- [ ] 1.2 Implement pure `deriveActionMutations` in `src/domain/action/derive-action-mutations.ts`
-- [ ] 1.3 Add unit tests for `QueueItemActionSchema` and `deriveActionMutations` in `test/domain/action/`
+- [x] 1.1 Implement `QueueItemActionSchema` and `QueueItemActionPayloadSchema` in `src/domain/action/queue-item-action.ts`
+- [x] 1.2 Implement pure `deriveActionMutations` in `src/domain/action/derive-action-mutations.ts`
+- [x] 1.3 Add unit tests for `QueueItemActionSchema` and `deriveActionMutations` in `test/domain/action/`
+
 
 ## 2. Phase & Routine Parser Integration
 
