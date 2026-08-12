@@ -80,11 +80,11 @@ A companion document, `surface-model.md`, layers four analytical lenses on this 
 **Design direction:** Should read as a warning/confirmation (Obsidian's destructive-action button styling on "Replace," consistent with how Obsidian itself styles delete-type confirmations) rather than as a neutral form — currently "Replace" uses `.setCta()` (the same treatment WriteBackModal gives its neutral "Submit"), which doesn't distinguish "confirm a write" from "confirm losing progress."
 
 #### 8. RoutineFlowSettingTab — settings screen
-**Tracked by:** flow-gu1.58. **Where:** `src/settings.ts:25-41`.
-**Current state:** One `Setting` row (a text field for the write-back frontmatter property name, lines 29-40) — plain Obsidian settings-tab defaults; there's currently only one setting, so "layout" isn't yet a real problem, but this will need a direction before more settings land.
-**Communicates:** What the single existing setting controls and why (it already has a `.setDesc()` explaining it) — the design question is more about establishing a scalable pattern than fixing a currently-broken screen.
-**Hierarchy:** Trivial today (one field); the real deliverable here is a layout convention for whenever settings grow (e.g. grouped by concern — write-back behavior vs. notification behavior once flow-gu1.56/.57 land).
-**Design direction:** Establish Obsidian's own settings-tab conventions (heading-per-group via `Setting.setHeading()`, consistent description style) now, ahead of settings count growing — this pass doesn't need new visual language for a single field, but should not defer establishing a pattern until there are five fields to retrofit at once. Also flags flow-a7r (adopting `getSettingDefinitions()`) as complementary but distinct — that's an in-app search-discoverability change, not a visual one, though doing both together avoids two separate `settings.ts` passes.
+**Tracked by:** flow-gu1.58. **Where:** `src/settings.ts:69-154`.
+**Current state:** Declarative `getSettingDefinitions()` defining four sections / controls: Write-back property (`writeBackProperty`), Progress meter style dropdown (`progressMeterStyle`), Custom formula predicates list + add-row (`formulaPredicates`), and Script hooks group (Scripts folder `scriptsFolder` + `scriptHookBindings` list + add-row).
+**Communicates:** Global plugin settings across four operational areas: write-back target property, timer dial visualization style, formula-authored transition condition predicates, and vault JS script hook bindings.
+**Hierarchy:** Top-level scalar settings (write-back property, progress-meter style) followed by list/builder sections for custom transition predicates and script hook bindings.
+**Design direction:** Uses Obsidian's settings-tab conventions via `getSettingDefinitions()` (`SettingDefinitionItem`), organized into clear setting rows, list controls, and group sections (`type: 'group'`).
 
 ### Surfaces not yet built (proposals only — no code exists)
 
