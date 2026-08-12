@@ -19,7 +19,7 @@ Each surface is classified by its Obsidian UI primitive and its lifecycle, becau
 | 5 | Queue — empty / no-queue | A. Embedded Bases view (render state) | same `BasesView` (`timer-view.ts:145-158`) | Persistent, conditional sub-state | Yes |
 | 6 | WriteBackModal | B. Modal dialog (data-entry) | `Modal` subclass (`write-back-modal.ts:24`) | Transient, app-modal (blocking) | Yes |
 | 7 | RoutineReplaceModal | B. Modal dialog (confirmation) | `Modal` subclass (`routine-replace-modal.ts:12`) | Transient, app-modal (blocking) | Yes |
-| 8 | RoutineFlowSettingTab | C. Settings panel | `PluginSettingTab` subclass (`settings.ts:17`) | On-demand, in Obsidian's settings window | Yes |
+| 8 | RoutineFlowSettingTab | C. Settings panel | `PluginSettingTab` subclass (`settings.ts:69`) | On-demand, in Obsidian's settings window | Yes |
 | 9 | Workspace-wide view | D. Workspace chrome | `addStatusBarItem` + side-panel `ItemView` (neither registered) | Persistent (proposed) | **Proposed** |
 | 10 | System (OS) notifications | E. Transient notification (OS) | OS notification API via `Phase.notification` (unread) | Transient, non-blocking (proposed) | **Proposed** |
 | 11 | In-app phase-transition toasts | E. Transient notification (in-app) | `Notice` (`main.ts:22,54` exist for errors only) | Transient, non-blocking (proposed) | **Proposed** |
@@ -148,7 +148,11 @@ Keyboard baseline: no surface overrides Obsidian's default keyboard behavior —
 
 ### #8 — RoutineFlowSettingTab
 
-- **Write-back property text field** — placeholder `Property name`; `onChange` writes `settings.writeBackProperty` and calls `saveSettings()` (`settings.ts:29-40`). Sole interaction on the screen today.
+- **Write-back property text field** — placeholder `Property name`; `onChange` writes `settings.writeBackProperty` (`settings.ts:89-97`).
+- **Progress meter style dropdown** — dropdown options (`radial`, `bar`, `minimal`); `onChange` writes `settings.progressMeterStyle` (`settings.ts:98-106`).
+- **Custom predicates list & add row** — delete existing predicate, add new predicate by name and formula condition (`settings.ts:107-121`).
+- **Scripts folder text field** — placeholder `Scripts`; `onChange` writes `settings.scriptsFolder` (`settings.ts:122-136`).
+- **Script hook bindings list & add row** — delete/reconfirm existing binding, add new binding by name and `.js` script path with `ScriptFileSuggest` autosuggest (`settings.ts:137-153`).
 
 ### #9 — Workspace-wide view (proposed)
 
