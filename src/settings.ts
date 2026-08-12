@@ -72,6 +72,7 @@ export class RoutineFlowSettingTab extends PluginSettingTab {
   constructor(app: App, plugin: RoutineFlowPlugin) {
     super(app, plugin)
     this.plugin = plugin
+    this.containerEl.addClass('routine-setting-tab')
   }
 
   /**
@@ -105,15 +106,15 @@ export class RoutineFlowSettingTab extends PluginSettingTab {
       },
       {
         type: 'list',
-        heading: 'Custom rules',
+        heading: 'Custom predicates',
         items: formulaPredicatesToListItems(this.plugin.settings.formulaPredicates),
         onDelete: (index: number): void => {
           void this.deleteFormulaPredicate(index)
         },
       },
       {
-        name: 'Add rule',
-        desc: 'Name and condition (e.g. visitCounts.focus >= 4) for a new custom rule.',
+        name: 'Add custom predicate',
+        desc: 'Name and condition (e.g. visitCounts.focus >= 4) for a new transition condition predicate.',
         render: (setting): void => {
           this.renderAddFormulaPredicateRow(setting)
         },
@@ -165,6 +166,7 @@ export class RoutineFlowSettingTab extends PluginSettingTab {
   }
 
   private renderAddFormulaPredicateRow(setting: Setting): void {
+    setting.settingEl.addClass('routine-setting-add-row')
     let name = ''
     let formula = ''
 
@@ -191,7 +193,7 @@ export class RoutineFlowSettingTab extends PluginSettingTab {
             setting.setErrorMessage(null)
             const parsedName = PredicateNameSchema.safeParse(name)
             if (!parsedName.success) {
-              setting.setErrorMessage('Enter a rule name.')
+              setting.setErrorMessage('Enter a predicate name.')
               return
             }
             const compiled = compileFormula(formula)
@@ -242,6 +244,7 @@ export class RoutineFlowSettingTab extends PluginSettingTab {
   }
 
   private renderAddScriptHookBindingRow(setting: Setting): void {
+    setting.settingEl.addClass('routine-setting-add-row')
     let name = ''
     let scriptPath = ''
 

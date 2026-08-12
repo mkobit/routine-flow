@@ -53,7 +53,7 @@ test.describe('settings tab', () => {
   })
 
   test('adding a valid rule shows it in the list', async ({ obsidianPage: { page }, settingsPage }) => {
-    const addRow = settingsPage.locator('.setting-item', { hasText: 'Add rule' })
+    const addRow = settingsPage.locator('.setting-item', { hasText: 'Add custom predicate' })
     await addRow.getByPlaceholder('Name').fill('e2e-valid-rule')
     await addRow.getByPlaceholder('Condition').fill('true')
     await addRow.getByRole('button', { name: 'Add' }).click()
@@ -63,15 +63,15 @@ test.describe('settings tab', () => {
   })
 
   test('an empty rule name shows an inline error and does not add a row', async ({ settingsPage }) => {
-    const addRow = settingsPage.locator('.setting-item', { hasText: 'Add rule' })
+    const addRow = settingsPage.locator('.setting-item', { hasText: 'Add custom predicate' })
     await addRow.getByPlaceholder('Condition').fill('true')
     await addRow.getByRole('button', { name: 'Add' }).click()
 
-    await expect(settingsPage.getByText('Enter a rule name.')).toBeVisible()
+    await expect(settingsPage.getByText('Enter a predicate name.')).toBeVisible()
   })
 
   test('a non-compiling formula shows an inline error and does not add a row', async ({ obsidianPage: { page }, settingsPage }) => {
-    const addRow = settingsPage.locator('.setting-item', { hasText: 'Add rule' })
+    const addRow = settingsPage.locator('.setting-item', { hasText: 'Add custom predicate' })
     await addRow.getByPlaceholder('Name').fill('e2e-bad-rule')
     await addRow.getByPlaceholder('Condition').fill('this is not a valid formula ((')
     await addRow.getByRole('button', { name: 'Add' }).click()
@@ -81,7 +81,7 @@ test.describe('settings tab', () => {
   })
 
   test('deleting a rule removes its row', async ({ obsidianPage: { page }, settingsPage }) => {
-    const addRow = settingsPage.locator('.setting-item', { hasText: 'Add rule' })
+    const addRow = settingsPage.locator('.setting-item', { hasText: 'Add custom predicate' })
     await addRow.getByPlaceholder('Name').fill('e2e-delete-me')
     await addRow.getByPlaceholder('Condition').fill('true')
     await addRow.getByRole('button', { name: 'Add' }).click()
