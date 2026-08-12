@@ -8,6 +8,7 @@
 import ObsidianLauncher from 'obsidian-launcher'
 import * as path from 'node:path'
 import * as fs from 'node:fs/promises'
+import obsidianVersion from '../e2e/obsidian-version.json' with { type: 'json' }
 
 const ROOT_DIR = path.resolve(import.meta.dirname, '..')
 const CACHE_DIR = path.join(ROOT_DIR, '.obsidian-cache')
@@ -16,12 +17,18 @@ const CACHE_DIR = path.join(ROOT_DIR, '.obsidian-cache')
 // call uses, so this always resolves the same installer -- and thus the same
 // sibling `obsidian-cli` binary -- as whichever instance is actually running.
 async function resolveCliBinary(): Promise<string> {
-  const launcher = new ObsidianLauncher({ cacheDir: CACHE_DIR })
-  const [, installerVersion] = await launcher.resolveVersion('latest', 'latest')
-  const obsidianBinary = await launcher.downloadInstaller(installerVersion)
-  const cliBinary = path.join(path.dirname(obsidianBinary), 'obsidian-cli')
-  await fs.access(cliBinary)
-  return cliBinary
+  const localCli = path.join(CACHE_DIR, 'obsidian-installer', 'linux-x64', `Obsidian-${obsidianVersion.installerVersion}`, 'obsidian-cli')
+  try {
+    await fs.access(localCli)
+    return localCli
+  }
+  catch {
+    const launcher = new ObsidianLauncher({ cacheDir: CACHE_DIR })
+    const obsidianBinary = await launcher.downloadInstaller(obsidianVersion.installerVersion)
+    const cliBinary = path.join(path.dirname(obsidianBinary), 'obsidian-cli')
+    await fs.access(cliBinary)
+    return cliBinary
+  }
 }
 
 export interface ObsidianCliResult {

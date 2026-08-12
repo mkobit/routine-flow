@@ -12,6 +12,8 @@ import { applyViewMode } from './appearance'
 import type { ViewMode } from './appearance'
 import { applyInitialWorkspace } from './initial-workspace'
 
+import obsidianVersion from '../e2e/obsidian-version.json' with { type: 'json' }
+
 const ROOT_DIR = path.resolve(import.meta.dirname, '..')
 const VAULT_PATH = path.join(ROOT_DIR, 'routine-flow-example-vault')
 const CACHE_DIR = path.join(ROOT_DIR, '.obsidian-cache')
@@ -113,15 +115,15 @@ async function main(): Promise<void> {
   // state would leak into a supposedly-fresh launch. Done as its own
   // setupVault() call (rather than via launch()'s copy:true) so there's a
   // copied-but-not-yet-launched vault to write the --theme preset into
-  // before Obsidian ever reads it.
+  // before Obsidian ever sees it.
   const copiedVault = await launcher.setupVault({ vault: VAULT_PATH, copy: true })
   await stripGitignoredVaultState(copiedVault)
   await applyViewMode(copiedVault, theme)
   await applyInitialWorkspace(copiedVault, open)
 
   const { proc, configDir, vault } = await launcher.launch({
-    appVersion: 'latest',
-    installerVersion: 'latest',
+    appVersion: obsidianVersion.appVersion,
+    installerVersion: obsidianVersion.installerVersion,
     vault: copiedVault,
     // Already copied and theme-preset above -- copy:false here avoids a
     // redundant second copy of the vault.
