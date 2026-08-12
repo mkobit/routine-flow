@@ -472,3 +472,47 @@
 .routine-replace-warning p {
   margin: 0;
 }
+
+/* ---- RoutineFlowSettingTab (surface #8) ---------------------------------------------------- */
+
+.routine-setting-tab {
+  display: flex;
+  flex-direction: column;
+  gap: var(--size-4-3);
+  padding-block-end: var(--size-4-5);
+}
+
+.routine-setting-tab .setting-item {
+  border-bottom: 1px solid var(--background-modifier-border);
+  padding-block: var(--size-4-3);
+}
+
+.routine-setting-tab .setting-item:last-child {
+  border-bottom: none;
+}
+
+.routine-setting-tab .setting-item-heading {
+  font-size: var(--font-ui-medium);
+  font-weight: var(--font-bold);
+  color: var(--text-normal);
+  padding-top: var(--size-4-4);
+  border-bottom: none;
+}
+
+.routine-setting-tab .routine-setting-add-row {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--size-4-2);
+}
+
+.routine-setting-tab .routine-setting-add-row .setting-item-control {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--size-4-2);
+  align-items: center;
+}
+
+.routine-setting-tab .routine-setting-add-row input[type="text"] {
+  font-size: var(--font-ui-small);
+}

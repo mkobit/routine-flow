@@ -16,9 +16,9 @@ Expect the "Confirm write-back" modal after breaks too, whenever a note is activ
 A routine file that uses either fails to load, with an error naming the offending phase.
 This is a deliberate load-time rejection, not a bug to work around.
 
-## "Custom rules" are transition conditions, not completion policies
+## "Custom predicates" are transition conditions, not completion policies
 
-A name-and-formula pair under Settings → "Custom rules" (for example `visitCounts.focus >= 4`) is referenced from a phase graph's `transitions[].condition` as `{"kind": "custom", "predicate": "<name>"}`.
+A name-and-formula pair under Settings → "Custom predicates" (for example `visitCounts.focus >= 4`) is referenced from a phase graph's `transitions[].condition` as `{"kind": "custom", "predicate": "<name>"}`.
 It decides whether to take a transition; it does not decide when a phase completes.
 
 ## Script hooks run unsandboxed and are reviewed only once
