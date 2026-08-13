@@ -14,5 +14,6 @@ The underlying model is a generic phase graph, not a hardcoded 25/5 cycle — a 
 - **[Usage notes & gotchas](./usage-notes)** — things that trip people up.
 - **[Screenshots](./screenshots)** — what it looks like.
 - **[Demo](./demo)** — a short clip of it running.
+- **[Theme compatibility & CSS](./theme-compatibility)** — community themes and CSS snippet integration.
 
 Source and issues: [github.com/mkobit/routine-flow](https://github.com/mkobit/routine-flow).
