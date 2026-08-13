@@ -28,6 +28,7 @@ coverage
 # Playwright & Integration testing
 playwright-report/
 test-results/
+.test-output/
 .obsidian-bin/
 e2e/test-vault/
 # Plugin install artifacts inside the example vault — excluded from git
