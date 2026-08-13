@@ -1,7 +1,7 @@
 # Obsidian Cadence example vault
 
 This vault is used for development and E2E testing.
-Plugin files are installed by `bun run vault:install` and are excluded from git.
+Plugin files are installed dynamically into temporary test/dev vault copies by `obsidian-launcher` at runtime and are excluded from git.
 
 ## Generated content
 

@@ -87,9 +87,6 @@ jobs:
                   restore-keys: |
                       obsidian-cache-${{ runner.os }}-
 
-            - name: Install plugin into vault
-              run: bun run vault:install
-
             - name: Run E2E Tests
               run: xvfb-run --auto-servernum --server-args="-screen 0 1280x1024x24" bun run test:e2e
 

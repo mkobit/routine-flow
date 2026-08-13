@@ -20,7 +20,6 @@
     "vault:dev": "bun scripts/vault-dev.ts",
     "vault:dev:headless": "xvfb-run --auto-servernum --server-args=\"-screen 0 2560x1440x24\" bun scripts/vault-dev.ts --headless",
     "vault:eval": "bun scripts/vault-eval.ts",
-    "vault:install": "bun scripts/vault-install.ts",
     "vault:reload": "bun scripts/vault-reload.ts",
     "vault:screenshot": "bun scripts/vault-screenshot.ts",
     "vault:sync": "bun scripts/vault-sync.ts"
