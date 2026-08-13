@@ -30,7 +30,7 @@ playwright-report/
 test-results/
 .obsidian-bin/
 e2e/test-vault/
-# Plugin install artifacts inside the example vault — populated at runtime by vault:install
+# Plugin install artifacts inside the example vault — excluded from git
 routine-flow-example-vault/.obsidian/plugins/
 # Generated per-routine vault content — written by e2e/vault/generator.ts (flow-94c),
 # via e2e/global-setup.ts before e2e runs, or `bun scripts/vault-dev.ts --generated`

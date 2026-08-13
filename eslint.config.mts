@@ -91,7 +91,7 @@ const packageJsonPlugin = {
 export default tseslint.config(
   {
     ignores: [
-      // Plugin install artifacts inside the test vault — populated at runtime by `bun run vault:install`
+      // Plugin install artifacts inside the test vault — excluded from linting
       'routine-flow-example-vault/.obsidian/plugins/**',
       // Beads issue tracker — generated config and data files
       '.beads/**',
