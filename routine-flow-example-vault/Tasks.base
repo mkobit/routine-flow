@@ -12,14 +12,35 @@ views:
   - type: routine-timer
     name: Default
   - type: routine-timer
+    name: Pomodoro
+    routineFile: pomodoro/pomodoro-routine.md
+  - type: routine-timer
+    name: Break duration variants
+    routineFile: break-duration-variants/break-duration-variants-routine.md
+  - type: routine-timer
     name: Standup
-    routineFile: routines/standup-routine.md
+    routineFile: standup/standup-routine.md
   - type: routine-timer
     name: Workout
-    routineFile: routines/workout-routine.md
+    routineFile: workout/workout-routine.md
   - type: routine-timer
-    name: Manual clear
-    routineFile: routines/manual-clear-routine.md
+    name: Spaced repetition
+    routineFile: spaced-repetition/spaced-repetition-routine.md
+  - type: routine-timer
+    name: Stretch break
+    routineFile: stretch-break/stretch-break-routine.md
+  - type: routine-timer
+    name: Habit tracking
+    routineFile: habit-tracking/habit-tracking-routine.md
   - type: routine-timer
     name: Chore list
-    routineFile: routines/chore-list-routine.md
+    routineFile: chore-list/chore-list-routine.md
+  - type: routine-timer
+    name: Manual clear
+    routineFile: manual-clear/manual-clear-routine.md
+  - type: routine-timer
+    name: Sprint retro
+    routineFile: sprint-retrospective/sprint-retrospective-routine.md
+  - type: routine-timer
+    name: Write-back variants
+    routineFile: write-back-variants/write-back-variants-routine.md

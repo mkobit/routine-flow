@@ -42,6 +42,9 @@ export const PhaseLogTargetSchema = z.discriminatedUnion('kind', [
 ]).readonly()
 export type PhaseLogTarget = z.infer<typeof PhaseLogTargetSchema>
 
+export const TimeFormatSchema = z.enum(['mm:ss', 'hh:mm:ss', 'ss.s', 'ms'])
+export type TimeFormat = z.infer<typeof TimeFormatSchema>
+
 /**
  * A single named stage in a routine. Phases are generic — they have no
  * semantic meaning baked in beyond `kind`. The Pomodoro technique is one
@@ -74,6 +77,10 @@ export const PhaseSchema = z.object({
   onExit: HookReferenceSchema.nullable(),
   /** Custom interactive actions available on active queue items during this phase. */
   actions: z.array(QueueItemActionSchema).optional().default([]),
+  /** Time display format override for countdown timer rendering. */
+  timeFormat: TimeFormatSchema.optional(),
+  /** Optional theme/styling CSS class applied to containers during this phase. */
+  cssClass: z.string().optional(),
 }).readonly()
 
 export type Phase = z.infer<typeof PhaseSchema>

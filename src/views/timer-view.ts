@@ -119,15 +119,19 @@ export class RoutineTimerView extends BasesView {
 
     // Timer Panel
     const timerPanel = this.containerEl.createDiv({ cls: 'routine-timer-panel' })
-    // Discrete transport state as a class (never inline style) so a CSS snippet can retheme each
-    // state -- e.g. the paused accent (see styles.css / DESIGN.md color table).
     timerPanel.addClass(`is-${state.status}`)
+    if (graph.cssClass) {
+      timerPanel.addClass(graph.cssClass)
+    }
+    if (phase.cssClass) {
+      timerPanel.addClass(phase.cssClass)
+    }
 
     // Stopwatch header: a single <h2> (what e2e queries) whose child spans read as a watch face --
     // the phase label above the dial, the mm:ss digits inside/over the progress ring, the status
     // below. The concatenated text stays byte-identical to formatPhaseHeader() output ("Focus: 25:00
     // (running)" / "Set (stopped)"), so every existing header assertion still holds -- see format.ts.
-    const countdownTime = formatCountdown(state.remaining)
+    const countdownTime = formatCountdown(state.remaining, phase.timeFormat ?? 'mm:ss')
     const header = timerPanel.createEl('h2', { cls: 'routine-countdown' })
     header.createSpan({
       cls: 'routine-countdown-label',
@@ -277,6 +281,7 @@ export class RoutineTimerView extends BasesView {
       }
       taskBtn.addEventListener('click', () => {
         void this.plugin.store.dispatch({ type: 'start', filePath: item.sourcePath })
+        void this.plugin.activateView()
       })
     }
   }
@@ -358,6 +363,7 @@ export class RoutineTimerView extends BasesView {
       this.plugin.store.setGraph(graph)
     }
     void this.plugin.store.dispatch({ type: 'start' })
+    void this.plugin.activateView()
   }
 
   private async handleReset(routineName: string): Promise<void> {

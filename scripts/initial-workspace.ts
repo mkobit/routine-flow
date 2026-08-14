@@ -16,12 +16,18 @@ export type TargetViewState = BaseViewState | MarkdownViewState
 
 const PRESET_OPEN_TARGETS: Readonly<Record<string, TargetViewState>> = {
   'default': { type: 'bases', file: 'Tasks.base', viewName: 'Default' },
-  'pomodoro': { type: 'bases', file: 'Tasks.base', viewName: 'Default' },
+  'pomodoro': { type: 'bases', file: 'Tasks.base', viewName: 'Pomodoro' },
+  'break-variants': { type: 'bases', file: 'Tasks.base', viewName: 'Break duration variants' },
   'standup': { type: 'bases', file: 'Tasks.base', viewName: 'Standup' },
   'workout': { type: 'bases', file: 'Tasks.base', viewName: 'Workout' },
+  'spaced-repetition': { type: 'bases', file: 'Tasks.base', viewName: 'Spaced repetition' },
+  'stretch-break': { type: 'bases', file: 'Tasks.base', viewName: 'Stretch break' },
+  'habit-tracking': { type: 'bases', file: 'Tasks.base', viewName: 'Habit tracking' },
   'chore-list': { type: 'bases', file: 'Tasks.base', viewName: 'Chore list' },
   'chores': { type: 'bases', file: 'Tasks.base', viewName: 'Chore list' },
   'manual-clear': { type: 'bases', file: 'Tasks.base', viewName: 'Manual clear' },
+  'sprint-retro': { type: 'bases', file: 'Tasks.base', viewName: 'Sprint retro' },
+  'write-back-variants': { type: 'bases', file: 'Tasks.base', viewName: 'Write-back variants' },
   'table': { type: 'bases', file: 'Tasks.base', viewName: 'Table' },
   'shared-routines': { type: 'bases', file: 'shared-routines/Shared-routines.base', viewName: 'Standup' },
 }

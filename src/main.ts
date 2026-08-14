@@ -75,11 +75,14 @@ export default class RoutineFlowPlugin extends Plugin {
       taskSourceRegistry: this.taskSourceRegistry,
       notificationPort: new ObsidianNotificationPort(),
     })
-    this.ticker = new TimerTicker((action) => {
-      void this.store.dispatch(action).then(reportFailedHookApplications, (cause: unknown) => {
-        new Notice(`Routine Flow: hook dispatch failed — ${describeCause(cause)}`)
-      })
-    })
+    this.ticker = new TimerTicker(
+      (action) => {
+        void this.store.dispatch(action).then(reportFailedHookApplications, (cause: unknown) => {
+          new Notice(`Routine Flow: hook dispatch failed — ${describeCause(cause)}`)
+        })
+      },
+      () => Math.max(10, Math.round(1000 / Math.max(1, this.settings.clockSpeedMultiplier))),
+    )
 
     // Handle background ticker transitions
     this.store.subscribe((state) => {
@@ -124,7 +127,7 @@ export default class RoutineFlowPlugin extends Plugin {
     this.statusBarItem.unload()
   }
 
-  private async activateView(): Promise<void> {
+  public async activateView(): Promise<void> {
     const existing = this.app.workspace.getLeavesOfType(SIDE_PANEL_VIEW_TYPE)[0]
     if (existing !== undefined) {
       await this.app.workspace.revealLeaf(existing)
