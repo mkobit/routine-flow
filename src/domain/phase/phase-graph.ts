@@ -44,6 +44,8 @@ export const PhaseGraphSchema = z.object({
   name: z.string().min(1),
   phases: z.array(PhaseSchema).min(1),
   transitions: z.array(PhaseTransitionSchema),
+  /** Optional theme/styling CSS class applied to containers for this routine. */
+  cssClass: z.string().optional(),
 }).readonly()
 
 export type PhaseGraph = z.infer<typeof PhaseGraphSchema>

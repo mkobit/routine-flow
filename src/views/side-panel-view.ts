@@ -58,6 +58,13 @@ export class RoutineSidePanelView extends ItemView {
       return
     }
 
+    if (graph.cssClass) {
+      this.contentEl.addClass(graph.cssClass)
+    }
+    if (phase.cssClass) {
+      this.contentEl.addClass(phase.cssClass)
+    }
+
     this.contentEl.createEl('h2', { text: formatPhaseHeader(phase, state.remaining, state.status) })
 
     const nextPhase = findNextPhase(graph, state, this.plugin.formulaPredicateRegistry)
@@ -91,6 +98,27 @@ export class RoutineSidePanelView extends ItemView {
 
     const resetBtn = controls.createEl('button', { text: 'Reset' })
     resetBtn.addEventListener('click', () => void this.handleReset(graph.name))
+
+    const speedEl = controls.createEl('select', { cls: 'routine-speed-select' })
+    const speedOptions = [
+      { value: '1', label: '1x' },
+      { value: '2', label: '2x' },
+      { value: '5', label: '5x' },
+      { value: '10', label: '10x' },
+      { value: '60', label: '60x' },
+    ]
+    for (const opt of speedOptions) {
+      const option = speedEl.createEl('option', { value: opt.value, text: opt.label })
+      if (Number(opt.value) === this.plugin.settings.clockSpeedMultiplier) {
+        option.selected = true
+      }
+    }
+    speedEl.addEventListener('change', () => {
+      const mult = Number(speedEl.value) || 1
+      this.plugin.settings.clockSpeedMultiplier = mult
+      this.plugin.ticker.restart()
+      void this.plugin.saveSettings()
+    })
 
     // A phase with no taskSourceId has no queue at all (e.g. a rep-based workout phase).
     if (phase.taskSourceId === null) {

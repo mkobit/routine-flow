@@ -39,6 +39,18 @@ describe('formatCountdown', () => {
     expect(formatCountdown(Temporal.Duration.from({ minutes: 24, seconds: 59 }))).toBe('24:59')
   })
 
+  test('formats remaining time as hh:mm:ss when requested', () => {
+    expect(formatCountdown(Temporal.Duration.from({ hours: 1, minutes: 24, seconds: 59 }), 'hh:mm:ss')).toBe('01:24:59')
+  })
+
+  test('formats remaining time as ss.s when requested', () => {
+    expect(formatCountdown(Temporal.Duration.from({ seconds: 15, milliseconds: 500 }), 'ss.s')).toBe('15.5s')
+  })
+
+  test('formats remaining time as ms when requested', () => {
+    expect(formatCountdown(Temporal.Duration.from({ milliseconds: 450 }), 'ms')).toBe('450ms')
+  })
+
   test('zero-pads seconds and minutes under 10', () => {
     expect(formatCountdown(Temporal.Duration.from({ seconds: 9 }))).toBe('00:09')
   })

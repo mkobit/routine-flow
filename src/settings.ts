@@ -28,6 +28,8 @@ export const RoutineFlowSettingsSchema = z.object({
   writeBackProperty: z.string().default('sessions'),
   /** Whether to show a confirmation modal before applying write-back mutations. */
   confirmWriteBack: z.boolean().default(true),
+  /** Clock speedup multiplier for testing/dev fast-forwarding (1 to 60). */
+  clockSpeedMultiplier: z.number().min(1).max(60).default(1),
   /** Active built-in progress-meter visualization for the timer panel's dial (see flow-gu1.19.15 family). */
   progressMeterStyle: ProgressMeterStyleSchema.default('radial'),
   /** Named formula-authored 'custom' TransitionCondition predicates, evaluated via MutableFormulaPredicateRegistry. */
@@ -43,6 +45,7 @@ export type RoutineFlowSettings = z.infer<typeof RoutineFlowSettingsSchema>
 export const DEFAULT_SETTINGS: RoutineFlowSettings = {
   writeBackProperty: 'sessions',
   confirmWriteBack: true,
+  clockSpeedMultiplier: 1,
   progressMeterStyle: 'radial',
   formulaPredicates: [],
   scriptsFolder: '',
@@ -113,6 +116,21 @@ export class RoutineFlowSettingTab extends PluginSettingTab {
           type: 'dropdown',
           key: 'progressMeterStyle',
           options: PROGRESS_METER_STYLE_LABELS,
+        },
+      },
+      {
+        name: 'Clock speedup multiplier',
+        desc: 'Fast-forward timer speed for testing and dev vault usage (1x to 60x).',
+        control: {
+          type: 'dropdown',
+          key: 'clockSpeedMultiplier',
+          options: {
+            1: '1x (Normal speed)',
+            2: '2x speed',
+            5: '5x speed',
+            10: '10x fast-forward',
+            60: '60x fast-forward (1s = 1m)',
+          },
         },
       },
       {

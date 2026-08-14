@@ -13,25 +13,49 @@ export class TimerTicker {
   private dispatch: (action: { type: 'tick' }) => void
   private intervalId: number | null = null
   private readonly timers: TickerTimers
+  private readonly getIntervalMs: () => number
 
-  constructor(dispatch: (action: { type: 'tick' }) => void, timers: TickerTimers = windowTimers) {
+  constructor(
+    dispatch: (action: { type: 'tick' }) => void,
+    arg2?: (() => number) | TickerTimers,
+    timers: TickerTimers = windowTimers,
+  ) {
     this.dispatch = dispatch
-    this.timers = timers
+    if (typeof arg2 === 'function') {
+      this.getIntervalMs = arg2
+      this.timers = timers
+    }
+    else if (arg2 !== undefined) {
+      this.getIntervalMs = () => 1000
+      this.timers = arg2
+    }
+    else {
+      this.getIntervalMs = () => 1000
+      this.timers = timers
+    }
   }
 
   public start() {
     if (this.intervalId !== null) {
       return
     }
+    const delayMs = Math.max(10, this.getIntervalMs())
     this.intervalId = this.timers.setInterval(() => {
       this.dispatch({ type: 'tick' })
-    }, 1000)
+    }, delayMs)
   }
 
   public stop() {
     if (this.intervalId !== null) {
       this.timers.clearInterval(this.intervalId)
       this.intervalId = null
+    }
+  }
+
+  public restart() {
+    if (this.intervalId !== null) {
+      this.stop()
+      this.start()
     }
   }
 }
