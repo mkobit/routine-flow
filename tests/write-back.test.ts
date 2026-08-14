@@ -205,4 +205,58 @@ describe('createWriteBackHook', () => {
 
     expect(mutations).toEqual([{ kind: 'frontmatter', filePath: 'other-task.md', property: 'sessions', value: 'edited' }])
   })
+
+  test('skips prompt and writes back silently when getConfirmWriteBack returns false', async () => {
+    const reader = createFakeReader(3)
+    const prompt = createFakePrompt()
+    const hook = createWriteBackHook(createDeps({
+      frontmatterReader: reader,
+      writeBackPrompt: prompt,
+      getConfirmWriteBack: () => false,
+    }))
+
+    const mutations = await hook(buildContext(activeItemPhase, 'task.md'))
+
+    expect(prompt.prompt).not.toHaveBeenCalled()
+    expect(mutations).toEqual([{ kind: 'frontmatter', filePath: 'task.md', property: 'sessions', value: 4 }])
+  })
+
+  test('skips prompt and writes back silently when per-phase params specify prompt: false', async () => {
+    const reader = createFakeReader(3)
+    const prompt = createFakePrompt()
+    const hook = createWriteBackHook(createDeps({ frontmatterReader: reader, writeBackPrompt: prompt }))
+
+    const context = {
+      ...buildContext(activeItemPhase, 'task.md'),
+      params: { prompt: false },
+    }
+    const mutations = await hook(context)
+
+    expect(prompt.prompt).not.toHaveBeenCalled()
+    expect(mutations).toEqual([{ kind: 'frontmatter', filePath: 'task.md', property: 'sessions', value: 4 }])
+  })
+
+  test('skips prompt and writes back silently when per-phase params specify confirm: false or skipPrompt: true', async () => {
+    const reader = createFakeReader(1)
+    const prompt = createFakePrompt()
+    const hook = createWriteBackHook(createDeps({ frontmatterReader: reader, writeBackPrompt: prompt }))
+
+    const contextConfirm = {
+      ...buildContext(activeItemPhase, 'task.md'),
+      params: { confirm: false },
+    }
+    const mutationsConfirm = await hook(contextConfirm)
+
+    expect(prompt.prompt).not.toHaveBeenCalled()
+    expect(mutationsConfirm).toEqual([{ kind: 'frontmatter', filePath: 'task.md', property: 'sessions', value: 2 }])
+
+    const contextSkip = {
+      ...buildContext(activeItemPhase, 'task.md'),
+      params: { skipPrompt: true },
+    }
+    const mutationsSkip = await hook(contextSkip)
+
+    expect(prompt.prompt).not.toHaveBeenCalled()
+    expect(mutationsSkip).toEqual([{ kind: 'frontmatter', filePath: 'task.md', property: 'sessions', value: 2 }])
+  })
 })

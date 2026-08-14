@@ -18,6 +18,8 @@ export interface WriteBackHookDeps {
   readonly writeBackPrompt: WriteBackPromptPort
   /** Read live at invocation time, matching today's per-call `this.settings.writeBackProperty` read. */
   readonly getWriteBackProperty: () => string
+  /** Read live at invocation time. When false, write-back modal confirmation is skipped globally. Defaults to true if omitted. */
+  readonly getConfirmWriteBack?: () => boolean
 }
 
 function resolveTargetFilePath(
@@ -34,8 +36,9 @@ function resolveTargetFilePath(
 
 /**
  * Builds the write-back Hook: resolves where a completed phase's write-back
- * goes, then reads, computes, and prompts for confirmation. Returns `[]` when
- * no target resolves or the user cancels; otherwise a single-element
+ * goes, then reads, computes, and prompts for confirmation (unless opted out
+ * globally via getConfirmWriteBack or per-phase via context.params). Returns
+ * `[]` when no target resolves or the user cancels; otherwise a single-element
  * FileMutation[] built from the (possibly edited) submitted values. Doesn't
  * apply the mutation itself — EngineStore.dispatch's existing loop does that
  * via the configured FileMutationPort. See
@@ -50,6 +53,21 @@ export function createWriteBackHook(deps: WriteBackHookDeps): Hook {
     const property = deps.getWriteBackProperty()
     const currentValue = deps.frontmatterReader.readValue(filePath, property)
     const entry = nextLogEntry(currentValue, property, Temporal.Now.instant())
+
+    const globalConfirm = deps.getConfirmWriteBack === undefined || deps.getConfirmWriteBack()
+    const phaseConfirm = context.params.prompt !== false && context.params.confirm !== false && context.params.skipPrompt !== true
+    const shouldPrompt = globalConfirm && phaseConfirm
+
+    if (!shouldPrompt) {
+      const mutation: FileMutation = FileMutationSchema.parse({
+        kind: 'frontmatter',
+        filePath,
+        property: entry.property,
+        value: entry.value,
+      })
+      return [mutation]
+    }
+
     const promptResult = await deps.writeBackPrompt.prompt({ filePath, property: entry.property, value: entry.value })
     if (promptResult.kind === 'cancelled') {
       return []

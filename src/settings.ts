@@ -26,6 +26,8 @@ export const ScriptHookBindingSettingSchema = z.object({
 export const RoutineFlowSettingsSchema = z.object({
   /** Frontmatter property to increment when a focus phase completes. */
   writeBackProperty: z.string().default('sessions'),
+  /** Whether to show a confirmation modal before applying write-back mutations. */
+  confirmWriteBack: z.boolean().default(true),
   /** Active built-in progress-meter visualization for the timer panel's dial (see flow-gu1.19.15 family). */
   progressMeterStyle: ProgressMeterStyleSchema.default('radial'),
   /** Named formula-authored 'custom' TransitionCondition predicates, evaluated via MutableFormulaPredicateRegistry. */
@@ -40,6 +42,7 @@ export type RoutineFlowSettings = z.infer<typeof RoutineFlowSettingsSchema>
 
 export const DEFAULT_SETTINGS: RoutineFlowSettings = {
   writeBackProperty: 'sessions',
+  confirmWriteBack: true,
   progressMeterStyle: 'radial',
   formulaPredicates: [],
   scriptsFolder: '',
@@ -93,6 +96,14 @@ export class RoutineFlowSettingTab extends PluginSettingTab {
           type: 'text',
           key: 'writeBackProperty',
           placeholder: 'Property name',
+        },
+      },
+      {
+        name: 'Confirm write-back',
+        desc: 'Show a confirmation modal before applying frontmatter write-back mutations.',
+        control: {
+          type: 'toggle',
+          key: 'confirmWriteBack',
         },
       },
       {

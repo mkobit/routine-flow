@@ -63,6 +63,7 @@ export default class RoutineFlowPlugin extends Plugin {
       frontmatterReader,
       writeBackPrompt: new ObsidianWriteBackPromptPort(this.app),
       getWriteBackProperty: () => this.settings.writeBackProperty,
+      getConfirmWriteBack: () => this.settings.confirmWriteBack,
     })
     this.hookRegistry = {
       resolve: name => name === WRITE_BACK_HOOK_NAME ? writeBackHook : this.scriptHookRegistry.resolve(name),
