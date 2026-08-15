@@ -556,6 +556,29 @@ describe('EngineStore action execution', () => {
       { kind: 'frontmatter', filePath: 'tasks/item-1.md', property: 'priority', value: 1 },
     ])
   })
+
+  test('executes action against specified targetPath when supplied', async () => {
+    const action = QueueItemActionSchema.parse({
+      id: 'mark-done',
+      label: 'Done',
+      payload: { kind: 'markDone' },
+    })
+    let mutationsApplied: readonly FileMutation[] = []
+    const port: FileMutationPort = {
+      ...createNoopPort(),
+      changeQueueItemStatus: async (mutation) => {
+        mutationsApplied = [...mutationsApplied, mutation]
+      },
+    }
+    const store = new EngineStore(buildGraph('a'), { port })
+
+    const result = await store.executeAction(action, 'tasks/item-2.md')
+
+    expect(result).toEqual({ success: true })
+    expect(mutationsApplied).toEqual([
+      { kind: 'queueStatusChange', itemId: TaskQueueItemIdSchema.parse('tasks/item-2.md'), status: 'done' },
+    ])
+  })
 })
 
 describe('EngineStore notifications', () => {

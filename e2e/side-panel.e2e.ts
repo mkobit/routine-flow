@@ -117,7 +117,33 @@ test.describe('workspace-wide side panel view', () => {
     const items = queue.locator('li')
     await expect(items.first()).not.toHaveClass(/is-active-task/)
 
-    await items.first().locator('button').click()
+    await items.first().locator('.routine-task-name').click()
     await expect(items.first()).toHaveClass(/is-active-task/)
+  })
+
+  test('clicking the open note icon button opens the note in a workspace leaf', async ({ obsidianPage: { page } }) => {
+    await evaluateObsidian(page, async (app) => {
+      const file = app.vault.getFileByPath('Tasks.base')
+      if (!file) {
+        throw new Error('Tasks.base not found')
+      }
+      const leaf = app.workspace.getLeavesOfType('bases')[0] ?? app.workspace.getLeaf('tab')
+      await leaf.openFile(file)
+    })
+    await selectBasesSubView(page, 'Default')
+
+    await page.locator(RIBBON_ICON).click()
+    await dispatchAction(page, { type: 'start' })
+
+    const panel = panelOf(page)
+    const queue = panel.locator('.routine-queue')
+    await expect(queue.locator('h3')).toHaveText('Work queue', { timeout: 20_000 })
+
+    const openFileBtn = queue.locator('li').first().locator('.routine-open-file-btn')
+    await expect(openFileBtn).toBeVisible()
+    await openFileBtn.click()
+
+    const markdownLeaf = page.locator('.workspace-leaf-content[data-type="markdown"]')
+    await expect(markdownLeaf).toBeVisible()
   })
 })

@@ -382,13 +382,32 @@
   flex-direction: column;
 }
 
-.routine-queue li > button {
+.routine-queue-item-row {
+  display: flex;
+  align-items: center;
+  gap: var(--size-4-1);
+  width: 100%;
+}
+
+.routine-queue-item-row > button.routine-task-name {
   flex: 1;
   text-align: start;
 }
 
+.routine-open-file-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--size-4-1);
+  color: var(--text-muted);
+}
+
+.routine-open-file-btn:hover {
+  color: var(--text-normal);
+}
+
 /* The active queue item is visually distinct, not just structurally marked (design.md #1). */
-.routine-queue li.is-active-task > button:not(.routine-action-btn) {
+.routine-queue li.is-active-task .routine-task-name {
   font-weight: var(--font-bold);
   color: var(--text-on-accent);
   background-color: var(--interactive-accent);
