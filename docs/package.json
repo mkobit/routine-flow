@@ -46,5 +46,10 @@
   },
   "engines": {
     "node": ">=20.0"
+  },
+  "overrides": {
+    "bd": "npm:@forbidden/do-not-install@0.0.0",
+    "@beads/bd": "npm:@forbidden/do-not-install@0.0.0",
+    "beads": "npm:@forbidden/do-not-install@0.0.0"
   }
 }

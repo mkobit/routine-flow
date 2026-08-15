@@ -15,8 +15,8 @@ The project enforces strict Functional Programming principles via `eslint`.
 
 ## Commands
 
-No CLI is installed globally.
-Run devDependency binaries (e.g. `openspec`) via `bun x <name>`, never assume it's on `PATH`.
+Run devDependency binaries (e.g. `openspec`) via `bun x <name>`.
+`bd` (beads) is managed via `mise` and is installed on system `PATH` — run `bd` directly (e.g. `bd ready`), never run `bun x bd` or install `bd` via `bun`.
 
 | Command | Description |
 | :--- | :--- |

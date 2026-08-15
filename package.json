@@ -60,6 +60,9 @@
     "zod": "^4.4.3"
   },
   "overrides": {
+    "bd": "npm:@forbidden/do-not-install@0.0.0",
+    "@beads/bd": "npm:@forbidden/do-not-install@0.0.0",
+    "beads": "npm:@forbidden/do-not-install@0.0.0",
     "@typescript-eslint/eslint-plugin": "^8.66.0",
     "@typescript-eslint/parser": "^8.66.0",
     "@typescript-eslint/type-utils": "^8.66.0",
