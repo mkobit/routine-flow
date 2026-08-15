@@ -159,6 +159,6 @@ test.describe('BaseQuerySource-backed queue (base-query-task-source)', () => {
       .toSorted((a, b) => routinePriorityOf(a) - routinePriorityOf(b))
       .map(note => note.relativePath.name)
 
-    await expect(queue.locator('li button')).toHaveText(expectedDisplayNames, { timeout: 20_000 })
+    await expect(queue.locator('li .routine-task-name')).toHaveText(expectedDisplayNames, { timeout: 20_000 })
   })
 })

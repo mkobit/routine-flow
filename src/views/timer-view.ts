@@ -250,7 +250,24 @@ export class RoutineTimerView extends BasesView {
     const ul = queueEl.createEl('ul')
     for (const item of queueItems) {
       const li = ul.createEl('li')
-      const taskBtn = li.createEl('button', { text: item.displayName })
+      const itemRow = li.createDiv({ cls: 'routine-queue-item-row' })
+      const taskBtn = itemRow.createEl('button', { cls: 'routine-task-name', text: item.displayName })
+
+      const openFileBtn = itemRow.createEl('button', {
+        cls: 'routine-open-file-btn',
+        attr: { 'aria-label': `Open ${item.displayName}`, 'title': `Open ${item.displayName}` },
+      })
+      setIcon(openFileBtn, 'file-text')
+      openFileBtn.addEventListener('click', (e) => {
+        e.stopPropagation()
+        const file = this.plugin.app.vault.getFileByPath(item.sourcePath)
+        if (file) {
+          const leaf = this.plugin.app.workspace.getLeaf('tab')
+          void leaf.openFile(file)
+          this.plugin.app.workspace.setActiveLeaf(leaf, { focus: true })
+        }
+      })
+
       if (state.activeFilePath === item.sourcePath) {
         li.addClass('is-active-task')
         if (phase.actions.length > 0) {
@@ -264,7 +281,7 @@ export class RoutineTimerView extends BasesView {
               e.stopPropagation()
               void (async () => {
                 try {
-                  const result = await this.plugin.store.executeAction(action)
+                  const result = await this.plugin.store.executeAction(action, item.sourcePath)
                   if (result !== null && !result.success) {
                     const causeMsg = result.cause instanceof Error ? result.cause.message : String(result.cause)
                     new Notice(`Routine Flow: action failed (${action.label}) — ${causeMsg}`)

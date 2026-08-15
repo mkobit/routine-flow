@@ -165,16 +165,17 @@ export class EngineStore {
   }
 
   /**
-   * Executes a QueueItemAction against the active item's path, deriving its
-   * FileMutations and applying them via the configured FileMutationPort. Returns
-   * null if no port is configured or activeFilePath is null.
+   * Executes a QueueItemAction against the active item's path (or explicit targetPath),
+   * deriving its FileMutations and applying them via the configured FileMutationPort.
+   * Returns null if no port is configured or target path is null.
    */
-  public async executeAction(action: QueueItemAction): Promise<ApplyMutationsResult | null> {
+  public async executeAction(action: QueueItemAction, targetPath?: string): Promise<ApplyMutationsResult | null> {
     const { port } = this.deps
-    if (port === undefined || this.state.activeFilePath === null) {
+    const filePath = targetPath ?? this.state.activeFilePath
+    if (port === undefined || filePath === null) {
       return null
     }
-    const mutations = deriveActionMutations(action, this.state.activeFilePath, Temporal.Now.instant())
+    const mutations = deriveActionMutations(action, filePath, Temporal.Now.instant())
     if (mutations.length === 0) {
       return null
     }
