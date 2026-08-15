@@ -274,7 +274,7 @@ export default tseslint.config(
   },
   // Overrides for Obsidian Plugin Code (Views, Main, Settings)
   {
-    files: ['src/views/**/*.ts', 'src/main.ts', 'src/settings.ts', 'src/settings-*.ts', 'src/timer/**/*.ts'],
+    files: ['src/views/**/*.ts', 'src/main.ts', 'src/settings.ts', 'src/settings-*.ts', 'src/timer/**/*.ts', 'src/onboarding/**/*.ts'],
     rules: {
       // RELAX Functional Rules for Obsidian API
       // The Obsidian API necessitates classes, inheritance, side effects, and mutations (of 'this').

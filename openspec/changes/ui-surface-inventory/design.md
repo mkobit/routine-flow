@@ -106,9 +106,9 @@ A companion document, `surface-model.md`, layers four analytical lenses on this 
 **Design direction:** Copy/duration/actionability brief, same shape as surface #10's. Worth reconciling with the two existing error-toast call sites during implementation — both currently prefix copy with `Routine Flow:` (flow-gu1.60's naming audit resolved the prefix's wording; consistency across surfaces is still this bead's call) and neither currently has any visual treatment beyond Obsidian's own `Notice` default, so a consistent in-app-notification copy/tone convention across "phase transitioned" and "something failed" toasts is worth deciding once, not twice.
 
 #### 12. In-app demo/onboarding
-**Tracked by:** flow-gu1.59. **Where:** nothing yet — `routine-flow-example-vault/` and `docs/examples/*.md` are dev-only fixtures, not shipped release assets (confirmed during flow-41m's submission-requirements audit; the three shipped assets are `main.js`/`manifest.json`/`styles.css`).
-**Communicates (proposed):** How to get a working routine without hand-authoring a `.base` file and routine frontmatter from scratch — shape is genuinely undecided (a scaffolding command vs. a first-run walkthrough vs. bundled example content).
-**Design direction:** Not ready for a design brief yet — flow-gu1.59 itself says this needs a scoping/brainstorming pass (similar to flow-gu1.48) before shape is settled enough to describe what it needs to communicate. Listed here for completeness of the inventory, not to pre-empt that scoping work.
+**Tracked by:** flow-gu1.59. **Where:** `src/onboarding/scaffold-example.ts`, command palette entry `Routine Flow: Seed example routine` (`main.ts`).
+**Communicates:** How to get a working routine without hand-authoring a `.base` file and routine frontmatter from scratch.
+**Design direction:** Scaffolds a `Routine Flow Examples/` folder containing `Pomodoro Routine.md`, `Sample Task.md`, and `Tasks.base` into the active vault.
 
 ### Confirmed absent (negative findings, so a future pass doesn't have to re-check)
 

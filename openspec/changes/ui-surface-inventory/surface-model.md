@@ -23,7 +23,7 @@ Each surface is classified by its Obsidian UI primitive and its lifecycle, becau
 | 9 | Workspace-wide view | D. Workspace chrome | `addStatusBarItem` + side-panel `ItemView` (neither registered) | Persistent (proposed) | **Proposed** |
 | 10 | System (OS) notifications | E. Transient notification (OS) | OS notification API via `Phase.notification` (unread) | Transient, non-blocking (proposed) | **Proposed** |
 | 11 | In-app phase-transition toasts | E. Transient notification (in-app) | `Notice` (`main.ts:22,54` exist for errors only) | Transient, non-blocking (proposed) | **Proposed** |
-| 12 | In-app demo / onboarding | F. Onboarding / first-run flow | shape undecided (command / walkthrough / bundled content) | One-off (proposed) | **Proposed** |
+| 12 | In-app demo / onboarding | F. Onboarding / first-run flow | Command palette action (`main.ts`) | One-off | Yes |
 
 Category summary:
 
@@ -166,6 +166,6 @@ Keyboard baseline: no surface overrides Obsidian's default keyboard behavior —
 
 - **Proposed:** phase-transition `Notice` toasts, copy/duration/actionability TBD (`design.md` #11). The two *existing* `Notice` call sites are error toasts, not interactions and not phase transitions (`main.ts:22,54`).
 
-### #12 — In-app demo / onboarding (proposed)
+### #12 — In-app demo / onboarding
 
-- **Proposed:** shape undecided (scaffolding command vs. first-run walkthrough vs. bundled content); interactions can't be enumerated until shape is chosen (`design.md` #12).
+- Scaffolding command palette entry (`Routine Flow: Seed example routine`) creates `Routine Flow Examples/` folder containing `Pomodoro Routine.md`, `Sample Task.md`, and `Tasks.base`.
