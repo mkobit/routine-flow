@@ -143,7 +143,7 @@ import type { ScriptHookConfirmModal as ScriptHookConfirmModalType } from '../sr
 import type { EngineStore as EngineStoreType } from '../src/timer/store'
 import type { RoutineFlowSettings } from '../src/settings'
 import type RoutineFlowPlugin from '../src/main'
-import type { App, WorkspaceLeaf } from 'obsidian'
+import type { App as AppType, WorkspaceLeaf as WorkspaceLeafType } from 'obsidian'
 
 let Temporal: typeof TemporalType
 let RoutineSidePanelView: typeof RoutineSidePanelViewType
@@ -153,6 +153,8 @@ let ScriptHookConfirmModal: typeof ScriptHookConfirmModalType
 let EngineStore: typeof EngineStoreType
 let DEFAULT_SETTINGS: RoutineFlowSettings
 let customCssGraph: PhaseGraph
+let AppConstructor: typeof AppType
+let WorkspaceLeafConstructor: typeof WorkspaceLeafType
 
 class TestRoutinePlugin extends MockPlugin {
   store: EngineStoreType
@@ -161,7 +163,7 @@ class TestRoutinePlugin extends MockPlugin {
   statusEl = new MockElement()
 
   constructor(store: EngineStoreType) {
-    super(new App(), { id: 'test', name: 'Test', version: '1.0', minAppVersion: '0.15', description: '' })
+    super(new AppConstructor(), { id: 'test', name: 'Test', version: '1.0', minAppVersion: '0.15', description: '' })
     this.store = store
     this.settings = DEFAULT_SETTINGS
   }
@@ -176,6 +178,10 @@ describe('CSS class scoping & theme customization', () => {
   beforeAll(async () => {
     const polyfill = await import('temporal-polyfill')
     Temporal = polyfill.Temporal
+
+    const obsidianModule = await import('obsidian')
+    AppConstructor = obsidianModule.App
+    WorkspaceLeafConstructor = obsidianModule.WorkspaceLeaf
 
     const phaseGraphModule = await import('../src/domain/phase/phase-graph')
     const phaseModule = await import('../src/domain/phase/phase')
@@ -239,8 +245,7 @@ describe('CSS class scoping & theme customization', () => {
   test('RoutineSidePanelView applies and cleanly updates graph and phase cssClasses', async () => {
     const store = new EngineStore(customCssGraph)
     const mockPlugin = new TestRoutinePlugin(store)
-    // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- mock WorkspaceLeaf for view creation
-    const leaf = new MockWorkspaceLeaf() as unknown as WorkspaceLeaf
+    const leaf = new WorkspaceLeafConstructor()
 
     // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- mock RoutineFlowPlugin for view creation
     const sidePanel = new RoutineSidePanelView(leaf, mockPlugin as unknown as RoutineFlowPlugin)
@@ -295,7 +300,7 @@ describe('CSS class scoping & theme customization', () => {
   })
 
   test('ResetConfirmModal sets routine-reset-confirm-modal class', () => {
-    const app = new App()
+    const app = new AppConstructor()
     const modal = new ResetConfirmModal(app, 'My Routine')
     modal.onOpen()
 
@@ -305,7 +310,7 @@ describe('CSS class scoping & theme customization', () => {
   })
 
   test('ScriptHookConfirmModal sets routine-script-hook-confirm-modal class', () => {
-    const app = new App()
+    const app = new AppConstructor()
     const modal = new ScriptHookConfirmModal(app, 'scripts/my-hook.js', 'console.log("hello")')
     modal.onOpen()
 
