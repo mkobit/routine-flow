@@ -25,6 +25,7 @@ export class ResetConfirmModal extends Modal {
   }
 
   onOpen(): void {
+    this.modalEl.addClass('routine-reset-confirm-modal')
     this.setTitle('Reset routine?')
     this.contentEl.createEl('p', {
       text: `"${this.routineName}" will restart from the beginning and its current progress will be lost.`,

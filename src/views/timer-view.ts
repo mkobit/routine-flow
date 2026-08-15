@@ -60,6 +60,7 @@ export class RoutineTimerView extends BasesView {
 
   private render(state: EngineState) {
     this.containerEl.empty()
+    this.containerEl.className = 'routine-timer-view'
 
     const configuredPath = this.getConfiguredRoutineFilePath()
     if (configuredPath !== this.routineFilePath) {
@@ -121,9 +122,11 @@ export class RoutineTimerView extends BasesView {
     const timerPanel = this.containerEl.createDiv({ cls: 'routine-timer-panel' })
     timerPanel.addClass(`is-${state.status}`)
     if (graph.cssClass) {
+      this.containerEl.addClass(graph.cssClass)
       timerPanel.addClass(graph.cssClass)
     }
     if (phase.cssClass) {
+      this.containerEl.addClass(phase.cssClass)
       timerPanel.addClass(phase.cssClass)
     }
 
