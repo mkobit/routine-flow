@@ -46,6 +46,7 @@ export class RoutineSidePanelView extends ItemView {
 
   private render(state: EngineState): void {
     this.contentEl.empty()
+    this.contentEl.className = 'routine-side-panel'
 
     if (state.status === 'stopped') {
       this.contentEl.createEl('p', { text: 'No routine is running. Start one from a Bases timer view.' })
@@ -58,6 +59,7 @@ export class RoutineSidePanelView extends ItemView {
       return
     }
 
+    this.contentEl.addClass(`is-${state.status}`)
     if (graph.cssClass) {
       this.contentEl.addClass(graph.cssClass)
     }

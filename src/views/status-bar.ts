@@ -30,11 +30,20 @@ export class RoutineStatusBarItem {
   }
 
   private render(state: EngineState): void {
-    const phase = state.status === 'stopped' ? undefined : findPhaseById(this.plugin.store.getGraph(), state.currentPhaseId)
+    this.el.className = 'routine-status-bar-item'
+    const graph = this.plugin.store.getGraph()
+    const phase = state.status === 'stopped' ? undefined : findPhaseById(graph, state.currentPhaseId)
     if (phase === undefined) {
       this.el.setText('')
       this.el.hide()
       return
+    }
+    this.el.addClass(`is-${state.status}`)
+    if (graph.cssClass) {
+      this.el.addClass(graph.cssClass)
+    }
+    if (phase.cssClass) {
+      this.el.addClass(phase.cssClass)
     }
     this.el.setText(formatPhaseHeader(phase, state.remaining, state.status))
     this.el.show()

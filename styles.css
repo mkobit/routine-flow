@@ -535,3 +535,32 @@
 .routine-setting-tab .routine-setting-add-row input[type="text"] {
   font-size: var(--font-ui-small);
 }
+
+/* ---- Status bar item ------------------------------------------------------------------------ */
+
+.routine-status-bar-item {
+  cursor: pointer;
+}
+
+.routine-status-bar-item.is-running {
+  color: var(--text-accent);
+}
+
+.routine-status-bar-item.is-paused {
+  color: var(--routine-flow-accent-paused);
+}
+
+/* ---- Modals: Reset confirm & Script hook confirm ------------------------------------------- */
+
+.routine-reset-confirm-modal pre,
+.routine-script-hook-confirm-modal pre {
+  margin-block: var(--size-4-2);
+  padding: var(--size-4-2);
+  border-radius: var(--radius-s);
+  background-color: var(--background-secondary);
+  color: var(--text-normal);
+  font-size: var(--font-ui-smaller);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+

@@ -28,6 +28,7 @@ export class ScriptHookConfirmModal extends Modal {
   }
 
   onOpen(): void {
+    this.modalEl.addClass('routine-script-hook-confirm-modal')
     this.setTitle(`Trust "${this.scriptPath}"?`)
     this.contentEl.createEl('p', {
       text: 'This script will run automatically on whichever phase transitions you point at it, with the same access to your device as the rest of Obsidian. Review it before confirming -- it won\'t be reviewed again unless you remove and re-add this binding.',
