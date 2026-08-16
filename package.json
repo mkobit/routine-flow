@@ -12,6 +12,7 @@
     "docs:screenshots": "bun x playwright test --config=e2e/capture-screenshots.playwright.config.ts",
     "docs:screenshots:headless": "xvfb-run --auto-servernum --server-args=\"-screen 0 2560x1440x24\" bun x playwright test --config=e2e/capture-screenshots.playwright.config.ts",
     "lint": "NODE_ENV=test eslint . --cache --cache-location .eslintcache",
+    "openspec:validate": "openspec validate --all",
     "test": "bun test ./tests",
     "test:coverage": "bun test ./tests --coverage --coverage-reporter=lcov",
     "test:e2e": "bun x playwright test",
