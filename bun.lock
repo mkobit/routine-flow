@@ -6,7 +6,7 @@
       "name": "routine-flow",
       "dependencies": {
         "obsidian": "1.13.1",
-        "remeda": "^2.37.0",
+        "remeda": "^2.40.0",
         "temporal-polyfill": "^1.0.3",
         "zod": "^4.4.3",
       },
@@ -40,11 +40,14 @@
     },
   },
   "overrides": {
+    "@beads/bd": "npm:@forbidden/do-not-install@0.0.0",
     "@typescript-eslint/eslint-plugin": "^8.66.0",
     "@typescript-eslint/parser": "^8.66.0",
     "@typescript-eslint/type-utils": "^8.66.0",
     "@typescript-eslint/types": "^8.66.0",
     "@typescript-eslint/utils": "^8.66.0",
+    "bd": "npm:@forbidden/do-not-install@0.0.0",
+    "beads": "npm:@forbidden/do-not-install@0.0.0",
     "typescript-eslint": "^8.66.0",
   },
   "packages": {
@@ -782,7 +785,7 @@
 
     "regjsparser": ["regjsparser@0.13.2", "", { "dependencies": { "jsesc": "~3.1.0" }, "bin": { "regjsparser": "bin/parser" } }, "sha512-NgRBy2Nx/bE+9F27nVHnqcN5HjyLmecqsqx2PJHu3/IEtADD4WuxuXIVExD5PoSDFVrl78dOonfcOe5O+5nbzQ=="],
 
-    "remeda": ["remeda@2.39.0", "", {}, "sha512-3Ki8dU1o3OVu4dwIQ2Pj+yiuP7OnEbmWAGmJ3yDRqopily5jsj8NWzPvbS89H85d6UdONKEcUnrfuHY6jN9vyw=="],
+    "remeda": ["remeda@2.40.0", "", {}, "sha512-Y8yxrbK8SbTao2+mTqJcjre3/eBH641nr88aAgYfOdbW5p4FH+1Jk3mMypnA+SoktEXBVA8id0o3XPbgHYvQ9Q=="],
 
     "require-from-string": ["require-from-string@2.0.2", "", {}, "sha512-Xf0nWe6RseziFMu+Ap9biiUbmplq6S9/p+7w7YXP/JBHhrUDDUhwa+vANyubuqfZWTveU//DYVGsDG7RKL/vEw=="],
 
