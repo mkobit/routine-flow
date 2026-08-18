@@ -15,7 +15,7 @@
         "@eslint/core": "^1.2.1",
         "@eslint/js": "^10.0.1",
         "@eslint/json": "^2.0.1",
-        "@fission-ai/openspec": "1.8.0",
+        "@fission-ai/openspec": "1.9.0",
         "@playwright/test": "^1.62.1",
         "@stylistic/eslint-plugin": "^5.10.0",
         "@types/bun": "^1.3.14",
@@ -40,11 +40,14 @@
     },
   },
   "overrides": {
+    "@beads/bd": "npm:@forbidden/do-not-install@0.0.0",
     "@typescript-eslint/eslint-plugin": "^8.66.0",
     "@typescript-eslint/parser": "^8.66.0",
     "@typescript-eslint/type-utils": "^8.66.0",
     "@typescript-eslint/types": "^8.66.0",
     "@typescript-eslint/utils": "^8.66.0",
+    "bd": "npm:@forbidden/do-not-install@0.0.0",
+    "beads": "npm:@forbidden/do-not-install@0.0.0",
     "typescript-eslint": "^8.66.0",
   },
   "packages": {
@@ -134,7 +137,7 @@
 
     "@eslint/plugin-kit": ["@eslint/plugin-kit@0.7.2", "", { "dependencies": { "@eslint/core": "^1.2.1", "levn": "^0.4.1" } }, "sha512-+CNAzxglkrpNf/kKywqQfk74QjtceuOE7Qm+AF8miRvPF/wmmK5+OJOgVh3AVTT3RP2mH3+FOaxlE5v72owk0A=="],
 
-    "@fission-ai/openspec": ["@fission-ai/openspec@1.8.0", "", { "dependencies": { "@inquirer/core": "^10.3.2", "@inquirer/prompts": "^7.10.1", "chalk": "^5.6.2", "commander": "^14.0.0", "cross-spawn": "7.0.6", "fast-glob": "^3.3.3", "ora": "^9.4.1", "yaml": "^2.8.3", "zod": "^4.4.3" }, "bin": { "openspec": "bin/openspec.js" } }, "sha512-xtKj5hI/kBgxJjIsCk1r3LnPbwqS41/xnDy8JTtz1B78S0Ydj276GBR4BxYkd6WUpspPA07T0BjcgmUBYgl3zA=="],
+    "@fission-ai/openspec": ["@fission-ai/openspec@1.9.0", "", { "dependencies": { "@inquirer/core": "^10.3.2", "@inquirer/prompts": "^7.10.1", "chalk": "^5.6.2", "commander": "^14.0.0", "cross-spawn": "7.0.6", "fast-glob": "^3.3.3", "ora": "^9.4.1", "yaml": "^2.8.3", "zod": "^4.4.3" }, "bin": { "openspec": "bin/openspec.js" } }, "sha512-yKV8mFz+J5+epLugvcSt7B+mBkkCSycOB6euLJmW6JL+2jhL+Um0JZ6zuGIdXcbsd3jU2+YQfeDz2EVwft++LA=="],
 
     "@humanfs/core": ["@humanfs/core@0.19.2", "", { "dependencies": { "@humanfs/types": "^0.15.0" } }, "sha512-UhXNm+CFMWcbChXywFwkmhqjs3PRCmcSa/hfBgLIb7oQ5HNb1wS0icWsGtSAUNgefHeI+eBrA8I1fxmbHsGdvA=="],
 
