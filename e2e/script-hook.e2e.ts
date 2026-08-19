@@ -44,7 +44,7 @@ function pointFocusOnCompleteAt(page: Page, name: HookName): Promise<void> {
     const graph = plugin.store.getGraph()
     const nextGraph = {
       ...graph,
-      phases: graph.phases.map(phase => phase.kind !== 'focus' ? phase : { ...phase, onComplete: { name: args.name, params: {} } }),
+      phases: graph.phases.map(phase => String(phase.kind) !== 'focus' ? phase : { ...phase, handlers: { ...phase.handlers, onComplete: [{ kind: 'script' as const, scriptPath: args.name }] } }),
     }
     plugin.store.setGraph(nextGraph)
   }, { pluginId: PLUGIN_ID, name })

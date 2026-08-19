@@ -12,6 +12,8 @@ export interface ScaffoldResult {
 export const EXAMPLE_FOLDER_PATH = 'Routine Flow Examples'
 
 export const POMODORO_ROUTINE_PATH = `${EXAMPLE_FOLDER_PATH}/Pomodoro Routine.md`
+export const EXERCISE_ROUTINE_PATH = `${EXAMPLE_FOLDER_PATH}/Exercise & Stretch Routine.md`
+export const MORNING_ROUTINE_PATH = `${EXAMPLE_FOLDER_PATH}/Morning Checklist Routine.md`
 export const SAMPLE_TASK_PATH = `${EXAMPLE_FOLDER_PATH}/Sample Task.md`
 export const SAMPLE_BASE_PATH = `${EXAMPLE_FOLDER_PATH}/Tasks.base`
 
@@ -29,80 +31,229 @@ A 25-minute focus session followed by a 5-minute short break, extending to a 15-
   "phases": [
     {
       "id": "focus",
-      "label": "Focus",
-      "kind": "focus",
+      "name": "Focus",
       "duration": "PT25M",
+      "onCompletion": "autoAdvance",
       "taskSourceId": "focus-queue",
-      "completionPolicy": null,
-      "notification": null,
       "logTarget": {
         "kind": "activeItem"
       },
-      "onEnter": null,
-      "onComplete": null,
-      "onSkip": null,
-      "onExit": null
+      "handlers": {
+        "onComplete": [
+          {
+            "kind": "preset",
+            "preset": "setFrontmatter"
+          }
+        ]
+      }
     },
     {
       "id": "break",
-      "label": "Short break",
-      "kind": "break",
+      "name": "Short break",
       "duration": "PT5M",
+      "onCompletion": "autoAdvance",
       "taskSourceId": "break-queue",
-      "completionPolicy": null,
-      "notification": null,
       "logTarget": {
         "kind": "activeItem"
       },
-      "onEnter": null,
-      "onComplete": null,
-      "onSkip": null,
-      "onExit": null
+      "handlers": {}
     },
     {
       "id": "long-break",
-      "label": "Long break",
-      "kind": "break",
+      "name": "Long break",
       "duration": "PT15M",
+      "onCompletion": "autoAdvance",
       "taskSourceId": "break-queue",
-      "completionPolicy": null,
-      "notification": null,
       "logTarget": {
         "kind": "activeItem"
       },
-      "onEnter": null,
-      "onComplete": null,
-      "onSkip": null,
-      "onExit": null
+      "handlers": {}
     }
   ],
   "transitions": [
     {
-      "fromPhaseId": "focus",
-      "toPhaseId": "long-break",
-      "condition": {
+      "from": "focus",
+      "to": "long-break",
+      "guard": {
         "kind": "everyNth",
-        "n": 4
+        "count": 4
       }
     },
     {
-      "fromPhaseId": "focus",
-      "toPhaseId": "break",
-      "condition": {
+      "from": "focus",
+      "to": "break",
+      "guard": {
         "kind": "always"
       }
     },
     {
-      "fromPhaseId": "break",
-      "toPhaseId": "focus",
-      "condition": {
+      "from": "break",
+      "to": "focus",
+      "guard": {
         "kind": "always"
       }
     },
     {
-      "fromPhaseId": "long-break",
-      "toPhaseId": "focus",
-      "condition": {
+      "from": "long-break",
+      "to": "focus",
+      "guard": {
+        "kind": "always"
+      }
+    }
+  ]
+}
+\`\`\`
+`
+
+export const EXERCISE_ROUTINE_CONTENT = `---
+is-routine: true
+---
+# Exercise & Stretch Routine
+
+A timed exercise sequence with warm-up, sets, rest periods, and a terminal cool-down.
+
+\`\`\`json
+{
+  "id": "exercise-stretch",
+  "name": "Exercise & Stretch Routine",
+  "phases": [
+    {
+      "id": "warmup",
+      "name": "Warm-up",
+      "duration": "PT3M",
+      "onCompletion": "autoAdvance",
+      "handlers": {
+        "onEnter": [
+          {
+            "kind": "preset",
+            "preset": "notify",
+            "params": {
+              "body": "Warm-up starting"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "set-1",
+      "name": "Work Set 1",
+      "duration": "PT45S",
+      "onCompletion": "autoAdvance",
+      "handlers": {}
+    },
+    {
+      "id": "rest-1",
+      "name": "Rest",
+      "duration": "PT15S",
+      "onCompletion": "autoAdvance",
+      "handlers": {}
+    },
+    {
+      "id": "set-2",
+      "name": "Work Set 2",
+      "duration": "PT45S",
+      "onCompletion": "autoAdvance",
+      "handlers": {}
+    },
+    {
+      "id": "cooldown",
+      "name": "Cool-down",
+      "duration": "PT2M",
+      "onCompletion": "autoAdvance",
+      "handlers": {
+        "onComplete": [
+          {
+            "kind": "preset",
+            "preset": "notify",
+            "params": {
+              "body": "Workout finished!"
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "transitions": [
+    {
+      "from": "warmup",
+      "to": "set-1",
+      "guard": {
+        "kind": "always"
+      }
+    },
+    {
+      "from": "set-1",
+      "to": "rest-1",
+      "guard": {
+        "kind": "always"
+      }
+    },
+    {
+      "from": "rest-1",
+      "to": "set-2",
+      "guard": {
+        "kind": "always"
+      }
+    },
+    {
+      "from": "set-2",
+      "to": "cooldown",
+      "guard": {
+        "kind": "always"
+      }
+    }
+  ]
+}
+\`\`\`
+`
+
+export const MORNING_ROUTINE_CONTENT = `---
+is-routine: true
+---
+# Morning Checklist Routine
+
+A manual step-by-step morning routine requiring explicit manual completion to advance each phase.
+
+\`\`\`json
+{
+  "id": "morning-routine",
+  "name": "Morning Routine",
+  "phases": [
+    {
+      "id": "hydrate",
+      "name": "Hydrate & Stretch",
+      "duration": "PT5M",
+      "onCompletion": "waitForManual",
+      "handlers": {}
+    },
+    {
+      "id": "plan-day",
+      "name": "Review Daily Goals",
+      "duration": "PT10M",
+      "onCompletion": "waitForManual",
+      "handlers": {}
+    },
+    {
+      "id": "morning-focus",
+      "name": "Morning Focus",
+      "duration": "PT25M",
+      "onCompletion": "waitForManual",
+      "taskSourceId": "focus-queue",
+      "handlers": {}
+    }
+  ],
+  "transitions": [
+    {
+      "from": "hydrate",
+      "to": "plan-day",
+      "guard": {
+        "kind": "always"
+      }
+    },
+    {
+      "from": "plan-day",
+      "to": "morning-focus",
+      "guard": {
         "kind": "always"
       }
     }
@@ -136,6 +287,8 @@ views:
 
 const FILES_TO_SCAFFOLD: readonly { readonly path: string, readonly content: string }[] = [
   { path: POMODORO_ROUTINE_PATH, content: POMODORO_ROUTINE_CONTENT },
+  { path: EXERCISE_ROUTINE_PATH, content: EXERCISE_ROUTINE_CONTENT },
+  { path: MORNING_ROUTINE_PATH, content: MORNING_ROUTINE_CONTENT },
   { path: SAMPLE_TASK_PATH, content: SAMPLE_TASK_CONTENT },
   { path: SAMPLE_BASE_PATH, content: SAMPLE_BASE_CONTENT },
 ]

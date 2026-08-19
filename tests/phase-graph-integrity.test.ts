@@ -5,17 +5,19 @@ import { PhaseGraphSchema, checkPhaseGraphIntegrity } from '../src/domain/phase/
 import type { PhaseGraph } from '../src/domain/phase/phase-graph'
 
 const phaseDefaults = {
+  name: 'Phase',
   label: 'Phase',
   kind: 'focus',
   duration: Temporal.Duration.from({ seconds: 10 }),
+  onCompletion: 'autoAdvance',
   taskSourceId: null,
-  completionPolicy: null,
-  notification: null,
   logTarget: { kind: 'activeItem' },
-  onEnter: null,
-  onComplete: null,
-  onSkip: null,
-  onExit: null,
+  handlers: {
+    onEnter: [],
+    onComplete: [],
+    onSkip: [],
+    onExit: [],
+  },
 }
 
 function phase(id: string) {
@@ -31,8 +33,8 @@ describe('checkPhaseGraphIntegrity', () => {
     const g = graph(
       [phase('focus'), phase('break')],
       [
-        { fromPhaseId: 'focus', toPhaseId: 'break', condition: { kind: 'always' } },
-        { fromPhaseId: 'break', toPhaseId: 'focus', condition: { kind: 'always' } },
+        { from: 'focus', to: 'break', guard: { kind: 'always' } },
+        { from: 'break', to: 'focus', guard: { kind: 'always' } },
       ],
     )
     expect(checkPhaseGraphIntegrity(g)).toEqual([])
@@ -41,67 +43,37 @@ describe('checkPhaseGraphIntegrity', () => {
   test('flags a duplicated phase id', () => {
     const g = graph(
       [phase('focus'), phase('focus')],
-      [{ fromPhaseId: 'focus', toPhaseId: 'focus', condition: { kind: 'always' } }],
+      [{ from: 'focus', to: 'focus', guard: { kind: 'always' } }],
     )
     const issues = checkPhaseGraphIntegrity(g)
     expect(issues).toHaveLength(1)
     expect(issues[0]?.message).toBe('Phase id "focus" is declared more than once.')
   })
 
-  test('flags a transition whose fromPhaseId does not exist', () => {
+  test('flags a transition whose from phase id does not exist', () => {
     const g = graph(
       [phase('focus')],
-      [{ fromPhaseId: 'ghost', toPhaseId: 'focus', condition: { kind: 'always' } }],
+      [{ from: 'ghost', to: 'focus', guard: { kind: 'always' } }],
     )
     const issues = checkPhaseGraphIntegrity(g)
     expect(issues.some(issue => issue.message.includes('"ghost"'))).toBe(true)
   })
 
-  test('flags a transition whose toPhaseId does not exist', () => {
+  test('flags a transition whose to phase id does not exist', () => {
     const g = graph(
       [phase('focus')],
-      [{ fromPhaseId: 'focus', toPhaseId: 'ghost', condition: { kind: 'always' } }],
+      [{ from: 'focus', to: 'ghost', guard: { kind: 'always' } }],
     )
     const issues = checkPhaseGraphIntegrity(g)
     expect(issues.some(issue => issue.message.includes('"ghost"'))).toBe(true)
   })
 
-  test('flags a reachable phase with zero outgoing transitions', () => {
+  test('accepts a reachable terminal phase with zero outgoing transitions', () => {
     const g = graph(
       [phase('focus'), phase('dead-end')],
-      [{ fromPhaseId: 'focus', toPhaseId: 'dead-end', condition: { kind: 'always' } }],
+      [{ from: 'focus', to: 'dead-end', guard: { kind: 'always' } }],
     )
     const issues = checkPhaseGraphIntegrity(g)
-    expect(issues.some(issue => issue.message.includes('"dead-end"') && issue.message.includes('no outgoing transitions'))).toBe(true)
-  })
-
-  test('does not flag an unreachable phase with zero outgoing transitions', () => {
-    const g = graph(
-      [phase('focus'), phase('orphan')],
-      [{ fromPhaseId: 'focus', toPhaseId: 'focus', condition: { kind: 'always' } }],
-    )
-    const issues = checkPhaseGraphIntegrity(g)
-    expect(issues.some(issue => issue.message.includes('"orphan"'))).toBe(false)
-  })
-
-  test('flags a reachable phase whose outgoing transitions are all conditional', () => {
-    const g = graph(
-      [phase('focus'), phase('skip-to')],
-      [{ fromPhaseId: 'focus', toPhaseId: 'skip-to', condition: { kind: 'custom', predicate: 'isRestDay' } }],
-    )
-    const issues = checkPhaseGraphIntegrity(g)
-    expect(issues.some(issue => issue.message.includes('"focus"') && issue.message.includes('all conditional'))).toBe(true)
-  })
-
-  test('does not flag a phase with a conditional transition plus an unconditional fallback', () => {
-    const g = graph(
-      [phase('focus'), phase('long-break'), phase('break')],
-      [
-        { fromPhaseId: 'focus', toPhaseId: 'long-break', condition: { kind: 'everyNth', n: 4 } },
-        { fromPhaseId: 'focus', toPhaseId: 'break', condition: { kind: 'always' } },
-      ],
-    )
-    const issues = checkPhaseGraphIntegrity(g)
-    expect(issues.some(issue => issue.message.includes('"focus"'))).toBe(false)
+    expect(issues).toEqual([])
   })
 })

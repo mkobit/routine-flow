@@ -1,5 +1,5 @@
 import { Temporal } from 'temporal-polyfill'
-import type { Phase } from '../domain/phase/phase'
+import type { PhaseNode } from '../domain/phase/phase'
 import type { LogTargetResolverRegistry } from '../domain/log-target/log-target-resolver'
 import type { FrontmatterReader } from '../domain/mutation/frontmatter-reader'
 import { nextLogEntry } from '../domain/mutation/log-entry'
@@ -16,17 +16,18 @@ export interface WriteBackHookDeps {
   readonly logTargetResolverRegistry: LogTargetResolverRegistry
   readonly frontmatterReader: FrontmatterReader
   readonly writeBackPrompt: WriteBackPromptPort
-  /** Read live at invocation time, matching today's per-call `this.settings.writeBackProperty` read. */
   readonly getWriteBackProperty: () => string
-  /** Read live at invocation time. When false, write-back modal confirmation is skipped globally. Defaults to true if omitted. */
   readonly getConfirmWriteBack?: () => boolean
 }
 
 function resolveTargetFilePath(
-  phase: Phase,
+  phase: PhaseNode,
   activeFilePath: string | null,
   registry: LogTargetResolverRegistry,
 ): string | null {
+  if (phase.logTarget === null) {
+    return null
+  }
   if (phase.logTarget.kind === 'activeItem') {
     return activeFilePath
   }
@@ -35,14 +36,7 @@ function resolveTargetFilePath(
 }
 
 /**
- * Builds the write-back Hook: resolves where a completed phase's write-back
- * goes, then reads, computes, and prompts for confirmation (unless opted out
- * globally via getConfirmWriteBack or per-phase via context.params). Returns
- * `[]` when no target resolves or the user cancels; otherwise a single-element
- * FileMutation[] built from the (possibly edited) submitted values. Doesn't
- * apply the mutation itself — EngineStore.dispatch's existing loop does that
- * via the configured FileMutationPort. See
- * specs/frontmatter-write-back-trigger/spec.md for the scenarios this covers.
+ * Builds the write-back Hook.
  */
 export function createWriteBackHook(deps: WriteBackHookDeps): Hook {
   return async (context) => {
@@ -55,7 +49,8 @@ export function createWriteBackHook(deps: WriteBackHookDeps): Hook {
     const entry = nextLogEntry(currentValue, property, Temporal.Now.instant())
 
     const globalConfirm = deps.getConfirmWriteBack === undefined || deps.getConfirmWriteBack()
-    const phaseConfirm = context.params.prompt !== false && context.params.confirm !== false && context.params.skipPrompt !== true
+    const params = context.params ?? {}
+    const phaseConfirm = params.prompt !== false && params.confirm !== false && params.skipPrompt !== true
     const shouldPrompt = globalConfirm && phaseConfirm
 
     if (!shouldPrompt) {
