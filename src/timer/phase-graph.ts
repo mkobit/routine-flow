@@ -1,45 +1,40 @@
 import { Temporal } from 'temporal-polyfill'
-import { PhaseKindSchema, PhaseSchema } from '../domain/phase/phase'
-import type { Phase, PhaseId } from '../domain/phase/phase'
+import { PhaseKindSchema, PhaseNodeSchema } from '../domain/phase/phase'
+import type { PhaseNode, PhaseId } from '../domain/phase/phase'
 import { PhaseGraphIdSchema, PhaseGraphSchema } from '../domain/phase/phase-graph'
-import type { PhaseGraph, TransitionCondition } from '../domain/phase/phase-graph'
+import type { PhaseGraph, EdgeGuard } from '../domain/phase/phase-graph'
 import type { EngineState } from '../domain/session/engine-state'
 import type { PredicateRegistry } from '../domain/hook/predicate'
+import { PredicateNameSchema } from '../domain/hook/predicate'
 import { TaskSourceIdSchema } from '../domain/queue/task-source'
-import { WRITE_BACK_HOOK_NAME } from './write-back'
 
 /** Built-in phase kinds used by the default phase graph. */
 export const FOCUS_PHASE_KIND = PhaseKindSchema.parse('focus')
 export const BREAK_PHASE_KIND = PhaseKindSchema.parse('break')
 
-/**
- * The two fixed queue ids RoutineTimerView registers a BaseQuerySource
- * under (see openspec/changes/base-query-task-source/design.md's Non-Goals —
- * arbitrary per-phase Bases filters are out of scope; every focus-kind phase
- * shares one queue, every break-kind phase shares the other).
- */
 export const FOCUS_QUEUE_TASK_SOURCE_ID = TaskSourceIdSchema.parse('focus-queue')
 export const BREAK_QUEUE_TASK_SOURCE_ID = TaskSourceIdSchema.parse('break-queue')
 
+function getGuardRecord(guard: EdgeGuard): Record<string, unknown> {
+  return typeof guard === 'object' && guard !== null ? Object(guard) : {}
+}
+
 /**
- * Look up a phase by id within a graph. Returns undefined rather than
- * throwing — callers that need an invariant (the reducer) throw themselves;
- * UI code can fall back to rendering nothing.
+ * Look up a phase node by id within a graph.
  */
-export function findPhaseById(graph: PhaseGraph, id: PhaseId): Phase | undefined {
-  return graph.phases.find(phase => phase.id === id)
+export function findPhaseById(graph: PhaseGraph, id: PhaseId): PhaseNode | undefined {
+  return graph.phases.find((phase: PhaseNode) => phase.id === id)
 }
 
 /**
  * Resolves the next phase that will be entered after the current phase in `state`
- * completes or advances, using `state.phaseVisitCounts` incremented for `state.currentPhaseId`.
- * Returns undefined if `state.currentPhaseId` is not in the graph or if resolution fails.
+ * completes or advances.
  */
 export function findNextPhase(
   graph: PhaseGraph,
   state: EngineState,
   predicateRegistry?: PredicateRegistry,
-): Phase | undefined {
+): PhaseNode | undefined {
   const currentPhase = findPhaseById(graph, state.currentPhaseId)
   if (!currentPhase) {
     return undefined
@@ -48,28 +43,15 @@ export function findNextPhase(
     ...state.phaseVisitCounts,
     [state.currentPhaseId]: (state.phaseVisitCounts[state.currentPhaseId] ?? 0) + 1,
   }
-  try {
-    const nextPhaseId = resolveNextPhaseId(graph, state.currentPhaseId, updatedCounts, predicateRegistry, state.queueExhausted)
-    return findPhaseById(graph, nextPhaseId)
-  }
-  catch {
+  const nextPhaseId = resolveNextPhaseId(graph, state.currentPhaseId, updatedCounts, predicateRegistry, state.queueExhausted)
+  if (nextPhaseId === null) {
     return undefined
   }
+  return findPhaseById(graph, nextPhaseId)
 }
 
 /**
- * Resolve which phase to enter next from `fromPhaseId`, evaluating
- * transitions in declared array order and taking the first whose condition
- * is satisfied — so a graph author puts exception branches (e.g. everyNth,
- * custom, queueExhausted) before the fallback 'always' branch.
- *
- * Throws if no outgoing transition matches (a misconfigured graph). A
- * 'custom' condition whose predicate doesn't resolve via `predicateRegistry`
- * (or when no registry is supplied at all) is treated as not satisfied,
- * matching Hook's "unresolved name => no-op" precedent, rather than
- * throwing. `queueExhausted` defaults to false for the same reason — a
- * caller that doesn't track it (e.g. a direct unit test) shouldn't have that
- * branch fire unexpectedly.
+ * Resolve which phase to enter next from `fromPhaseId`.
  */
 export function resolveNextPhaseId(
   graph: PhaseGraph,
@@ -77,30 +59,36 @@ export function resolveNextPhaseId(
   visitCounts: Readonly<Record<PhaseId, number>>,
   predicateRegistry?: PredicateRegistry,
   queueExhausted = false,
-): PhaseId {
-  const candidates = graph.transitions.filter(transition => transition.fromPhaseId === fromPhaseId)
+): PhaseId | null {
+  const candidates = graph.transitions.filter(transition => transition.from === fromPhaseId || transition.fromPhaseId === fromPhaseId)
   for (const transition of candidates) {
-    if (isConditionSatisfied(transition.condition, fromPhaseId, visitCounts, predicateRegistry, queueExhausted)) {
-      return transition.toPhaseId
+    const guard = transition.guard ?? transition.condition
+    if (isGuardSatisfied(guard, fromPhaseId, visitCounts, predicateRegistry, queueExhausted)) {
+      return transition.to ?? transition.toPhaseId
     }
   }
-  throw new Error(`PhaseGraph "${graph.id}" has no eligible transition from phase "${fromPhaseId}"`)
+  return null
 }
 
-function isConditionSatisfied(
-  condition: TransitionCondition,
+function isGuardSatisfied(
+  guard: EdgeGuard,
   fromPhaseId: PhaseId,
   visitCounts: Readonly<Record<PhaseId, number>>,
   predicateRegistry: PredicateRegistry | undefined,
   queueExhausted: boolean,
 ): boolean {
-  switch (condition.kind) {
+  switch (guard.kind) {
     case 'always':
       return true
-    case 'everyNth':
-      return (visitCounts[fromPhaseId] ?? 0) % condition.n === 0
+    case 'everyNth': {
+      const rec = getGuardRecord(guard)
+      const count = typeof guard.count === 'number' ? guard.count : (typeof rec.n === 'number' ? rec.n : 1)
+      return (visitCounts[fromPhaseId] ?? 0) % count === 0
+    }
     case 'custom': {
-      const predicate = predicateRegistry?.resolve(condition.predicate)
+      const rec = getGuardRecord(guard)
+      const predicateName = typeof guard.predicateName === 'string' ? guard.predicateName : (typeof rec.predicate === 'string' ? rec.predicate : undefined)
+      const predicate = predicateName !== undefined ? predicateRegistry?.resolve(PredicateNameSchema.parse(predicateName)) : undefined
       return predicate !== undefined && predicate(fromPhaseId, visitCounts)
     }
     case 'queueExhausted':
@@ -108,58 +96,50 @@ function isConditionSatisfied(
   }
 }
 
-const phaseDefaults = {
-  taskSourceId: null,
-  completionPolicy: null,
-  notification: null,
-  onEnter: null,
-  onComplete: { name: WRITE_BACK_HOOK_NAME, params: {} },
-  onSkip: null,
-  onExit: null,
-} as const
-
-const focusPhase: Phase = PhaseSchema.parse({
-  ...phaseDefaults,
+const focusPhase: PhaseNode = PhaseNodeSchema.parse({
   id: 'focus',
+  name: 'Focus',
   label: 'Focus',
   kind: FOCUS_PHASE_KIND,
   duration: Temporal.Duration.from({ minutes: 25 }),
   logTarget: { kind: 'activeItem' },
   taskSourceId: FOCUS_QUEUE_TASK_SOURCE_ID,
+  onCompletion: 'autoAdvance',
+  handlers: {
+    onComplete: [{ kind: 'preset', preset: 'setFrontmatter' }],
+  },
 })
 
-const breakPhase: Phase = PhaseSchema.parse({
-  ...phaseDefaults,
+const breakPhase: PhaseNode = PhaseNodeSchema.parse({
   id: 'break',
+  name: 'Short break',
   label: 'Short break',
   kind: BREAK_PHASE_KIND,
   duration: Temporal.Duration.from({ minutes: 5 }),
   logTarget: { kind: 'activeItem' },
   taskSourceId: BREAK_QUEUE_TASK_SOURCE_ID,
+  onCompletion: 'autoAdvance',
 })
 
-const longBreakPhase: Phase = PhaseSchema.parse({
-  ...phaseDefaults,
+const longBreakPhase: PhaseNode = PhaseNodeSchema.parse({
   id: 'long-break',
+  name: 'Long break',
   label: 'Long break',
   kind: BREAK_PHASE_KIND,
   duration: Temporal.Duration.from({ minutes: 15 }),
   logTarget: { kind: 'activeItem' },
   taskSourceId: BREAK_QUEUE_TASK_SOURCE_ID,
+  onCompletion: 'autoAdvance',
 })
 
-/**
- * Built-in default phase graph: 25 min focus → 5 min break, repeating,
- * with a 15 min long break every 4th focus phase.
- */
 export const DEFAULT_PHASE_GRAPH: PhaseGraph = PhaseGraphSchema.parse({
   id: PhaseGraphIdSchema.parse('default'),
   name: 'Default routine',
   phases: [focusPhase, breakPhase, longBreakPhase],
   transitions: [
-    { fromPhaseId: focusPhase.id, toPhaseId: longBreakPhase.id, condition: { kind: 'everyNth', n: 4 } },
-    { fromPhaseId: focusPhase.id, toPhaseId: breakPhase.id, condition: { kind: 'always' } },
-    { fromPhaseId: breakPhase.id, toPhaseId: focusPhase.id, condition: { kind: 'always' } },
-    { fromPhaseId: longBreakPhase.id, toPhaseId: focusPhase.id, condition: { kind: 'always' } },
+    { from: focusPhase.id, to: longBreakPhase.id, guard: { kind: 'everyNth', count: 4 } },
+    { from: focusPhase.id, to: breakPhase.id, guard: { kind: 'always' } },
+    { from: breakPhase.id, to: focusPhase.id, guard: { kind: 'always' } },
+    { from: longBreakPhase.id, to: focusPhase.id, guard: { kind: 'always' } },
   ],
 })

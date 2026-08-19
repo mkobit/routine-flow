@@ -9,22 +9,22 @@ const validPhaseGraph = {
   phases: [
     {
       id: 'turn',
+      name: 'Turn',
       label: 'Turn',
       kind: 'focus',
       duration: 'PT25M',
+      onCompletion: 'autoAdvance',
       taskSourceId: null,
-      completionPolicy: null,
-      notification: null,
       logTarget: { kind: 'activeItem' },
-      onEnter: null,
-      onComplete: null,
-      onSkip: null,
-      onExit: null,
+      handlers: {
+        onEnter: [],
+        onComplete: [],
+        onSkip: [],
+        onExit: [],
+      },
     },
   ],
-  // Self-loop: a real single-phase routine still needs a way out, or checkPhaseGraphIntegrity's
-  // "reachable phase with no outgoing transitions" check (flow-gu1.31) rejects it.
-  transitions: [{ fromPhaseId: 'turn', toPhaseId: 'turn', condition: { kind: 'always' } }],
+  transitions: [{ from: 'turn', to: 'turn', guard: { kind: 'always' } }],
 }
 
 function routineFile(graph: unknown): string {
@@ -45,20 +45,6 @@ describe('parseRoutineFile', () => {
 
     expect(result.success).toBe(true)
     expect(typeof (result.success && result.graph.phases[0]?.duration)).not.toBe('string')
-  })
-
-  test.each([
-    ['queueCycle' as const, { kind: 'queueCycle' as const }],
-    ['futureDate' as const, { kind: 'futureDate' as const, after: 'P1D' }],
-  ])('parses a %s completionPolicy successfully', (kind, completionPolicy) => {
-    const graph = {
-      ...validPhaseGraph,
-      phases: [{ ...validPhaseGraph.phases[0], completionPolicy }],
-    }
-    const result = parseRoutineFile(routineFile(graph))
-
-    expect(result.success).toBe(true)
-    expect(result.success && result.graph.phases[0]?.completionPolicy?.kind).toBe(kind)
   })
 
   test('defaults actions to an empty array when omitted from a phase definition', () => {
@@ -105,18 +91,6 @@ describe('parseRoutineFile', () => {
     expect(result.success === false && result.error.message).toContain('Invalid ISO 8601 duration')
   })
 
-  test('a malformed futureDate duration string fails with a RoutineParseError', () => {
-    const graph = {
-      ...validPhaseGraph,
-      phases: [{ ...validPhaseGraph.phases[0], completionPolicy: { kind: 'futureDate', after: 'not-a-duration' } }],
-    }
-
-    const result = parseRoutineFile(routineFile(graph))
-
-    expect(result.success).toBe(false)
-    expect(result.success === false && result.error.message).toContain('Invalid ISO 8601 duration')
-  })
-
   test('a malformed deferDuration action duration string fails with a RoutineParseError', () => {
     const graph = {
       ...validPhaseGraph,
@@ -144,7 +118,7 @@ describe('parseRoutineFile', () => {
   })
 
   test('JSON that fails PhaseGraphSchema validation fails with issue detail', () => {
-    const invalidGraph = { ...validPhaseGraph, phases: [] } // PhaseGraphSchema requires phases.min(1)
+    const invalidGraph = { ...validPhaseGraph, phases: [] }
 
     const result = parseRoutineFile(routineFile(invalidGraph))
 
@@ -156,7 +130,7 @@ describe('parseRoutineFile', () => {
   test('a transition referencing a nonexistent phase id fails referential-integrity validation', () => {
     const graph = {
       ...validPhaseGraph,
-      transitions: [{ fromPhaseId: 'turn', toPhaseId: 'ghost', condition: { kind: 'always' } }],
+      transitions: [{ from: 'turn', to: 'ghost', guard: { kind: 'always' } }],
     }
 
     const result = parseRoutineFile(routineFile(graph))
@@ -175,13 +149,12 @@ describe('parseRoutineFile', () => {
     expect(result.success === false && result.error.issues?.[0]?.message).toBe('Phase id "turn" is declared more than once.')
   })
 
-  test('a reachable phase with no outgoing transitions fails referential-integrity validation', () => {
+  test('a reachable phase with no outgoing transitions (terminal node) parses and validates successfully', () => {
     const graph = { ...validPhaseGraph, transitions: [] }
 
     const result = parseRoutineFile(routineFile(graph))
 
-    expect(result.success).toBe(false)
-    expect(result.success === false && result.error.issues?.[0]?.message).toContain('no outgoing transitions')
+    expect(result.success).toBe(true)
   })
 
   test('a note body with zero fenced JSON blocks fails with a RoutineParseError', () => {

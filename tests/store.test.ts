@@ -5,7 +5,6 @@ import { PhaseGraphSchema, PhaseGraphIdSchema } from '../src/domain/phase/phase-
 import type { PhaseGraph } from '../src/domain/phase/phase-graph'
 import { PhaseIdSchema, PhaseSchema } from '../src/domain/phase/phase'
 import { DEFAULT_PHASE_GRAPH } from '../src/timer/phase-graph'
-import { WRITE_BACK_HOOK_NAME } from '../src/timer/write-back'
 import { TaskQueueItemIdSchema, TaskSourceIdSchema } from '../src/domain/queue/task-source'
 import type { TaskQueueItem, TaskSource, TaskSourceRegistry } from '../src/domain/queue/task-source'
 import { HookNameSchema, HookReferenceSchema } from '../src/domain/hook/hook-reference'
@@ -255,10 +254,10 @@ describe('EngineStore item-touch snapshotting', () => {
 })
 
 describe('DEFAULT_PHASE_GRAPH write-back wiring', () => {
-  test('every phase declares onComplete naming the write-back hook', () => {
-    for (const phase of DEFAULT_PHASE_GRAPH.phases) {
-      expect(phase.onComplete).toEqual({ name: WRITE_BACK_HOOK_NAME, params: {} })
-    }
+  test('focus phase declares write-back frontmatter preset handler', () => {
+    expect(DEFAULT_PHASE_GRAPH.phases[0]?.handlers.onComplete).toEqual([
+      { kind: 'preset', preset: 'setFrontmatter' },
+    ])
   })
 
   test('every phase targets activeItem -- no phase references an unregistered callback resolver', () => {
@@ -631,8 +630,8 @@ describe('EngineStore notifications', () => {
           label: 'Break',
           kind: 'break',
           duration: Temporal.Duration.from({ seconds: 5 }),
-          notification: { sound: null, systemNotification: true },
           logTarget: { kind: 'activeItem' },
+          notification: { sound: null, systemNotification: true },
         }),
       ],
       transitions: [

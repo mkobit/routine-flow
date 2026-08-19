@@ -16,7 +16,7 @@ import type { StampedEngineAction } from '../src/timer/reducer'
 import type { EngineState } from '../src/domain/session/engine-state'
 import { PhaseGraphSchema, PhaseGraphIdSchema } from '../src/domain/phase/phase-graph'
 import type { PhaseGraph } from '../src/domain/phase/phase-graph'
-import { PhaseSchema, PhaseIdSchema } from '../src/domain/phase/phase'
+import { PhaseSchema, PhaseIdSchema, type PhaseNode } from '../src/domain/phase/phase'
 import type { PhaseId } from '../src/domain/phase/phase'
 import { PredicateNameSchema } from '../src/domain/hook/predicate'
 import type { PredicateRegistry } from '../src/domain/hook/predicate'
@@ -261,7 +261,7 @@ describe('engineReducer', () => {
     // Reconfigure the graph so 'focus' is now labelled 'Deep Work', then re-enter it.
     const renamedGraph: PhaseGraph = PhaseGraphSchema.parse({
       ...testGraph,
-      phases: testGraph.phases.map(phase => phase.id === focusId ? { ...phase, label: 'Deep Work' } : phase),
+      phases: testGraph.phases.map((phase: PhaseNode) => phase.id === focusId ? { ...phase, label: 'Deep Work' } : phase),
     })
     const backToFocus = engineReducer(next, { type: 'advance-phase', now }, renamedGraph)
 
@@ -488,7 +488,7 @@ describe('engineReducer', () => {
     expect(next.currentPhaseId).toBe(breakId)
   })
 
-  test('advance-phase throws when no transition is eligible from the current phase', () => {
+  test('advance-phase on terminal phase node transitions status to ended', () => {
     const terminalGraph: PhaseGraph = PhaseGraphSchema.parse({
       id: 'terminal',
       name: 'Terminal graph',
@@ -498,9 +498,8 @@ describe('engineReducer', () => {
       transitions: [],
     })
     const state: EngineState = { ...initialEngineState(terminalGraph), status: 'running' }
-    expect(() => engineReducer(state, { type: 'advance-phase', now }, terminalGraph)).toThrow(
-      'PhaseGraph "terminal" has no eligible transition from phase "only"',
-    )
+    const next = engineReducer(state, { type: 'advance-phase', now }, terminalGraph)
+    expect(next.status).toBe('ended')
   })
 
   describe('custom TransitionCondition resolution', () => {
@@ -551,7 +550,7 @@ describe('engineReducer', () => {
       expect(next.currentPhaseId).toBe(normalNextId)
     })
 
-    test('every candidate unsatisfied still throws the existing "no eligible transition" error', () => {
+    test('every candidate unsatisfied transitions status to ended', () => {
       const onlyCustomGraph: PhaseGraph = PhaseGraphSchema.parse({
         id: 'only-custom',
         name: 'Only custom graph',
@@ -564,9 +563,8 @@ describe('engineReducer', () => {
         ],
       })
       const state: EngineState = { ...initialEngineState(onlyCustomGraph), status: 'running' }
-      expect(() => engineReducer(state, { type: 'advance-phase', now }, onlyCustomGraph, { predicateRegistry: registryResolvingTo(false) })).toThrow(
-        'PhaseGraph "only-custom" has no eligible transition from phase "weights"',
-      )
+      const next = engineReducer(state, { type: 'advance-phase', now }, onlyCustomGraph, { predicateRegistry: registryResolvingTo(false) })
+      expect(next.status).toBe('ended')
     })
   })
 

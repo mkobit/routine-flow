@@ -417,6 +417,7 @@ export default tseslint.config(
       'functional/no-expression-statements': 'off',
       'functional/no-try-statements': 'off',
       'functional/prefer-immutable-types': 'off',
+      'functional/type-declaration-immutability': 'off',
       '@typescript-eslint/no-unsafe-return': 'off',
     },
   },

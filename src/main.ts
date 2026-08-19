@@ -122,10 +122,10 @@ export default class RoutineFlowPlugin extends Plugin {
       callback: async () => {
         const result = await scaffoldExampleRoutine(this.app.vault)
         if (result.createdPaths.length > 0) {
-          new Notice(`Routine Flow: Created ${String(result.createdPaths.length)} example file(s) in Routine Flow Examples/`)
+          new Notice(`Routine flow: created ${String(result.createdPaths.length)} example file(s) in Routine Flow Examples/`)
         }
         else {
-          new Notice('Routine Flow: Example files already exist in Routine Flow Examples/')
+          new Notice('Routine flow: example files already exist in routine flow examples/')
         }
       },
     })
