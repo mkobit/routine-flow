@@ -104,7 +104,6 @@ export const PhaseNodeSchema = z.preprocess((val) => {
   }),
   actions: z.array(QueueItemActionSchema).readonly().optional().default([]),
   timeFormat: TimeFormatSchema.optional(),
-  cssClass: z.string().optional(),
 }).readonly()).readonly()
 
 export type PhaseNode = z.infer<typeof PhaseNodeSchema>

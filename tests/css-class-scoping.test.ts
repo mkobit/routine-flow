@@ -217,7 +217,6 @@ describe('CSS class scoping & theme customization', () => {
     customCssGraph = phaseGraphModule.PhaseGraphSchema.parse({
       id: graphId,
       name: 'Themed Routine',
-      cssClass: 'theme-custom-routine',
       phases: [
         phaseModule.PhaseSchema.parse({
           ...phaseDefaults,
@@ -225,7 +224,6 @@ describe('CSS class scoping & theme customization', () => {
           label: 'Focus Phase',
           kind: phaseModule.PhaseKindSchema.parse('focus'),
           duration: Temporal.Duration.from({ minutes: 25 }),
-          cssClass: 'theme-focus-phase',
         }),
         phaseModule.PhaseSchema.parse({
           ...phaseDefaults,
@@ -233,7 +231,6 @@ describe('CSS class scoping & theme customization', () => {
           label: 'Break Phase',
           kind: phaseModule.PhaseKindSchema.parse('break'),
           duration: Temporal.Duration.from({ minutes: 5 }),
-          cssClass: 'theme-break-phase',
         }),
       ],
       transitions: [
@@ -242,7 +239,7 @@ describe('CSS class scoping & theme customization', () => {
     })
   })
 
-  test('RoutineSidePanelView applies and cleanly updates graph and phase cssClasses', async () => {
+  test('RoutineSidePanelView applies base and status CSS classes', async () => {
     const store = new EngineStore(customCssGraph)
     const mockPlugin = new TestRoutinePlugin(store)
     const leaf = new WorkspaceLeafConstructor()
@@ -259,19 +256,14 @@ describe('CSS class scoping & theme customization', () => {
     await store.dispatch({ type: 'start' })
     expect(contentEl.hasClass('routine-side-panel')).toBe(true)
     expect(contentEl.hasClass('is-running')).toBe(true)
-    expect(contentEl.hasClass('theme-custom-routine')).toBe(true)
-    expect(contentEl.hasClass('theme-focus-phase')).toBe(true)
 
     // Advance to break phase
     await store.dispatch({ type: 'advance-phase' })
     await store.dispatch({ type: 'start' })
-    expect(contentEl.hasClass('theme-custom-routine')).toBe(true)
-    expect(contentEl.hasClass('theme-break-phase')).toBe(true)
-    // Verify focus phase class is NOT retained
-    expect(contentEl.hasClass('theme-focus-phase')).toBe(false)
+    expect(contentEl.hasClass('is-running')).toBe(true)
   })
 
-  test('RoutineStatusBarItem applies and updates graph/phase cssClasses', async () => {
+  test('RoutineStatusBarItem applies base and status CSS classes', async () => {
     const store = new EngineStore(customCssGraph)
     const mockPlugin = new TestRoutinePlugin(store)
     const statusEl = mockPlugin.statusEl
@@ -285,16 +277,9 @@ describe('CSS class scoping & theme customization', () => {
     await store.dispatch({ type: 'start' })
     expect(statusEl.hasClass('routine-status-bar-item')).toBe(true)
     expect(statusEl.hasClass('is-running')).toBe(true)
-    expect(statusEl.hasClass('theme-custom-routine')).toBe(true)
-    expect(statusEl.hasClass('theme-focus-phase')).toBe(true)
 
     await store.dispatch({ type: 'pause' })
     expect(statusEl.hasClass('is-paused')).toBe(true)
-
-    await store.dispatch({ type: 'advance-phase' })
-    await store.dispatch({ type: 'start' })
-    expect(statusEl.hasClass('theme-break-phase')).toBe(true)
-    expect(statusEl.hasClass('theme-focus-phase')).toBe(false)
 
     statusBarItem.unload()
   })

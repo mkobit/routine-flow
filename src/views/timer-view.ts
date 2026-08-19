@@ -121,14 +121,6 @@ export class RoutineTimerView extends BasesView {
     // Timer Panel
     const timerPanel = this.containerEl.createDiv({ cls: 'routine-timer-panel' })
     timerPanel.addClass(`is-${state.status}`)
-    if (graph.cssClass) {
-      this.containerEl.addClass(graph.cssClass)
-      timerPanel.addClass(graph.cssClass)
-    }
-    if (phase.cssClass) {
-      this.containerEl.addClass(phase.cssClass)
-      timerPanel.addClass(phase.cssClass)
-    }
 
     // Stopwatch header: a single <h2> (what e2e queries) whose child spans read as a watch face --
     // the phase label above the dial, the mm:ss digits inside/over the progress ring, the status

@@ -39,12 +39,6 @@ export class RoutineStatusBarItem {
       return
     }
     this.el.addClass(`is-${state.status}`)
-    if (graph.cssClass) {
-      this.el.addClass(graph.cssClass)
-    }
-    if (phase.cssClass) {
-      this.el.addClass(phase.cssClass)
-    }
     this.el.setText(formatPhaseHeader(phase, state.remaining, state.status))
     this.el.show()
   }

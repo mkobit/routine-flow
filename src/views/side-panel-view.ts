@@ -60,12 +60,6 @@ export class RoutineSidePanelView extends ItemView {
     }
 
     this.contentEl.addClass(`is-${state.status}`)
-    if (graph.cssClass) {
-      this.contentEl.addClass(graph.cssClass)
-    }
-    if (phase.cssClass) {
-      this.contentEl.addClass(phase.cssClass)
-    }
 
     this.contentEl.createEl('h2', { text: formatPhaseHeader(phase, state.remaining, state.status) })
 
