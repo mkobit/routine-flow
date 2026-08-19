@@ -20,6 +20,14 @@ It is not a constant compiled into the plugin, so you can author or share a cust
 The graph lives in a JSON block rather than frontmatter properties because Obsidian's Properties UI only renders flat properties usefully.
 A graph that nests phases, transitions, completion policies, and hooks several levels deep would be hand-edited YAML with none of that UI benefit.
 
+## Why routines avoid ambient discovery systems
+
+Routines are ordinary vault documents referenced directly by file path or link (such as `routineFile: ...` in Bases view options).
+There is no background filesystem watcher or global database maintaining an ambient routine registry.
+Treating routines as ordinary documents matches Obsidian's file-first philosophy and keeps routine management explicit and lightweight.
+Standard routines use declarative phase nodes, transitions, edge guards, and built-in preset handlers.
+Advanced programmatic behavior relies on external `.js` scripts in the designated scripts folder, referenced by name with bind-time consent.
+
 ## Why only one routine runs at a time
 
 There is a single global engine, not one per Base view or per routine.
