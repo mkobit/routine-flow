@@ -41,8 +41,8 @@ A 25-minute focus session followed by a 5-minute short break, extending to a 15-
       "handlers": {
         "onComplete": [
           {
-            "kind": "preset",
-            "preset": "setFrontmatter"
+            "kind": "script",
+            "scriptPath": "write-back"
           }
         ]
       }

@@ -106,7 +106,7 @@ const focusPhase: PhaseNode = PhaseNodeSchema.parse({
   taskSourceId: FOCUS_QUEUE_TASK_SOURCE_ID,
   onCompletion: 'autoAdvance',
   handlers: {
-    onComplete: [{ kind: 'preset', preset: 'setFrontmatter' }],
+    onComplete: [{ kind: 'script', scriptPath: 'write-back' }],
   },
 })
 

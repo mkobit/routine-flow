@@ -254,9 +254,9 @@ describe('EngineStore item-touch snapshotting', () => {
 })
 
 describe('DEFAULT_PHASE_GRAPH write-back wiring', () => {
-  test('focus phase declares write-back frontmatter preset handler', () => {
+  test('focus phase declares write-back script hook handler', () => {
     expect(DEFAULT_PHASE_GRAPH.phases[0]?.handlers.onComplete).toEqual([
-      { kind: 'preset', preset: 'setFrontmatter' },
+      { kind: 'script', scriptPath: 'write-back' },
     ])
   })
 
