@@ -33,94 +33,94 @@ export async function executeHandler(
   context: HandlerContext,
   deps: HandlerDeps = {},
 ): Promise<readonly Effect[]> {
-  if (handler.kind === 'preset') {
-    switch (handler.preset) {
-      case 'markDone': {
-        if (context.activeFilePath === null) {
-          return []
+  try {
+    if (handler.kind === 'preset') {
+      switch (handler.preset) {
+        case 'markDone': {
+          if (context.activeFilePath === null) {
+            return []
+          }
+          const itemId = TaskQueueItemIdSchema.parse(context.activeFilePath)
+          return [{
+            kind: 'fileMutation',
+            mutations: [{ kind: 'queueStatusChange', itemId, status: 'done' }],
+          }]
         }
-        const itemId = TaskQueueItemIdSchema.parse(context.activeFilePath)
-        return [{
-          kind: 'fileMutation',
-          mutations: [{ kind: 'queueStatusChange', itemId, status: 'done' }],
-        }]
-      }
-      case 'queueCycle': {
-        if (context.activeFilePath === null) {
-          return []
+        case 'queueCycle': {
+          if (context.activeFilePath === null) {
+            return []
+          }
+          const itemId = TaskQueueItemIdSchema.parse(context.activeFilePath)
+          return [{
+            kind: 'fileMutation',
+            mutations: [{ kind: 'queueReorder', itemId, position: 'back' }],
+          }]
         }
-        const itemId = TaskQueueItemIdSchema.parse(context.activeFilePath)
-        return [{
-          kind: 'fileMutation',
-          mutations: [{ kind: 'queueReorder', itemId, position: 'back' }],
-        }]
-      }
-      case 'deferDuration': {
-        if (context.activeFilePath === null) {
-          return []
+        case 'deferDuration': {
+          if (context.activeFilePath === null) {
+            return []
+          }
+          const itemId = TaskQueueItemIdSchema.parse(context.activeFilePath)
+          const durationParam = handler.params?.after
+          const duration = typeof durationParam === 'string'
+            ? Temporal.Duration.from(durationParam)
+            : Temporal.Duration.from({ days: 1 })
+          const dueIsoString = context.now.toZonedDateTimeISO('UTC').add(duration).toInstant().toString()
+          return [{
+            kind: 'fileMutation',
+            mutations: [
+              { kind: 'queueStatusChange', itemId, status: 'deferred' },
+              { kind: 'frontmatter', filePath: context.activeFilePath, property: 'routine-due', value: dueIsoString },
+            ],
+          }]
         }
-        const itemId = TaskQueueItemIdSchema.parse(context.activeFilePath)
-        const durationParam = handler.params?.after
-        const duration = typeof durationParam === 'string'
-          ? Temporal.Duration.from(durationParam)
-          : Temporal.Duration.from({ days: 1 })
-        const dueIsoString = context.now.toZonedDateTimeISO('UTC').add(duration).toInstant().toString()
-        return [{
-          kind: 'fileMutation',
-          mutations: [
-            { kind: 'queueStatusChange', itemId, status: 'deferred' },
-            { kind: 'frontmatter', filePath: context.activeFilePath, property: 'routine-due', value: dueIsoString },
-          ],
-        }]
-      }
-      case 'setFrontmatter': {
-        if (context.activeFilePath === null) {
-          return []
+        case 'setFrontmatter': {
+          if (context.activeFilePath === null) {
+            return []
+          }
+          const property = typeof handler.params?.property === 'string' ? handler.params.property : 'routine-due'
+          const value = resolveFrontmatterValue(handler.params?.value, context.now.toString())
+          return [{
+            kind: 'fileMutation',
+            mutations: [
+              { kind: 'frontmatter', filePath: context.activeFilePath, property, value },
+            ],
+          }]
         }
-        const property = typeof handler.params?.property === 'string' ? handler.params.property : 'routine-due'
-        const value = resolveFrontmatterValue(handler.params?.value, context.now.toString())
-        return [{
-          kind: 'fileMutation',
-          mutations: [
-            { kind: 'frontmatter', filePath: context.activeFilePath, property, value },
-          ],
-        }]
-      }
-      case 'notify': {
-        const title = typeof handler.params?.title === 'string' ? handler.params.title : 'Routine Flow'
-        const body = typeof handler.params?.body === 'string' ? handler.params.body : `${context.phase.name} finished`
-        const system = typeof handler.params?.system === 'boolean' ? handler.params.system : false
-        return [{
-          kind: 'notification',
-          notification: { title, body, system },
-        }]
+        case 'notify': {
+          const title = typeof handler.params?.title === 'string' ? handler.params.title : 'Routine Flow'
+          const body = typeof handler.params?.body === 'string' ? handler.params.body : `${context.phase.name} finished`
+          const system = typeof handler.params?.system === 'boolean' ? handler.params.system : false
+          return [{
+            kind: 'notification',
+            notification: { title, body, system },
+          }]
+        }
       }
     }
-  }
 
-  if (handler.kind === 'script') {
-    const { hookRegistry } = deps
-    if (hookRegistry === undefined) {
-      return []
-    }
-    const hook = hookRegistry.resolve(HookNameSchema.parse(handler.scriptPath))
-    if (hook === undefined) {
-      return []
-    }
-    const hookContext: HookContext = {
-      phase: context.phase,
-      instance: context.instance,
-      session: context.session,
-      activeFilePath: context.activeFilePath,
-      params: handler.params ?? {},
-    }
-    try {
+    if (handler.kind === 'script') {
+      const { hookRegistry } = deps
+      if (hookRegistry === undefined) {
+        return []
+      }
+      const hook = hookRegistry.resolve(HookNameSchema.parse(handler.scriptPath))
+      if (hook === undefined) {
+        return []
+      }
+      const hookContext: HookContext = {
+        phase: context.phase,
+        instance: context.instance,
+        session: context.session,
+        activeFilePath: context.activeFilePath,
+        params: handler.params ?? {},
+      }
       const mutations = await hook(hookContext)
       return [{ kind: 'fileMutation', mutations: [...mutations] }]
     }
-    catch (cause) {
-      return [{ kind: 'invocationFailed', cause }]
-    }
+  }
+  catch (cause) {
+    return [{ kind: 'invocationFailed', cause }]
   }
 
   return []
@@ -131,6 +131,10 @@ export async function executeHandlers(
   context: HandlerContext,
   deps: HandlerDeps = {},
 ): Promise<readonly Effect[]> {
-  const effectArrays = await Promise.all(handlers.map(handler => executeHandler(handler, context, deps)))
-  return effectArrays.flat()
+  let effects: readonly Effect[] = []
+  for (const handler of handlers) {
+    const res = await executeHandler(handler, context, deps)
+    effects = [...effects, ...res]
+  }
+  return effects
 }
