@@ -397,7 +397,7 @@ function generateStretchBreakNotes(): readonly NoteDefinition[] {
             id: 'done',
             label: 'Routine complete',
             kind: 'break',
-            duration: 'PT0S',
+            duration: null,
             taskSourceId: null,
             completionPolicy: null,
             notification: null,
