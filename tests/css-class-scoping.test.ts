@@ -1,10 +1,13 @@
 import { beforeAll, mock, test, expect, describe } from 'bun:test'
+import * as fs from 'node:fs/promises'
+import * as path from 'node:path'
 
 class MockElement {
   className = ''
   children: MockElement[] = []
   dataset: Record<string, string> = {}
   style: Record<string, string> = {}
+  childElementCount = 0
 
   addClass(cls: string): void {
     const current = this.className.split(' ').filter(Boolean)
@@ -25,6 +28,7 @@ class MockElement {
 
   empty(): void {
     this.children = []
+    this.childElementCount = 0
   }
 
   createEl(tag: string, o?: { text?: string, cls?: string }): MockElement {
@@ -33,6 +37,7 @@ class MockElement {
       child.addClass(o.cls)
     }
     this.children.push(child)
+    this.childElementCount = this.children.length
     return child
   }
 
@@ -42,6 +47,7 @@ class MockElement {
       child.addClass(o.cls)
     }
     this.children.push(child)
+    this.childElementCount = this.children.length
     return child
   }
 
@@ -51,6 +57,17 @@ class MockElement {
       child.addClass(o.cls)
     }
     this.children.push(child)
+    this.childElementCount = this.children.length
+    return child
+  }
+
+  createSvg(tag: string, o?: { cls?: string }): MockElement {
+    const child = new MockElement()
+    if (o?.cls) {
+      child.addClass(o.cls)
+    }
+    this.children.push(child)
+    this.childElementCount = this.children.length
     return child
   }
 
@@ -59,6 +76,8 @@ class MockElement {
   hide(): void {}
 
   show(): void {}
+
+  focus(): void {}
 
   addEventListener(): void {}
 }
@@ -126,11 +145,21 @@ void mock.module('obsidian', () => {
     ItemView: MockItemView,
     WorkspaceLeaf: MockWorkspaceLeaf,
     Notice: class {},
-    AbstractInputSuggest: class {},
-    App: class {},
+    AbstractInputSuggest: class {
+      onSelect(): void {}
+      close(): void {}
+    },
+    App: class {
+      vault = {
+        getFiles: () => [],
+        getFileByPath: () => null,
+      }
+    },
     Plugin: MockPlugin,
     TFile: class {},
-    setIcon: () => {},
+    setIcon: (el: MockElement, _name: string) => {
+      el.createSpan()
+    },
   }
 })
 
@@ -140,16 +169,23 @@ import type { RoutineSidePanelView as RoutineSidePanelViewType } from '../src/vi
 import type { RoutineStatusBarItem as RoutineStatusBarItemType } from '../src/views/status-bar'
 import type { ResetConfirmModal as ResetConfirmModalType } from '../src/views/reset-confirm-modal'
 import type { ScriptHookConfirmModal as ScriptHookConfirmModalType } from '../src/views/script-hook-confirm-modal'
+import type { WriteBackModal as WriteBackModalType } from '../src/views/write-back-modal'
+import type { RoutineReplaceModal as RoutineReplaceModalType } from '../src/views/routine-replace-modal'
+import type { RoutineFlowSettingTab as RoutineFlowSettingTabType } from '../src/settings'
 import type { EngineStore as EngineStoreType } from '../src/timer/store'
 import type { RoutineFlowSettings } from '../src/settings'
 import type RoutineFlowPlugin from '../src/main'
 import type { App as AppType, WorkspaceLeaf as WorkspaceLeafType } from 'obsidian'
+import { progressMeterStyleClass } from '../src/timer/progress-meter-style'
 
 let Temporal: typeof TemporalType
 let RoutineSidePanelView: typeof RoutineSidePanelViewType
 let RoutineStatusBarItem: typeof RoutineStatusBarItemType
 let ResetConfirmModal: typeof ResetConfirmModalType
 let ScriptHookConfirmModal: typeof ScriptHookConfirmModalType
+let WriteBackModal: typeof WriteBackModalType
+let RoutineReplaceModal: typeof RoutineReplaceModalType
+let RoutineFlowSettingTab: typeof RoutineFlowSettingTabType
 let EngineStore: typeof EngineStoreType
 let DEFAULT_SETTINGS: RoutineFlowSettings
 let customCssGraph: PhaseGraph
@@ -189,6 +225,8 @@ describe('CSS class scoping & theme customization', () => {
     const statusBarModule = await import('../src/views/status-bar')
     const resetModalModule = await import('../src/views/reset-confirm-modal')
     const scriptModalModule = await import('../src/views/script-hook-confirm-modal')
+    const writeBackModalModule = await import('../src/views/write-back-modal')
+    const replaceModalModule = await import('../src/views/routine-replace-modal')
     const storeModule = await import('../src/timer/store')
     const settingsModule = await import('../src/settings')
 
@@ -196,6 +234,9 @@ describe('CSS class scoping & theme customization', () => {
     RoutineStatusBarItem = statusBarModule.RoutineStatusBarItem
     ResetConfirmModal = resetModalModule.ResetConfirmModal
     ScriptHookConfirmModal = scriptModalModule.ScriptHookConfirmModal
+    WriteBackModal = writeBackModalModule.WriteBackModal
+    RoutineReplaceModal = replaceModalModule.RoutineReplaceModal
+    RoutineFlowSettingTab = settingsModule.RoutineFlowSettingTab
     EngineStore = storeModule.EngineStore
     DEFAULT_SETTINGS = settingsModule.DEFAULT_SETTINGS
 
@@ -302,5 +343,90 @@ describe('CSS class scoping & theme customization', () => {
     // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- mock Element access
     const modalEl = modal.modalEl as unknown as MockElement
     expect(modalEl.hasClass('routine-script-hook-confirm-modal')).toBe(true)
+  })
+
+  test('WriteBackModal sets routine-write-back-modal and internal chip classes', () => {
+    const app = new AppConstructor()
+    const modal = new WriteBackModal(app, {
+      filePath: 'notes/task.md',
+      property: 'sessions',
+      value: 1,
+    })
+    modal.onOpen()
+
+    // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- mock Element access
+    const modalEl = modal.modalEl as unknown as MockElement
+    expect(modalEl.hasClass('routine-write-back-modal')).toBe(true)
+
+    // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- mock Element access
+    const contentEl = modal.contentEl as unknown as MockElement
+    const sentence = contentEl.children.find(c => c.hasClass('routine-write-back-sentence'))
+    expect(sentence).toBeDefined()
+
+    const chips = sentence?.children.filter(c => c.hasClass('routine-write-back-chip'))
+    expect(chips?.length).toBe(3)
+
+    const actions = contentEl.children.find(c => c.hasClass('routine-write-back-actions'))
+    expect(actions).toBeDefined()
+  })
+
+  test('RoutineReplaceModal sets routine-replace-modal and warning classes', () => {
+    const app = new AppConstructor()
+    const modal = new RoutineReplaceModal(app, 'Current Routine', 'Next Routine')
+    modal.onOpen()
+
+    // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- mock Element access
+    const modalEl = modal.modalEl as unknown as MockElement
+    expect(modalEl.hasClass('routine-replace-modal')).toBe(true)
+
+    // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- mock Element access
+    const contentEl = modal.contentEl as unknown as MockElement
+    const warning = contentEl.children.find(c => c.hasClass('routine-replace-warning'))
+    expect(warning).toBeDefined()
+  })
+
+  test('RoutineFlowSettingTab sets routine-setting-tab class on container', () => {
+    const app = new AppConstructor()
+    const store = new EngineStore(customCssGraph)
+    const mockPlugin = new TestRoutinePlugin(store)
+
+    // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- mock RoutineFlowPlugin for settings tab
+    const tab = new RoutineFlowSettingTab(app, mockPlugin as unknown as RoutineFlowPlugin)
+
+    // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- mock Element access
+    const containerEl = tab.containerEl as unknown as MockElement
+    expect(containerEl.hasClass('routine-setting-tab')).toBe(true)
+  })
+
+  test('progressMeterStyleClass maps style names to matching CSS class selectors', () => {
+    expect(progressMeterStyleClass('radial')).toBeNull()
+    expect(progressMeterStyleClass('fill-bar')).toBe('routine-progress-style-fill-bar')
+    expect(progressMeterStyleClass('battery-drain')).toBe('routine-progress-style-battery-drain')
+    expect(progressMeterStyleClass('tick-marks')).toBe('routine-progress-style-tick-marks')
+  })
+
+  test('styles.css adheres to theme-native and scoped CSS custom property rules', async () => {
+    const stylesPath = path.resolve(import.meta.dirname, '../styles.css')
+    const content = await fs.readFile(stylesPath, 'utf8')
+
+    // Must define all expected plugin custom properties
+    expect(content).toContain('--routine-flow-countdown-size:')
+    expect(content).toContain('--routine-flow-accent-paused:')
+    expect(content).toContain('--routine-flow-ring-size:')
+    expect(content).toContain('--routine-flow-ring-stroke:')
+    expect(content).toContain('--routine-flow-tick-count:')
+    expect(content).toContain('--routine-flow-tick-mark-fraction:')
+
+    // Must define fallback for paused accent
+    expect(content).toContain('var(--color-orange, var(--text-warning))')
+
+    // No hardcoded raw hex colors in styles.css (except comments)
+    const linesWithoutComments = content
+      .split('\n')
+      .filter(line => !line.trim().startsWith('/*') && !line.trim().startsWith('*'))
+      .join('\n')
+
+    const hexColorMatches = linesWithoutComments.match(/#[0-9a-fA-F]{3,8}\b/g)
+    expect(hexColorMatches).toBeNull()
   })
 })
