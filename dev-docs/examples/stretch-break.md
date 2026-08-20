@@ -36,7 +36,7 @@ A multi-rep stretch routine that alternates between active stretch intervals (e.
 |---|---|---|---|---|---|---|---|
 | Stretch | `stretch` | `break` | 45s | `null` | `null` | `null` | none |
 | Rest | `rest` | `break` | 15s | `null` | `null` | `null` | none |
-| Done | `done` | `break` | 0s | `null` | `null` | `null` | none |
+| Done | `done` | `break` | `null` | `null` | `null` | `null` | none |
 
 Transitions (evaluated in array order):
 
