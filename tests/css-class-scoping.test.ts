@@ -118,6 +118,10 @@ void mock.module('obsidian', () => {
 
       constructor(_container: MockElement) {}
 
+      setClass(_cls: string): this {
+        return this
+      }
+
       addButton(fn: (b: unknown) => void): this {
         const btn = {
           setButtonText: () => btn,
@@ -133,7 +137,14 @@ void mock.module('obsidian', () => {
         return this
       }
 
-      addText(): this {
+      addText(fn?: (t: unknown) => void): this {
+        if (fn) {
+          const txt = {
+            setPlaceholder: () => txt,
+            onChange: () => txt,
+          }
+          fn(txt)
+        }
         return this
       }
 
@@ -171,6 +182,7 @@ import type { ResetConfirmModal as ResetConfirmModalType } from '../src/views/re
 import type { ScriptHookConfirmModal as ScriptHookConfirmModalType } from '../src/views/script-hook-confirm-modal'
 import type { WriteBackModal as WriteBackModalType } from '../src/views/write-back-modal'
 import type { RoutineReplaceModal as RoutineReplaceModalType } from '../src/views/routine-replace-modal'
+import type { RoutineGalleryModal as RoutineGalleryModalType } from '../src/views/routine-gallery-modal'
 import type { RoutineFlowSettingTab as RoutineFlowSettingTabType } from '../src/settings'
 import type { EngineStore as EngineStoreType } from '../src/timer/store'
 import type { RoutineFlowSettings } from '../src/settings'
@@ -185,6 +197,7 @@ let ResetConfirmModal: typeof ResetConfirmModalType
 let ScriptHookConfirmModal: typeof ScriptHookConfirmModalType
 let WriteBackModal: typeof WriteBackModalType
 let RoutineReplaceModal: typeof RoutineReplaceModalType
+let RoutineGalleryModal: typeof RoutineGalleryModalType
 let RoutineFlowSettingTab: typeof RoutineFlowSettingTabType
 let EngineStore: typeof EngineStoreType
 let DEFAULT_SETTINGS: RoutineFlowSettings
@@ -227,6 +240,7 @@ describe('CSS class scoping & theme customization', () => {
     const scriptModalModule = await import('../src/views/script-hook-confirm-modal')
     const writeBackModalModule = await import('../src/views/write-back-modal')
     const replaceModalModule = await import('../src/views/routine-replace-modal')
+    const galleryModalModule = await import('../src/views/routine-gallery-modal')
     const storeModule = await import('../src/timer/store')
     const settingsModule = await import('../src/settings')
 
@@ -236,6 +250,7 @@ describe('CSS class scoping & theme customization', () => {
     ScriptHookConfirmModal = scriptModalModule.ScriptHookConfirmModal
     WriteBackModal = writeBackModalModule.WriteBackModal
     RoutineReplaceModal = replaceModalModule.RoutineReplaceModal
+    RoutineGalleryModal = galleryModalModule.RoutineGalleryModal
     RoutineFlowSettingTab = settingsModule.RoutineFlowSettingTab
     EngineStore = storeModule.EngineStore
     DEFAULT_SETTINGS = settingsModule.DEFAULT_SETTINGS
@@ -383,6 +398,24 @@ describe('CSS class scoping & theme customization', () => {
     const contentEl = modal.contentEl as unknown as MockElement
     const warning = contentEl.children.find(c => c.hasClass('routine-replace-warning'))
     expect(warning).toBeDefined()
+  })
+
+  test('RoutineGalleryModal sets routine-gallery-modal class and renders controls', () => {
+    const app = new AppConstructor()
+    const modal = new RoutineGalleryModal(app)
+    modal.onOpen()
+
+    // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- mock Element access
+    const modalEl = modal.modalEl as unknown as MockElement
+    expect(modalEl.hasClass('routine-gallery-modal')).toBe(true)
+
+    // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- mock Element access
+    const contentEl = modal.contentEl as unknown as MockElement
+    const searchSection = contentEl.children.find(c => c.hasClass('routine-gallery-search-section'))
+    expect(searchSection).toBeDefined()
+
+    const listContainer = contentEl.children.find(c => c.hasClass('routine-gallery-list'))
+    expect(listContainer).toBeDefined()
   })
 
   test('RoutineFlowSettingTab sets routine-setting-tab class on container', () => {
