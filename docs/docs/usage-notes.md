@@ -27,10 +27,10 @@ A `.js` file bound under Settings → "Script hooks" runs in-process, with no sa
 You review its source in the "Trust ... ?" confirmation the first time you bind it.
 Editing the file on disk afterward does not trigger another review; only removing and re-adding the binding does.
 
-## The `notification` phase field does nothing yet
+## How the `notification` phase field operates
 
-It is valid in a routine file's JSON as `{"sound": ..., "systemNotification": ...}`, but nothing in the plugin reads it yet.
-Don't rely on it for now.
+When a phase declares `notification: {"sound": ..., "systemNotification": true}`, entering that phase dispatches an in-app notice toast and an OS-level system notification via Obsidian's notification system.
+The sound field is reserved for future audio cue integration.
 
 ## The side panel can't start a routine on its own
 
