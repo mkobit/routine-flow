@@ -30,9 +30,6 @@ views:
     name: Stretch break
     routineFile: stretch-break/stretch-break-routine.md
   - type: routine-timer
-    name: Habit tracking
-    routineFile: habit-tracking/habit-tracking-routine.md
-  - type: routine-timer
     name: Chore list
     routineFile: chore-list/chore-list-routine.md
   - type: routine-timer
@@ -44,3 +41,30 @@ views:
   - type: routine-timer
     name: Write-back variants
     routineFile: write-back-variants/write-back-variants-routine.md
+  - type: routine-timer
+    name: Silent meeting
+    routineFile: silent-meeting/silent-meeting-routine.md
+  - type: routine-timer
+    name: Shutdown ritual
+    routineFile: shutdown-ritual/shutdown-ritual-routine.md
+  - type: routine-timer
+    name: Lunch and recharge
+    routineFile: lunch-and-recharge/lunch-and-recharge-routine.md
+  - type: routine-timer
+    name: Dog walk
+    routineFile: dog-walk/dog-walk-routine.md
+  - type: routine-timer
+    name: Morning kickoff
+    routineFile: morning-kickoff/morning-kickoff-routine.md
+  - type: routine-timer
+    name: Evening wind down
+    routineFile: evening-wind-down/evening-wind-down-routine.md
+  - type: routine-timer
+    name: Bug triage blitz
+    routineFile: bug-triage-blitz/bug-triage-blitz-routine.md
+  - type: routine-timer
+    name: Ultradian rhythm
+    routineFile: ultradian-rhythm/ultradian-rhythm-routine.md
+  - type: routine-timer
+    name: Desk micro-movement
+    routineFile: desk-micro-movement/desk-micro-movement-routine.md

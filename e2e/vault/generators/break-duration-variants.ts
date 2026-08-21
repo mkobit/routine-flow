@@ -1,0 +1,87 @@
+import { routineFileNote, routineReadme } from '../routine-note'
+import type { NoteDefinition } from '../schema'
+
+export function generateBreakDurationVariantsNotes(): readonly NoteDefinition[] {
+  return [
+    routineReadme(
+      'break-duration-variants',
+      'The break-duration-variants routine tests break duration selection using stacked everyNth conditions.',
+    ),
+    routineFileNote(
+      'break-duration-variants',
+      'break-duration-variants-routine.md',
+      {
+        id: 'break-duration-variants',
+        name: 'Break-duration variants',
+        phases: [
+          {
+            id: 'focus',
+            label: 'Focus',
+            kind: 'focus',
+            duration: 'PT10S',
+            taskSourceId: 'focus-queue',
+            completionPolicy: null,
+            notification: null,
+            logTarget: { kind: 'activeItem' },
+            onEnter: null,
+            onComplete: null,
+            onSkip: null,
+            onExit: null,
+          },
+          {
+            id: 'short-break',
+            label: 'Short break',
+            kind: 'break',
+            duration: 'PT2S',
+            taskSourceId: 'break-queue',
+            completionPolicy: null,
+            notification: null,
+            logTarget: { kind: 'activeItem' },
+            onEnter: null,
+            onComplete: null,
+            onSkip: null,
+            onExit: null,
+          },
+          {
+            id: 'medium-break',
+            label: 'Medium break',
+            kind: 'break',
+            duration: 'PT5S',
+            taskSourceId: 'break-queue',
+            completionPolicy: null,
+            notification: null,
+            logTarget: { kind: 'activeItem' },
+            onEnter: null,
+            onComplete: null,
+            onSkip: null,
+            onExit: null,
+          },
+          {
+            id: 'long-break',
+            label: 'Long break',
+            kind: 'break',
+            duration: 'PT10S',
+            taskSourceId: 'break-queue',
+            completionPolicy: null,
+            notification: null,
+            logTarget: { kind: 'activeItem' },
+            onEnter: null,
+            onComplete: null,
+            onSkip: null,
+            onExit: null,
+          },
+        ],
+        transitions: [
+          { fromPhaseId: 'focus', toPhaseId: 'long-break', condition: { kind: 'everyNth', n: 8 } },
+          { fromPhaseId: 'focus', toPhaseId: 'medium-break', condition: { kind: 'everyNth', n: 4 } },
+          { fromPhaseId: 'focus', toPhaseId: 'short-break', condition: { kind: 'always' } },
+          { fromPhaseId: 'short-break', toPhaseId: 'focus', condition: { kind: 'always' } },
+          { fromPhaseId: 'medium-break', toPhaseId: 'focus', condition: { kind: 'always' } },
+          { fromPhaseId: 'long-break', toPhaseId: 'focus', condition: { kind: 'always' } },
+        ],
+      },
+      'Break-duration variants routine',
+      'Hand-authored routine file for testing multi-tier break ladder.',
+    ),
+  ]
+}
