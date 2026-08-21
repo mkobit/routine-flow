@@ -44,12 +44,20 @@ routine-flow-example-vault/standup/
 routine-flow-example-vault/workout/
 routine-flow-example-vault/spaced-repetition/
 routine-flow-example-vault/stretch-break/
-routine-flow-example-vault/habit-tracking/
 routine-flow-example-vault/chore-list/
 routine-flow-example-vault/sprint-retrospective/
 routine-flow-example-vault/manual-clear/
 routine-flow-example-vault/write-back-variants/
 routine-flow-example-vault/break-duration-variants/
+routine-flow-example-vault/silent-meeting/
+routine-flow-example-vault/shutdown-ritual/
+routine-flow-example-vault/lunch-and-recharge/
+routine-flow-example-vault/dog-walk/
+routine-flow-example-vault/morning-kickoff/
+routine-flow-example-vault/evening-wind-down/
+routine-flow-example-vault/bug-triage-blitz/
+routine-flow-example-vault/ultradian-rhythm/
+routine-flow-example-vault/desk-micro-movement/
 
 # Claude Code local-only settings
 .claude/settings.local.json
