@@ -19,6 +19,7 @@ import { RoutineTimerView } from './views/timer-view'
 import { ObsidianWriteBackPromptPort } from './views/write-back-modal'
 import { RoutineStatusBarItem } from './views/status-bar'
 import { RoutineSidePanelView, SIDE_PANEL_VIEW_TYPE } from './views/side-panel-view'
+import { RoutineGalleryModal } from './views/routine-gallery-modal'
 import { scaffoldExampleRoutine } from './onboarding/scaffold-example'
 
 /** Surfaces a dispatched hook's invocation failures and failed FileMutation applications — mirrors the reporting main.ts's old write-back subscriber did inline. */
@@ -115,6 +116,13 @@ export default class RoutineFlowPlugin extends Plugin {
       id: 'open-routine-panel',
       name: 'Open routine panel',
       callback: () => void this.activateView(),
+    })
+    this.addCommand({
+      id: 'open-routine-gallery',
+      name: 'Browse routine templates',
+      callback: () => {
+        new RoutineGalleryModal(this.app).open()
+      },
     })
     this.addCommand({
       id: 'seed-example-routine',
