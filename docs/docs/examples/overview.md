@@ -62,6 +62,7 @@ The following reference guides detail real-world topologies available in the tes
 | [Desk breaks and physical movement](desk-breaks-and-movement) | Desk micro-movement, Stretch break, Workout, Dog walk | 20-20-20 eye strain reset, rep-based phases, non-queue standalone routines |
 | [Task triage and frontmatter write-backs](bug-triage-and-batching) | Bug triage blitz, Chore list, Spaced repetition, Write-back variants | `queueExhausted` conditional exits, frontmatter metadata write-backs |
 | [Analytics and focus dashboards](analytics-and-dashboards) | Bases Chartkit focus dashboard, Metric write-backs | Embedded timer views, live Chartkit visualizations, multi-view `.base` setups |
+| [Recurring routines and calendar scheduling](recurring-and-calendar-scheduling) | Daily schedule, Templater templates, Calendar timelines | Time-blocked daily note embeds, multi-routine day cadences, Templater automation |
 
 ## Routine note format
 

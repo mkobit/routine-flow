@@ -1,0 +1,42 @@
+type: base
+properties:
+  note.status:
+    displayName: Status
+  note.due:
+    displayName: Due date
+  note.priority:
+    displayName: Priority
+  note.sessions:
+    displayName: Completed sessions
+  note.type:
+    displayName: Task type
+  note.routine-status:
+    displayName: Routine status
+  note.scheduled-time:
+    displayName: Scheduled time
+views:
+  - type: routine-timer
+    name: Morning kickoff
+    routineFile: morning-kickoff/morning-kickoff-routine.md
+  - type: routine-timer
+    name: Pomodoro focus block
+    routineFile: pomodoro/pomodoro-routine.md
+  - type: routine-timer
+    name: Ultradian deep work
+    routineFile: ultradian-rhythm/ultradian-rhythm-routine.md
+  - type: routine-timer
+    name: Desk micro-movement
+    routineFile: desk-micro-movement/desk-micro-movement-routine.md
+  - type: routine-timer
+    name: Shutdown ritual
+    routineFile: shutdown-ritual/shutdown-ritual-routine.md
+  - type: routine-timer
+    name: Evening wind down
+    routineFile: evening-wind-down/evening-wind-down-routine.md
+  - type: table
+    name: Today's schedule
+  - type: calendar-chart
+    name: Calendar timeline
+    xAxisProp: note.due
+    valueProp: note.sessions
+    showLegend: true
