@@ -61,6 +61,7 @@ The following reference guides detail real-world topologies available in the tes
 | [Shutdown rituals and daily kickoffs](shutdown-and-daily-rituals) | Workday shutdown, Morning kickoff, Evening wind-down | Untimed manual-clear closure, habit checklists, daily note planning |
 | [Desk breaks and physical movement](desk-breaks-and-movement) | Desk micro-movement, Stretch break, Workout, Dog walk | 20-20-20 eye strain reset, rep-based phases, non-queue standalone routines |
 | [Task triage and frontmatter write-backs](bug-triage-and-batching) | Bug triage blitz, Chore list, Spaced repetition, Write-back variants | `queueExhausted` conditional exits, frontmatter metadata write-backs |
+| [Analytics and focus dashboards](analytics-and-dashboards) | Bases Chartkit focus dashboard, Metric write-backs | Embedded timer views, live Chartkit visualizations, multi-view `.base` setups |
 
 ## Routine note format
 

@@ -28,6 +28,7 @@ Every file follows the same four sections.
 - [Sprint retrospective](sprint-retrospective.md) — a fixed, facilitator-paced sequence of `manualClear` segments that terminates rather than loops; the wrap-back edge exists only to pass `checkPhaseGraphIntegrity`.
 - [Frontmatter write-back](write-back.md) — the `write-back` `Hook` as a configuration surface: per-phase opt-in, `activeItem` vs `callback` targets, and the confirm-before-write modal.
 - [Shared routine definitions](shared-routines.md) — the same routine file, defined once, referenced from more than one Base view in more than one folder via the `routineFile` view option; reuse is by `PhaseGraph.id`, not file or object identity.
+- [Bases Chartkit routine analytics and focus dashboard](bases-chartkit-dashboard.md) — dashboard combining Routine Flow timer views with Bases Chartkit charts visualizing session metrics and focus duration from frontmatter write-backs.
 
 ## Known gaps this doc surfaces repeatedly
 
