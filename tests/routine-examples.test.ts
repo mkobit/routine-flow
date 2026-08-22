@@ -310,4 +310,110 @@ describe('routine examples validation', () => {
     expect(phase?.handlers.onComplete).toHaveLength(1)
     expect(phase?.handlers.onComplete?.[0]?.kind).toBe('script')
   })
+
+  test('audio chime and desktop notification routine parses handlers and notification policies', () => {
+    const audioRoutine = {
+      id: 'audio-chime-notifications',
+      name: 'Audio chimes and desktop notifications',
+      phases: [
+        {
+          id: 'focus',
+          name: 'Focus interval',
+          duration: 'PT25M',
+          onCompletion: 'autoAdvance',
+          taskSourceId: 'focus-queue',
+          notification: {
+            sound: 'chime-start',
+            systemNotification: true,
+          },
+          handlers: {
+            onEnter: [
+              {
+                kind: 'script',
+                scriptPath: 'scripts/audio-chime-hook.js',
+                params: { chord: 'major', baseFreq: 523.25 },
+              },
+              {
+                kind: 'preset',
+                preset: 'notify',
+                params: { title: 'Routine Flow', body: 'Focus interval started', system: false },
+              },
+            ],
+            onComplete: [
+              {
+                kind: 'script',
+                scriptPath: 'scripts/audio-chime-hook.js',
+                params: { chord: 'fanfare', baseFreq: 659.25 },
+              },
+              {
+                kind: 'preset',
+                preset: 'notify',
+                params: { title: 'Routine Flow', body: 'Focus interval complete! Great work.', system: true },
+              },
+              {
+                kind: 'script',
+                scriptPath: 'write-back',
+              },
+            ],
+            onSkip: [
+              {
+                kind: 'script',
+                scriptPath: 'scripts/interval-warning-hook.js',
+                params: { tone: 'skip' },
+              },
+            ],
+          },
+        },
+        {
+          id: 'short-break',
+          name: 'Short break',
+          duration: 'PT5M',
+          onCompletion: 'autoAdvance',
+          taskSourceId: 'break-queue',
+          notification: {
+            sound: 'soft-bell',
+            systemNotification: true,
+          },
+          handlers: {
+            onEnter: [
+              {
+                kind: 'script',
+                scriptPath: 'scripts/audio-chime-hook.js',
+                params: { chord: 'soft', baseFreq: 440.0 },
+              },
+            ],
+            onComplete: [
+              {
+                kind: 'preset',
+                preset: 'notify',
+                params: { title: 'Routine Flow', body: 'Short break ended', system: true },
+              },
+            ],
+          },
+        },
+      ],
+      transitions: [
+        { from: 'focus', to: 'short-break', guard: { kind: 'always' } },
+        { from: 'short-break', to: 'focus', guard: { kind: 'always' } },
+      ],
+    }
+
+    const parseResult = parseRoutineFile(wrapInRoutineNote(audioRoutine))
+    expect(parseResult.success).toBe(true)
+    if (!parseResult.success) {
+      return
+    }
+
+    const focusPhase = parseResult.graph.phases[0]
+    expect(focusPhase?.notification?.sound).toBe('chime-start')
+    expect(focusPhase?.notification?.systemNotification).toBe(true)
+    expect(focusPhase?.handlers.onEnter).toHaveLength(2)
+    expect(focusPhase?.handlers.onComplete).toHaveLength(3)
+    expect(focusPhase?.handlers.onSkip).toHaveLength(1)
+
+    const breakPhase = parseResult.graph.phases[1]
+    expect(breakPhase?.notification?.sound).toBe('soft-bell')
+    expect(breakPhase?.handlers.onEnter).toHaveLength(1)
+    expect(breakPhase?.handlers.onComplete).toHaveLength(1)
+  })
 })

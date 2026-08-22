@@ -64,6 +64,7 @@ The following reference guides detail real-world topologies available in the tes
 | [Analytics and focus dashboards](analytics-and-dashboards) | Bases Chartkit focus dashboard, Metric write-backs | Embedded timer views, live Chartkit visualizations, multi-view `.base` setups |
 | [Recurring routines and calendar scheduling](recurring-and-calendar-scheduling) | Daily schedule, Templater templates, Calendar timelines | Time-blocked daily note embeds, multi-routine day cadences, Templater automation |
 | [Multi-property filtering and dispatch](multi-property-filtering-and-dispatch) | Multi-property filters, Priority dispatch queues | Compound Bases filters, numeric priority sorting, lifecycle dispatch lanes |
+| [Audio chimes and desktop notifications](audio-chimes-and-notifications) | Web Audio synthesizer chimes, OS desktop alerts | Web Audio chord synthesis, in-app Notice toasts, milestone alert tones |
 
 ## Routine note format
 

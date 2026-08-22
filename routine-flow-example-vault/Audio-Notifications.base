@@ -1,0 +1,42 @@
+type: base
+properties:
+  note.status:
+    displayName: Status
+  note.due:
+    displayName: Due date
+  note.priority:
+    displayName: Priority level
+  note.routine-priority:
+    displayName: Routine priority
+  note.sessions:
+    displayName: Completed sessions
+  note.type:
+    displayName: Task type
+  note.routine-status:
+    displayName: Routine status
+views:
+  - type: routine-timer
+    name: Audio chime focus intervals
+    routineFile: audio-chime-notifications/audio-chime-notifications-routine.md
+    focusProperty: note.type
+    focusValue: work
+  - type: routine-timer
+    name: Standard Pomodoro alerts
+    routineFile: pomodoro/pomodoro-routine.md
+    focusProperty: note.status
+    focusValue: in-progress
+  - type: routine-timer
+    name: Ergonomic stretch alerts
+    routineFile: desk-micro-movement/desk-micro-movement-routine.md
+  - type: table
+    name: Focus task alert queue
+  - type: bar-chart
+    name: Sessions completed with alerts
+    xAxisProp: note.priority
+    yAxisProp: note.sessions
+    showLegend: true
+  - type: pie-chart
+    name: Task lifecycle status
+    xAxisProp: note.routine-status
+    yAxisProp: note.sessions
+    showLegend: true
