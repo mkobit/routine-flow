@@ -1,0 +1,51 @@
+type: base
+properties:
+  note.status:
+    displayName: Status
+  note.due:
+    displayName: Due date
+  note.priority:
+    displayName: Priority level
+  note.routine-priority:
+    displayName: Routine priority
+  note.sessions:
+    displayName: Completed sessions
+  note.type:
+    displayName: Task type
+  note.routine-status:
+    displayName: Routine status
+  note.severity:
+    displayName: Severity
+views:
+  - type: routine-timer
+    name: P1 urgent sprint focus
+    routineFile: pomodoro/pomodoro-routine.md
+    focusProperty: note.status
+    focusValue: in-progress
+  - type: routine-timer
+    name: High priority bug blitz
+    routineFile: bug-triage-blitz/bug-triage-blitz-routine.md
+    focusProperty: note.type
+    focusValue: bug-ticket
+  - type: routine-timer
+    name: Deep work top priority
+    routineFile: ultradian-rhythm/ultradian-rhythm-routine.md
+    focusProperty: note.type
+    focusValue: ultradian-task
+  - type: routine-timer
+    name: Morning priority launch
+    routineFile: morning-kickoff/morning-kickoff-routine.md
+    focusProperty: note.type
+    focusValue: morning-priority
+  - type: table
+    name: Task queue and priority status
+  - type: bar-chart
+    name: Sessions by priority
+    xAxisProp: note.priority
+    yAxisProp: note.sessions
+    showLegend: true
+  - type: pie-chart
+    name: Routine status distribution
+    xAxisProp: note.routine-status
+    yAxisProp: note.sessions
+    showLegend: true
