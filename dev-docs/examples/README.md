@@ -29,6 +29,7 @@ Every file follows the same four sections.
 - [Frontmatter write-back](write-back.md) — the `write-back` `Hook` as a configuration surface: per-phase opt-in, `activeItem` vs `callback` targets, and the confirm-before-write modal.
 - [Shared routine definitions](shared-routines.md) — the same routine file, defined once, referenced from more than one Base view in more than one folder via the `routineFile` view option; reuse is by `PhaseGraph.id`, not file or object identity.
 - [Bases Chartkit routine analytics and focus dashboard](bases-chartkit-dashboard.md) — dashboard combining Routine Flow timer views with Bases Chartkit charts visualizing session metrics and focus duration from frontmatter write-backs.
+- [Recurring scheduled routines and daily note calendar integration](recurring-scheduled-routines.md) — daily note scheduling embedding Routine Flow timer views with Templater templates, calendar timelines, and time-blocked task queues.
 
 ## Known gaps this doc surfaces repeatedly
 
