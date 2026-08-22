@@ -1,0 +1,44 @@
+type: base
+properties:
+  note.status:
+    displayName: Status
+  note.due:
+    displayName: Due date
+  note.priority:
+    displayName: Priority
+  note.sessions:
+    displayName: Completed sessions
+  note.type:
+    displayName: Task type
+  note.routine-status:
+    displayName: Routine status
+views:
+  - type: routine-timer
+    name: Pomodoro focus
+    routineFile: pomodoro/pomodoro-routine.md
+  - type: routine-timer
+    name: Bug triage sprint
+    routineFile: bug-triage-blitz/bug-triage-blitz-routine.md
+  - type: routine-timer
+    name: Shutdown ritual
+    routineFile: shutdown-ritual/shutdown-ritual-routine.md
+  - type: bar-chart
+    name: Completed sessions by task
+    xAxisProp: file.name
+    yAxisProp: note.sessions
+    showLegend: true
+    filters:
+      and:
+        - note.sessions > 0
+  - type: calendar-chart
+    name: Focus activity calendar
+    xAxisProp: note.due
+    valueProp: note.sessions
+    showLegend: true
+  - type: pie-chart
+    name: Sessions by status
+    xAxisProp: note.status
+    yAxisProp: note.sessions
+    showLegend: true
+  - type: table
+    name: Task queue
