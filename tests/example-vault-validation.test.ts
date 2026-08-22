@@ -236,6 +236,55 @@ describe('example vault validation', () => {
     }
   })
 
+  test('every routineFile in Audio-Notifications.base maps to a valid generated routine', async () => {
+    const audioNotificationsBasePath = path.resolve(__dirname, '../routine-flow-example-vault/Audio-Notifications.base')
+    const content = await fs.readFile(audioNotificationsBasePath, 'utf-8')
+    const routineFileMatches = [...content.matchAll(/routineFile:\s*([^\s\n]+)/g)]
+      .map(m => m[1])
+      .filter(isString)
+
+    expect(routineFileMatches.length).toBeGreaterThan(0)
+
+    const notes = generateVault(DEFAULT_VAULT_SEED)
+    const routinePaths = new Set(notes.map(getNotePath))
+
+    for (const routineFile of routineFileMatches) {
+      expect(routinePaths.has(routineFile)).toBe(true)
+      const targetNote = notes.find(n => getNotePath(n) === routineFile)
+      expect(targetNote).toBeDefined()
+      if (targetNote !== undefined) {
+        const parseResult = parseRoutineFile(getNoteContent(targetNote))
+        expect(parseResult.success).toBe(true)
+      }
+    }
+  })
+
+  test('Audio-Notifications-Dashboard.md embeds existing views from Audio-Notifications.base', async () => {
+    const audioDashboardMdPath = path.resolve(__dirname, '../routine-flow-example-vault/Audio-Notifications-Dashboard.md')
+    const audioNotificationsBasePath = path.resolve(__dirname, '../routine-flow-example-vault/Audio-Notifications.base')
+
+    const mdContent = await fs.readFile(audioDashboardMdPath, 'utf-8')
+    const baseContent = await fs.readFile(audioNotificationsBasePath, 'utf-8')
+
+    const viewNameMatches = [...baseContent.matchAll(/name:\s*([^\s\n][^\n]*)/g)]
+      .map(m => m[1])
+      .filter(isString)
+      .map(s => s.trim())
+
+    expect(viewNameMatches.length).toBeGreaterThan(0)
+
+    const embedMatches = [...mdContent.matchAll(/!\[\[Audio-Notifications\.base#([^\]]+)\]\]/g)]
+      .map(m => m[1])
+      .filter(isString)
+      .map(s => s.trim())
+
+    expect(embedMatches.length).toBeGreaterThan(0)
+
+    for (const embedView of embedMatches) {
+      expect(viewNameMatches).toContain(embedView)
+    }
+  })
+
   test('rebuildGeneratedVault creates and cleans folders in target directory', async () => {
     const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'routine-flow-test-vault-'))
     try {

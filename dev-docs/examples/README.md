@@ -31,6 +31,7 @@ Every file follows the same four sections.
 - [Bases Chartkit routine analytics and focus dashboard](bases-chartkit-dashboard.md) — dashboard combining Routine Flow timer views with Bases Chartkit charts visualizing session metrics and focus duration from frontmatter write-backs.
 - [Recurring scheduled routines and daily note calendar integration](recurring-scheduled-routines.md) — daily note scheduling embedding Routine Flow timer views with Templater templates, calendar timelines, and time-blocked task queues.
 - [Multi-property task queue filtering and priority dispatch](multi-property-queue-filtering.md) — advanced Bases query filtering combining tags, priority levels, folder paths, and lifecycle fields driving routine task dispatch.
+- [Audio chimes and desktop notification hook configurations](audio-chimes-and-notifications.md) — Web Audio synthesizer chimes, desktop system notifications, and interval warning alerts across phase transition lifecycles.
 
 ## Known gaps this doc surfaces repeatedly
 

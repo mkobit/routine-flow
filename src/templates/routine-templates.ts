@@ -917,4 +917,228 @@ Manual-clear chores blitz supporting frontmatter priority updates, task deferral
 \`\`\`
 `,
   },
+  {
+    id: 'audio-chime-intervals',
+    name: 'Audio chimes and desktop notifications',
+    category: 'Focus & intervals',
+    description: 'Interval routine configured with Web Audio synthesizer chimes, OS desktop notifications, and interval warning alerts.',
+    phaseSummary: 'Focus (25m, chimes + desktop notification) → Short break (5m) → Long break (15m, 4th cycle)',
+    suggestedFileName: 'Audio Chime Routine.md',
+    markdownContent: `---
+is-routine: true
+---
+# Audio chimes and desktop notifications
+
+Interval routine configured with Web Audio synthesizer chimes, OS desktop notifications, and interval warning alerts.
+
+\`\`\`json
+{
+  "id": "audio-chime-intervals",
+  "name": "Audio chimes and desktop notifications",
+  "phases": [
+    {
+      "id": "focus",
+      "name": "Focus interval",
+      "duration": "PT25M",
+      "onCompletion": "autoAdvance",
+      "taskSourceId": "focus-queue",
+      "notification": {
+        "sound": "chime-start",
+        "systemNotification": true
+      },
+      "logTarget": {
+        "kind": "activeItem"
+      },
+      "handlers": {
+        "onEnter": [
+          {
+            "kind": "script",
+            "scriptPath": "scripts/audio-chime-hook.js",
+            "params": {
+              "chord": "major",
+              "baseFreq": 523.25
+            }
+          },
+          {
+            "kind": "preset",
+            "preset": "notify",
+            "params": {
+              "title": "Routine Flow",
+              "body": "Focus interval started — time for deep work",
+              "system": false
+            }
+          }
+        ],
+        "onComplete": [
+          {
+            "kind": "script",
+            "scriptPath": "scripts/audio-chime-hook.js",
+            "params": {
+              "chord": "fanfare",
+              "baseFreq": 659.25
+            }
+          },
+          {
+            "kind": "preset",
+            "preset": "notify",
+            "params": {
+              "title": "Routine Flow",
+              "body": "Focus interval complete! Great work.",
+              "system": true
+            }
+          },
+          {
+            "kind": "script",
+            "scriptPath": "write-back"
+          }
+        ],
+        "onSkip": [
+          {
+            "kind": "script",
+            "scriptPath": "scripts/interval-warning-hook.js",
+            "params": {
+              "tone": "skip"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "short-break",
+      "name": "Short break",
+      "duration": "PT5M",
+      "onCompletion": "autoAdvance",
+      "taskSourceId": "break-queue",
+      "notification": {
+        "sound": "soft-bell",
+        "systemNotification": true
+      },
+      "handlers": {
+        "onEnter": [
+          {
+            "kind": "script",
+            "scriptPath": "scripts/audio-chime-hook.js",
+            "params": {
+              "chord": "soft",
+              "baseFreq": 440.0
+            }
+          },
+          {
+            "kind": "preset",
+            "preset": "notify",
+            "params": {
+              "title": "Routine Flow",
+              "body": "Short break started — rest your eyes and stretch",
+              "system": false
+            }
+          }
+        ],
+        "onComplete": [
+          {
+            "kind": "script",
+            "scriptPath": "scripts/audio-chime-hook.js",
+            "params": {
+              "chord": "alert",
+              "baseFreq": 587.33
+            }
+          },
+          {
+            "kind": "preset",
+            "preset": "notify",
+            "params": {
+              "title": "Routine Flow",
+              "body": "Short break ended — ready for the next focus session",
+              "system": true
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "long-break",
+      "name": "Long restorative break",
+      "duration": "PT15M",
+      "onCompletion": "autoAdvance",
+      "taskSourceId": "break-queue",
+      "notification": {
+        "sound": "restorative-bell",
+        "systemNotification": true
+      },
+      "handlers": {
+        "onEnter": [
+          {
+            "kind": "script",
+            "scriptPath": "scripts/audio-chime-hook.js",
+            "params": {
+              "chord": "restorative",
+              "baseFreq": 392.0
+            }
+          },
+          {
+            "kind": "preset",
+            "preset": "notify",
+            "params": {
+              "title": "Routine Flow",
+              "body": "Long break started — step away from your desk",
+              "system": true
+            }
+          }
+        ],
+        "onComplete": [
+          {
+            "kind": "script",
+            "scriptPath": "scripts/audio-chime-hook.js",
+            "params": {
+              "chord": "fanfare",
+              "baseFreq": 523.25
+            }
+          },
+          {
+            "kind": "preset",
+            "preset": "notify",
+            "params": {
+              "title": "Routine Flow",
+              "body": "Long break concluded — cycle reset",
+              "system": true
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "transitions": [
+    {
+      "from": "focus",
+      "to": "long-break",
+      "guard": {
+        "kind": "everyNth",
+        "count": 4
+      }
+    },
+    {
+      "from": "focus",
+      "to": "short-break",
+      "guard": {
+        "kind": "always"
+      }
+    },
+    {
+      "from": "short-break",
+      "to": "focus",
+      "guard": {
+        "kind": "always"
+      }
+    },
+    {
+      "from": "long-break",
+      "to": "focus",
+      "guard": {
+        "kind": "always"
+      }
+    }
+  ]
+}
+\`\`\`
+`,
+  },
 ]

@@ -1,5 +1,6 @@
 import * as fs from 'node:fs/promises'
 import * as path from 'node:path'
+import { generateAudioChimeNotificationsNotes } from './generators/audio-chime-notifications'
 import { generateBreakDurationVariantsNotes } from './generators/break-duration-variants'
 import { generateBugTriageBlitzNotes } from './generators/bug-triage-blitz'
 import { generateChoreListNotes } from './generators/chore-list'
@@ -25,6 +26,7 @@ import { writeVault } from './vault'
 
 export { DEFAULT_VAULT_SEED, resolveVaultSeed, ANCHOR_DATE } from './seed'
 export { routineFileNote, routineReadme, indexedPath, slugify } from './routine-note'
+export * from './generators/audio-chime-notifications'
 export * from './generators/break-duration-variants'
 export * from './generators/bug-triage-blitz'
 export * from './generators/chore-list'
@@ -77,6 +79,7 @@ export const GENERATED_VAULT_FOLDERS = [
   'bug-triage-blitz',
   'ultradian-rhythm',
   'desk-micro-movement',
+  'audio-chime-notifications',
 ] as const
 
 export function generateVault(seed: number = resolveVaultSeed()): readonly NoteDefinition[] {
@@ -100,6 +103,7 @@ export function generateVault(seed: number = resolveVaultSeed()): readonly NoteD
     ...generateBugTriageBlitzNotes(seed + ROUTINE_SEED_OFFSETS.bugTriageBlitz),
     ...generateUltradianRhythmNotes(seed + ROUTINE_SEED_OFFSETS.ultradianRhythm),
     ...generateDeskMicroMovementNotes(),
+    ...generateAudioChimeNotificationsNotes(),
   ]
 }
 
