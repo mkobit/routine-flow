@@ -244,7 +244,7 @@ export function generateAudioChimeNotificationsNotes(): readonly NoteDefinition[
       'audio-chime-notifications/01-deep-work-architecture.md',
       {
         'title': 'Architect auth boundary',
-        'type': 'work',
+        'type': 'audio-focus',
         'status': 'in-progress',
         'priority': 1,
         'routine-priority': 1,
@@ -258,7 +258,7 @@ export function generateAudioChimeNotificationsNotes(): readonly NoteDefinition[
       'audio-chime-notifications/02-code-review-refactor.md',
       {
         'title': 'Review pull request feedback',
-        'type': 'work',
+        'type': 'audio-focus',
         'status': 'todo',
         'priority': 2,
         'routine-priority': 2,

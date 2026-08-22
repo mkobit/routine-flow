@@ -19,7 +19,7 @@ views:
     name: Audio chime focus intervals
     routineFile: audio-chime-notifications/audio-chime-notifications-routine.md
     focusProperty: note.type
-    focusValue: work
+    focusValue: audio-focus
   - type: routine-timer
     name: Standard Pomodoro alerts
     routineFile: pomodoro/pomodoro-routine.md
