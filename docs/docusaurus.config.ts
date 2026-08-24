@@ -1,9 +1,13 @@
 import {themes as prismThemes} from 'prism-react-renderer';
-import {Temporal} from 'temporal-polyfill';
 import type {Config} from '@docusaurus/types';
 import type * as Preset from '@docusaurus/preset-classic';
 
 // This runs in Node.js - Don't use client-side code here (browser APIs, JSX...)
+declare const Temporal: {
+  readonly Now: {
+    readonly plainDateISO: () => { readonly year: number }
+  }
+}
 
 const config: Config = {
   title: 'Routine Flow',

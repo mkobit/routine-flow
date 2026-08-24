@@ -29,7 +29,7 @@ Two blocks in that config carve `docs/` out, because it follows Docusaurus ecosy
 - A dedicated `files: ['docs/**/*.ts', 'docs/**/*.tsx', 'docs/**/*.mts', 'docs/**/*.cts']` block turns off `obsidianmd/prefer-file-manager-trash-file`, the whole `functional/*` family, and the `@typescript-eslint/no-unsafe-*` family — mirroring the carve-out already given to tests and e2e code.
 
 General hygiene rules still apply to `docs/`: `no-console`, `eqeqeq`, `curly`, `no-restricted-imports` (bans barrel `**/index` imports), `@typescript-eslint/consistent-type-assertions` (no `as` casts), `@typescript-eslint/consistent-type-imports`, and `no-restricted-globals` banning `Date`.
-Use `Temporal` from `temporal-polyfill` instead of `Date`; it is already a `docs/` dependency (see the footer copyright year in `docusaurus.config.ts`, `Temporal.Now.plainDateISO().year`).
+Use native `Temporal` instead of `Date` (see the footer copyright year in `docusaurus.config.ts`, `Temporal.Now.plainDateISO().year`).
 
 ## CI
 
