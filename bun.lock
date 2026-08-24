@@ -40,11 +40,14 @@
     },
   },
   "overrides": {
+    "@beads/bd": "npm:@forbidden/do-not-install@0.0.0",
     "@typescript-eslint/eslint-plugin": "^8.66.0",
     "@typescript-eslint/parser": "^8.66.0",
     "@typescript-eslint/type-utils": "^8.66.0",
     "@typescript-eslint/types": "^8.66.0",
     "@typescript-eslint/utils": "^8.66.0",
+    "bd": "npm:@forbidden/do-not-install@0.0.0",
+    "beads": "npm:@forbidden/do-not-install@0.0.0",
     "typescript-eslint": "^8.66.0",
   },
   "packages": {
