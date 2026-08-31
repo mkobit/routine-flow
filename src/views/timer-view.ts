@@ -1,4 +1,4 @@
-import { BasesView, Notice, setIcon } from 'obsidian'
+import { BasesView, Notice, Setting, setIcon } from 'obsidian'
 import type { BasesOptions, QueryController, App, TFile, BasesPropertyId, BasesEntry } from 'obsidian'
 import type RoutineFlowPlugin from '../main'
 import type { EngineState } from '../domain/session/engine-state'
@@ -23,6 +23,8 @@ export class RoutineTimerView extends BasesView {
   private unsubscribe: (() => void) | null = null
   private routineFilePath: string | null = null
   private routineResolution: RoutineResolution = { kind: 'default', graph: DEFAULT_PHASE_GRAPH }
+  private isConfigOpen = false
+  private queueEl: HTMLElement | null = null
 
   constructor(controller: QueryController, containerEl: HTMLElement, plugin: RoutineFlowPlugin) {
     super(controller)
@@ -87,6 +89,10 @@ export class RoutineTimerView extends BasesView {
       const errorEl = this.containerEl.createDiv({ cls: 'routine-error' })
       this.renderStateIcon(errorEl, ['circle-alert', 'alert-circle'])
       errorEl.createEl('p', { text: `Routine error: ${this.routineResolution.error.message}` })
+      this.renderConfigBar(this.containerEl)
+      if (this.isConfigOpen) {
+        this.renderConfigPanel(this.containerEl)
+      }
       return
     }
 
@@ -121,6 +127,11 @@ export class RoutineTimerView extends BasesView {
     // Timer Panel
     const timerPanel = this.containerEl.createDiv({ cls: 'routine-timer-panel' })
     timerPanel.addClass(`is-${state.status}`)
+
+    this.renderConfigBar(timerPanel)
+    if (this.isConfigOpen) {
+      this.renderConfigPanel(timerPanel)
+    }
 
     // Stopwatch header: a single <h2> (what e2e queries) whose child spans read as a watch face --
     // the phase label above the dial, the mm:ss digits inside/over the progress ring, the status
@@ -225,15 +236,152 @@ export class RoutineTimerView extends BasesView {
 
     // A phase with no taskSourceId has no queue at all (e.g. a rep-based workout phase) — nothing to render.
     if (phase.taskSourceId === null) {
+      this.queueEl = null
       return
     }
 
-    const queueTitle = phase.kind === FOCUS_PHASE_KIND ? 'Work queue' : 'Break queue'
-    const queueItems = this.plugin.taskSourceRegistry.resolve(phase.taskSourceId)?.getQueue() ?? []
-
     // Queue Panel
-    const queueEl = this.containerEl.createDiv({ cls: 'routine-queue' })
+    this.queueEl = this.containerEl.createDiv({ cls: 'routine-queue' })
+    this.renderQueueContent(this.queueEl, phase, state)
+  }
+
+  private renderConfigBar(parent: HTMLElement): void {
+    const configBar = parent.createDiv({ cls: 'routine-config-bar' })
+    const configToggleBtn = configBar.createEl('button', {
+      cls: `clickable-icon routine-config-toggle-btn${this.isConfigOpen ? ' is-active' : ''}`,
+      attr: {
+        'aria-label': 'Configure view options',
+        'title': 'Configure view options',
+      },
+    })
+    this.renderStateIcon(configToggleBtn, ['settings', 'gear', 'sliders-horizontal'])
+    configToggleBtn.addEventListener('click', () => {
+      this.isConfigOpen = !this.isConfigOpen
+      this.render(this.plugin.store.getState())
+    })
+  }
+
+  private renderConfigPanel(parent: HTMLElement): void {
+    const panel = parent.createDiv({ cls: 'routine-config-panel' })
+
+    const routineFiles = this.plugin.app.vault.getMarkdownFiles().filter((file) => {
+      return this.plugin.app.metadataCache.getFileCache(file)?.frontmatter?.['is-routine'] === true
+    })
+    const configuredPath = this.getConfiguredRoutineFilePath()
+
+    new Setting(panel)
+      .setClass('routine-config-routine-file')
+      .setName('Routine file')
+      .setDesc('Select routine definition file')
+      .addDropdown((dropdown) => {
+        dropdown.addOption('', '(Default routine)')
+        for (const file of routineFiles) {
+          dropdown.addOption(file.path, file.basename)
+        }
+        if (configuredPath !== null && !routineFiles.some(f => f.path === configuredPath)) {
+          dropdown.addOption(configuredPath, configuredPath)
+        }
+        dropdown.setValue(configuredPath ?? '')
+        dropdown.onChange(async (value) => {
+          const newPath = value.trim().length > 0 ? value.trim() : null
+          this.config?.set('routineFile', newPath)
+          this.routineFilePath = this.getConfiguredRoutineFilePath()
+          this.routineResolution = this.routineFilePath === null
+            ? { kind: 'default', graph: DEFAULT_PHASE_GRAPH }
+            : { kind: 'loading' }
+          if (this.routineFilePath !== null) {
+            await this.loadRoutineFile(this.routineFilePath)
+          }
+          this.render(this.plugin.store.getState())
+        })
+      })
+
+    new Setting(panel)
+      .setClass('routine-config-focus-prop')
+      .setName('Focus task property')
+      .setDesc('Frontmatter property used to filter focus queue')
+      .addText((text) => {
+        text.setPlaceholder('note.type')
+        const raw = this.config?.get('focusProperty')
+        text.setValue(typeof raw === 'string' ? raw : '')
+        text.onChange((value) => {
+          const val = value.trim()
+          this.config?.set('focusProperty', val.length > 0 ? val : null)
+          this.refreshQueueView()
+        })
+      })
+
+    new Setting(panel)
+      .setClass('routine-config-focus-val')
+      .setName('Focus task value')
+      .setDesc('Matching property value for focus queue')
+      .addText((text) => {
+        text.setPlaceholder('Work')
+        const raw = this.config?.get('focusValue')
+        text.setValue(typeof raw === 'string' ? raw : '')
+        text.onChange((value) => {
+          const val = value.trim()
+          this.config?.set('focusValue', val.length > 0 ? val : null)
+          this.refreshQueueView()
+        })
+      })
+
+    new Setting(panel)
+      .setClass('routine-config-break-prop')
+      .setName('Break task property')
+      .setDesc('Frontmatter property used to filter break queue')
+      .addText((text) => {
+        text.setPlaceholder('note.type')
+        const raw = this.config?.get('breakProperty')
+        text.setValue(typeof raw === 'string' ? raw : '')
+        text.onChange((value) => {
+          const val = value.trim()
+          this.config?.set('breakProperty', val.length > 0 ? val : null)
+          this.refreshQueueView()
+        })
+      })
+
+    new Setting(panel)
+      .setClass('routine-config-break-val')
+      .setName('Break task value')
+      .setDesc('Matching property value for break queue')
+      .addText((text) => {
+        text.setPlaceholder('Break')
+        const raw = this.config?.get('breakValue')
+        text.setValue(typeof raw === 'string' ? raw : '')
+        text.onChange((value) => {
+          const val = value.trim()
+          this.config?.set('breakValue', val.length > 0 ? val : null)
+          this.refreshQueueView()
+        })
+      })
+  }
+
+  private refreshQueueView(): void {
+    if (this.routineResolution.kind === 'default' || this.routineResolution.kind === 'loaded') {
+      const viewGraph = this.routineResolution.graph
+      const graph = this.plugin.store.getGraph()
+      if (graph.id === viewGraph.id) {
+        this.registerTaskSources(viewGraph)
+      }
+    }
+    const state = this.plugin.store.getState()
+    const graph = this.plugin.store.getGraph()
+    const phase = findPhaseById(graph, state.currentPhaseId)
+    if (!phase || !this.queueEl) {
+      return
+    }
+    this.renderQueueContent(this.queueEl, phase, state)
+  }
+
+  private renderQueueContent(queueEl: HTMLElement, phase: Phase, state: EngineState): void {
+    queueEl.empty()
+    const queueTitle = phase.kind === FOCUS_PHASE_KIND ? 'Work queue' : 'Break queue'
     queueEl.createEl('h3', { text: queueTitle })
+
+    const queueItems = phase.taskSourceId !== null
+      ? (this.plugin.taskSourceRegistry.resolve(phase.taskSourceId)?.getQueue() ?? [])
+      : []
 
     if (queueItems.length === 0) {
       const emptyEl = queueEl.createDiv({ cls: 'routine-queue-empty' })
