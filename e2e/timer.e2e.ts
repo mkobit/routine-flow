@@ -162,3 +162,49 @@ test.describe('BaseQuerySource-backed queue (base-query-task-source)', () => {
     await expect(queue.locator('li .routine-task-name')).toHaveText(expectedDisplayNames, { timeout: 20_000 })
   })
 })
+
+test.describe('inline configuration controls (inline-bases-view-options)', () => {
+  test.beforeEach(async ({ obsidianPage: { page } }) => {
+    await evaluateObsidian(page, async (app) => {
+      const file = app.vault.getFileByPath('Tasks.base')
+      if (!file) {
+        throw new Error('Tasks.base not found')
+      }
+      const leaf = app.workspace.getLeavesOfType('bases')[0] ?? app.workspace.getLeaf('tab')
+      await leaf.openFile(file)
+    })
+    await selectBasesSubView(page, 'Default')
+  })
+
+  test('toggles inline configuration panel visibility via gear button', async ({ obsidianPage: { page } }) => {
+    const view = page.locator('.workspace-leaf-content[data-type="bases"] .routine-timer-view')
+    const configBtn = view.locator('.routine-config-toggle-btn')
+    const configPanel = view.locator('.routine-config-panel')
+
+    await expect(configBtn).toBeVisible()
+    await expect(configPanel).not.toBeVisible()
+
+    await configBtn.click()
+    await expect(configPanel).toBeVisible()
+    await expect(configBtn).toHaveClass(/is-active/)
+
+    await configBtn.click()
+    await expect(configPanel).not.toBeVisible()
+    await expect(configBtn).not.toHaveClass(/is-active/)
+  })
+
+  test('programmatically updates routineFile and reloads routine', async ({ obsidianPage: { page } }) => {
+    const view = page.locator('.workspace-leaf-content[data-type="bases"] .routine-timer-view')
+    const configBtn = view.locator('.routine-config-toggle-btn')
+
+    await configBtn.click()
+    const routineSelect = view.locator('.routine-config-routine-file').getByRole('combobox')
+    await expect(routineSelect).toBeVisible()
+
+    // Select workout routine from dropdown
+    await routineSelect.selectOption('workout/workout-routine.md')
+
+    // View should update routineState and viewGraphId
+    await expect(view).toHaveAttribute('data-view-graph-id', 'workout')
+  })
+})
