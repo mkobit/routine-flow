@@ -1,6 +1,6 @@
 {
   "name": "routine-flow",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "description": "Customizable routine timer with Obsidian Bases support.",
   "main": "main.js",
   "type": "module",
