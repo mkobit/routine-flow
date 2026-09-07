@@ -71,5 +71,9 @@
     "@typescript-eslint/types": "^8.66.0",
     "@typescript-eslint/utils": "^8.66.0",
     "typescript-eslint": "^8.66.0"
+  },
+  "packageManager": "bun@1.4.2",
+  "engines": {
+    "bun": "1.4.2"
   }
 }

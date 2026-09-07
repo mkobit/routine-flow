@@ -174,6 +174,22 @@ function checkToolchainParity(): boolean {
     }
   }
 
+  const ciFile = '.github/workflows/ci.yml'
+  if (existsSync(ciFile)) {
+    const ciRaw = readFileSync(ciFile, 'utf8')
+    const ciMatch = ciRaw.match(/BUN_VERSION:\s*["']?([0-9]+\.[0-9]+\.[0-9]+)["']?/)
+    if (ciMatch === null || ciMatch[1] === undefined) {
+      console.error(`${ciFile} missing BUN_VERSION definition`)
+      return false
+    }
+    if (ciMatch[1] !== miseBun) {
+      console.error(
+        `Version mismatch: ${ciFile} BUN_VERSION (${ciMatch[1]}) does not match ${miseFile} bun (${miseBun})`,
+      )
+      return false
+    }
+  }
+
   const parsedKit = parseYaml(kitSpecFile)
   if (!isRecord(parsedKit)) {
     console.error(`Failed to parse ${kitSpecFile} for parity check`)
