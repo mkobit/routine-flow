@@ -6,6 +6,7 @@
   "type": "module",
   "scripts": {
     "build": "bun esbuild.config.mjs production",
+    "check:sbx-env": "bun scripts/check-sbx-env.ts",
     "dev": "bun esbuild.config.mjs",
     "docs:build": "cd docs && bun run build",
     "docs:dev": "cd docs && bun run start",
