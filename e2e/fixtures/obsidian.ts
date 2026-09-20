@@ -212,6 +212,7 @@ export {
   setMobileViewport,
   openMobileSettings,
   closeMobileSettings,
+  closeMobileSidebars,
   getMobileSettingsModal,
   expectInPageSettingsModal,
   MOBILE_VIEWPORTS,
