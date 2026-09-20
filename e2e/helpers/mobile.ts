@@ -72,3 +72,10 @@ export async function closeMobileSettings(page: Page): Promise<void> {
   }
   await expect(modal).toBeHidden()
 }
+
+export async function closeMobileSidebars(page: Page): Promise<void> {
+  await evaluateObsidian(page, (app) => {
+    app.workspace.leftSplit?.collapse()
+    app.workspace.rightSplit?.collapse()
+  })
+}
