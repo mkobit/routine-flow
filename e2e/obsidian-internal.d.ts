@@ -53,5 +53,8 @@ declare module 'obsidian' {
     readonly plugins: PluginsRegistry
     readonly setting: SettingManager
     readonly internalPlugins: InternalPluginsRegistry
+    // Runtime boolean indicating mobile mode (emulated or native mobile).
+    // Set to true when localStorage EmulateMobile is enabled.
+    readonly isMobile?: boolean
   }
 }

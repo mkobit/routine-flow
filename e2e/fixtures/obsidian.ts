@@ -7,6 +7,7 @@ import * as net from 'node:net'
 import * as fs from 'node:fs/promises'
 import { stripGitignoredVaultState } from '../vault'
 import { terminateProcess } from './process-lifecycle'
+import { enableMobileEmulation } from '../helpers/mobile'
 import obsidianVersion from '../obsidian-version.json' with { type: 'json' }
 
 const ROOT_DIR = path.resolve(import.meta.dirname, '../../')
@@ -182,6 +183,7 @@ async function releaseObsidian({ proc, browser, configDir, vaultPath }: Obsidian
 
 type ObsidianFixtures = {
   readonly obsidianPage: ObsidianPage
+  readonly mobileObsidianPage: ObsidianPage
 }
 
 export const test = base.extend<ObsidianFixtures>({
@@ -196,8 +198,23 @@ export const test = base.extend<ObsidianFixtures>({
       await releaseObsidian(resources)
     }
   },
+  mobileObsidianPage: async ({ obsidianPage }, use) => {
+    await enableMobileEmulation(obsidianPage.page)
+    await use(obsidianPage)
+  },
 })
 
 export { acquireObsidian, findFreePort }
+
+export type { MobileDevice, EnableMobileEmulationOptions } from '../helpers/mobile'
+export {
+  enableMobileEmulation,
+  setMobileViewport,
+  openMobileSettings,
+  closeMobileSettings,
+  getMobileSettingsModal,
+  expectInPageSettingsModal,
+  MOBILE_VIEWPORTS,
+} from '../helpers/mobile'
 
 export { expect }
