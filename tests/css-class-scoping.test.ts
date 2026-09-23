@@ -110,6 +110,10 @@ class MockPlugin {
 
 void mock.module('obsidian', () => {
   return {
+    BasesView: class {
+      containerEl = new MockElement()
+      constructor(_controller: unknown) {}
+    },
     PluginSettingTab: class {
       containerEl = new MockElement()
     },
