@@ -1,13 +1,11 @@
-import { BasesView, Notice, Setting, setIcon } from 'obsidian'
-import type { BasesOptions, QueryController, App, TFile, BasesPropertyId, BasesEntry } from 'obsidian'
+import { BasesView } from 'obsidian'
+import type { QueryController, BasesPropertyId, BasesEntry } from 'obsidian'
 import type RoutineFlowPlugin from '../main'
 import type { EngineState } from '../domain/session/engine-state'
 import type { PhaseGraph } from '../domain/phase/phase-graph'
 import type { Phase } from '../domain/phase/phase'
-import { findNextPhase, findPhaseById, FOCUS_PHASE_KIND, DEFAULT_PHASE_GRAPH } from '../timer/phase-graph'
+import { findNextPhase, findPhaseById, DEFAULT_PHASE_GRAPH } from '../timer/phase-graph'
 import { formatCountdown } from '../timer/format'
-import { computeProgressFraction } from '../timer/progress'
-import { progressMeterStyleClass } from '../timer/progress-meter-style'
 import { decideStartAction, resolveRoutineGraph } from '../timer/routine-selection'
 import type { RoutineResolution } from '../timer/routine-selection'
 import { RoutineReplaceModal } from './routine-replace-modal'
@@ -15,6 +13,11 @@ import { ResetConfirmModal } from './reset-confirm-modal'
 import { resolveActiveFilePath } from '../timer/queue-advance'
 import { createBaseQuerySource } from '../timer/base-query-task-source'
 import { filterQueueCandidates } from '../timer/queue-filter'
+import { renderStateIcon } from './timer/state-icon'
+import { renderProgressMeter } from './timer/progress-meter'
+import { renderConfigBar, renderConfigPanel } from './timer/config-panel'
+import { renderQueuePanel } from './timer/queue-panel'
+import { getViewOptions } from './timer/view-options'
 
 export class RoutineTimerView extends BasesView {
   readonly type = 'routine-timer'
@@ -87,7 +90,7 @@ export class RoutineTimerView extends BasesView {
 
     if (this.routineResolution.kind === 'error') {
       const errorEl = this.containerEl.createDiv({ cls: 'routine-error' })
-      this.renderStateIcon(errorEl, ['circle-alert', 'alert-circle'])
+      renderStateIcon(errorEl, ['circle-alert', 'alert-circle'])
       errorEl.createEl('p', { text: `Routine error: ${this.routineResolution.error.message}` })
       this.renderConfigBar(this.containerEl)
       if (this.isConfigOpen) {
@@ -98,7 +101,7 @@ export class RoutineTimerView extends BasesView {
 
     if (this.routineResolution.kind === 'loading') {
       const loadingEl = this.containerEl.createDiv({ cls: 'routine-loading' })
-      this.renderStateIcon(loadingEl, ['loader-circle', 'loader-2'])
+      renderStateIcon(loadingEl, ['loader-circle', 'loader-2'])
       loadingEl.createEl('p', { text: 'Loading routine…' })
       return
     }
@@ -145,52 +148,12 @@ export class RoutineTimerView extends BasesView {
     })
     if (countdownTime !== null) {
       const dial = header.createSpan({ cls: 'routine-countdown-dial' })
-      // Selects the active built-in style (flow-gu1.19.15.4 setting) via a class toggle on the
-      // dial (DESIGN.md: "route all visual state through class toggles") -- 'radial' is the CSS
-      // default and needs no class.
-      const styleClass = progressMeterStyleClass(this.plugin.settings.progressMeterStyle)
-      if (styleClass !== null) {
-        dial.addClass(styleClass)
-      }
-      // Radial progress ring, sized to the dial so it frames just the mm:ss digits. Rendered for
-      // this view's own timed phase; skipped for the inert state (the countdown isn't this view's
-      // own). A stopped phase still shows the ring at 0 as a "ready" backdrop.
-      if (!isInert && phase.duration !== null && state.remaining !== null) {
-        const fraction = computeProgressFraction(phase.duration, state.remaining)
-        // --routine-flow-progress is continuously-varying per-tick runtime data, not a discrete
-        // visual state a snippet should override, so setting it inline is allowed (DESIGN.md). The
-        // ring's appearance (stroke/color/width) stays entirely in styles.css, driven off this value
-        // plus theme vars, so a snippet can still restyle the whole look via classes/vars.
-        dial.style.setProperty('--routine-flow-progress', String(fraction))
-        const ring = dial.createSvg('svg', { cls: 'routine-progress-ring', attr: { viewBox: '0 0 100 100' } })
-        ring.createSvg('circle', { cls: 'routine-progress-track', attr: { cx: 50, cy: 50, r: 45, pathLength: 100 } })
-        ring.createSvg('circle', { cls: 'routine-progress-indicator', attr: { cx: 50, cy: 50, r: 45, pathLength: 100 } })
-
-        // Alternate built-in style (flow-gu1.19.15.1): a linear fill-bar, driven by the same
-        // --routine-flow-progress set above -- no separate JS-side computation. Always rendered
-        // alongside the ring; CSS hides it by default and shows it instead of the ring only when
-        // the style-class toggle set above selects it (styles.css).
-        const fillBar = dial.createDiv({ cls: 'routine-progress-fill-bar' })
-        const fillBarTrack = fillBar.createDiv({ cls: 'routine-progress-fill-bar-track' })
-        fillBarTrack.createDiv({ cls: 'routine-progress-fill-bar-indicator' })
-
-        // Alternate built-in style (flow-gu1.19.15.2): a battery-drain meter, same
-        // --routine-flow-progress contract and always-rendered/CSS-selected pattern as the
-        // fill-bar above. The -cap div is the small terminal nub that reads the shape as a battery
-        // rather than a plain bar.
-        const batteryDrain = dial.createDiv({ cls: 'routine-progress-battery-drain' })
-        const batteryDrainTrack = batteryDrain.createDiv({ cls: 'routine-progress-battery-drain-track' })
-        batteryDrainTrack.createDiv({ cls: 'routine-progress-battery-drain-indicator' })
-        batteryDrain.createDiv({ cls: 'routine-progress-battery-drain-cap' })
-
-        // Alternate built-in style (flow-gu1.19.15.3): a tick-marks meter -- a row of discrete
-        // segments that light up left-to-right as --routine-flow-progress advances, same contract
-        // as the ring/fill-bar/battery-drain above. Last of the three alternate styles named in
-        // flow-gu1.19.15.
-        const tickMarks = dial.createDiv({ cls: 'routine-progress-tick-marks' })
-        const tickMarksTrack = tickMarks.createDiv({ cls: 'routine-progress-tick-marks-track' })
-        tickMarksTrack.createDiv({ cls: 'routine-progress-tick-marks-indicator' })
-      }
+      renderProgressMeter(dial, {
+        style: this.plugin.settings.progressMeterStyle,
+        isInert,
+        duration: phase.duration,
+        remaining: state.remaining,
+      })
       dial.createSpan({ cls: 'routine-countdown-time', text: countdownTime })
     }
     header.createSpan({ cls: 'routine-countdown-status', text: ` (${state.status})` })
@@ -203,7 +166,7 @@ export class RoutineTimerView extends BasesView {
 
     if (isInert) {
       const inertEl = timerPanel.createEl('p', { cls: 'routine-inert' })
-      this.renderStateIcon(inertEl, ['info'])
+      renderStateIcon(inertEl, ['info'])
       inertEl.createSpan({ text: `"${graph.name}" is currently active instead of this view's routine ("${viewGraph.name}").` })
     }
 
@@ -246,115 +209,32 @@ export class RoutineTimerView extends BasesView {
   }
 
   private renderConfigBar(parent: HTMLElement): void {
-    const configBar = parent.createDiv({ cls: 'routine-config-bar' })
-    const configToggleBtn = configBar.createEl('button', {
-      cls: `clickable-icon routine-config-toggle-btn${this.isConfigOpen ? ' is-active' : ''}`,
-      attr: {
-        'aria-label': 'Configure view options',
-        'title': 'Configure view options',
+    renderConfigBar(parent, {
+      isConfigOpen: this.isConfigOpen,
+      onToggle: () => {
+        this.isConfigOpen = !this.isConfigOpen
+        this.render(this.plugin.store.getState())
       },
-    })
-    this.renderStateIcon(configToggleBtn, ['settings', 'gear', 'sliders-horizontal'])
-    configToggleBtn.addEventListener('click', () => {
-      this.isConfigOpen = !this.isConfigOpen
-      this.render(this.plugin.store.getState())
     })
   }
 
   private renderConfigPanel(parent: HTMLElement): void {
-    const panel = parent.createDiv({ cls: 'routine-config-panel' })
-
-    const routineFiles = this.plugin.app.vault.getMarkdownFiles().filter((file) => {
-      return this.plugin.app.metadataCache.getFileCache(file)?.frontmatter?.['is-routine'] === true
+    renderConfigPanel(parent, {
+      app: this.plugin.app,
+      config: this.config,
+      configuredRoutinePath: this.getConfiguredRoutineFilePath(),
+      onRoutineFileChange: async () => {
+        this.routineFilePath = this.getConfiguredRoutineFilePath()
+        this.routineResolution = this.routineFilePath === null
+          ? { kind: 'default', graph: DEFAULT_PHASE_GRAPH }
+          : { kind: 'loading' }
+        if (this.routineFilePath !== null) {
+          await this.loadRoutineFile(this.routineFilePath)
+        }
+        this.render(this.plugin.store.getState())
+      },
+      onFilterConfigChange: () => this.refreshQueueView(),
     })
-    const configuredPath = this.getConfiguredRoutineFilePath()
-
-    new Setting(panel)
-      .setClass('routine-config-routine-file')
-      .setName('Routine file')
-      .setDesc('Select routine definition file')
-      .addDropdown((dropdown) => {
-        dropdown.addOption('', '(Default routine)')
-        for (const file of routineFiles) {
-          dropdown.addOption(file.path, file.basename)
-        }
-        if (configuredPath !== null && !routineFiles.some(f => f.path === configuredPath)) {
-          dropdown.addOption(configuredPath, configuredPath)
-        }
-        dropdown.setValue(configuredPath ?? '')
-        dropdown.onChange(async (value) => {
-          const newPath = value.trim().length > 0 ? value.trim() : null
-          this.config?.set('routineFile', newPath)
-          this.routineFilePath = this.getConfiguredRoutineFilePath()
-          this.routineResolution = this.routineFilePath === null
-            ? { kind: 'default', graph: DEFAULT_PHASE_GRAPH }
-            : { kind: 'loading' }
-          if (this.routineFilePath !== null) {
-            await this.loadRoutineFile(this.routineFilePath)
-          }
-          this.render(this.plugin.store.getState())
-        })
-      })
-
-    new Setting(panel)
-      .setClass('routine-config-focus-prop')
-      .setName('Focus task property')
-      .setDesc('Frontmatter property used to filter focus queue')
-      .addText((text) => {
-        text.setPlaceholder('note.type')
-        const raw = this.config?.get('focusProperty')
-        text.setValue(typeof raw === 'string' ? raw : '')
-        text.onChange((value) => {
-          const val = value.trim()
-          this.config?.set('focusProperty', val.length > 0 ? val : null)
-          this.refreshQueueView()
-        })
-      })
-
-    new Setting(panel)
-      .setClass('routine-config-focus-val')
-      .setName('Focus task value')
-      .setDesc('Matching property value for focus queue')
-      .addText((text) => {
-        text.setPlaceholder('Work')
-        const raw = this.config?.get('focusValue')
-        text.setValue(typeof raw === 'string' ? raw : '')
-        text.onChange((value) => {
-          const val = value.trim()
-          this.config?.set('focusValue', val.length > 0 ? val : null)
-          this.refreshQueueView()
-        })
-      })
-
-    new Setting(panel)
-      .setClass('routine-config-break-prop')
-      .setName('Break task property')
-      .setDesc('Frontmatter property used to filter break queue')
-      .addText((text) => {
-        text.setPlaceholder('note.type')
-        const raw = this.config?.get('breakProperty')
-        text.setValue(typeof raw === 'string' ? raw : '')
-        text.onChange((value) => {
-          const val = value.trim()
-          this.config?.set('breakProperty', val.length > 0 ? val : null)
-          this.refreshQueueView()
-        })
-      })
-
-    new Setting(panel)
-      .setClass('routine-config-break-val')
-      .setName('Break task value')
-      .setDesc('Matching property value for break queue')
-      .addText((text) => {
-        text.setPlaceholder('Break')
-        const raw = this.config?.get('breakValue')
-        text.setValue(typeof raw === 'string' ? raw : '')
-        text.onChange((value) => {
-          const val = value.trim()
-          this.config?.set('breakValue', val.length > 0 ? val : null)
-          this.refreshQueueView()
-        })
-      })
   }
 
   private refreshQueueView(): void {
@@ -375,91 +255,21 @@ export class RoutineTimerView extends BasesView {
   }
 
   private renderQueueContent(queueEl: HTMLElement, phase: Phase, state: EngineState): void {
-    queueEl.empty()
-    const queueTitle = phase.kind === FOCUS_PHASE_KIND ? 'Work queue' : 'Break queue'
-    queueEl.createEl('h3', { text: queueTitle })
-
     const queueItems = phase.taskSourceId !== null
       ? (this.plugin.taskSourceRegistry.resolve(phase.taskSourceId)?.getQueue() ?? [])
       : []
 
-    if (queueItems.length === 0) {
-      const emptyEl = queueEl.createDiv({ cls: 'routine-queue-empty' })
-      this.renderStateIcon(emptyEl, ['inbox', 'list-x'])
-      emptyEl.createEl('p', { text: 'No notes match — check this routine\'s queue filter.' })
-      return
-    }
-
-    const ul = queueEl.createEl('ul')
-    for (const item of queueItems) {
-      const li = ul.createEl('li')
-      const itemRow = li.createDiv({ cls: 'routine-queue-item-row' })
-      const taskBtn = itemRow.createEl('button', { cls: 'routine-task-name', text: item.displayName })
-
-      const openFileBtn = itemRow.createEl('button', {
-        cls: 'routine-open-file-btn',
-        attr: { 'aria-label': `Open ${item.displayName}`, 'title': `Open ${item.displayName}` },
-      })
-      setIcon(openFileBtn, 'file-text')
-      openFileBtn.addEventListener('click', (e) => {
-        e.stopPropagation()
-        const file = this.plugin.app.vault.getFileByPath(item.sourcePath)
-        if (file) {
-          const leaf = this.plugin.app.workspace.getLeaf('tab')
-          void leaf.openFile(file)
-          this.plugin.app.workspace.setActiveLeaf(leaf, { focus: true })
-        }
-      })
-
-      if (state.activeFilePath === item.sourcePath) {
-        li.addClass('is-active-task')
-        if (phase.actions.length > 0) {
-          const actionsEl = li.createDiv({ cls: 'routine-queue-actions' })
-          for (const action of phase.actions) {
-            const actionBtn = actionsEl.createEl('button', {
-              cls: `routine-action-btn${action.style ? ` mod-${action.style === 'primary' ? 'cta' : action.style === 'destructive' ? 'warning' : action.style}` : ''}`,
-              text: action.label,
-            })
-            actionBtn.addEventListener('click', (e) => {
-              e.stopPropagation()
-              void (async () => {
-                try {
-                  const result = await this.plugin.store.executeAction(action, item.sourcePath)
-                  if (result !== null && !result.success) {
-                    const causeMsg = result.cause instanceof Error ? result.cause.message : String(result.cause)
-                    new Notice(`Routine Flow: action failed (${action.label}) — ${causeMsg}`)
-                  }
-                }
-                catch (cause: unknown) {
-                  const causeMsg = cause instanceof Error ? cause.message : String(cause)
-                  new Notice(`Routine Flow: action failed (${action.label}) — ${causeMsg}`)
-                }
-              })()
-            })
-          }
-        }
-      }
-      taskBtn.addEventListener('click', () => {
-        void this.plugin.store.dispatch({ type: 'start', filePath: item.sourcePath })
+    renderQueuePanel(queueEl, {
+      phase,
+      activeFilePath: state.activeFilePath,
+      queueItems,
+      app: this.plugin.app,
+      actionExecutor: this.plugin.store,
+      onSelectTask: (filePath) => {
+        void this.plugin.store.dispatch({ type: 'start', filePath })
         void this.plugin.activateView()
-      })
-    }
-  }
-
-  /**
-   * Renders the first Lucide icon name that resolves into a fresh child span. `setIcon` no-ops
-   * (leaves the element empty) for an unknown name, so listing fallbacks absorbs Lucide's
-   * cross-version renames (e.g. `loader-2` -> `loader-circle`) without pinning to one alias --
-   * which alias the bundled Obsidian version ships is version-dependent (see DESIGN.md iconography).
-   */
-  private renderStateIcon(parent: HTMLElement, names: readonly string[]): void {
-    const iconEl = parent.createSpan({ cls: 'routine-state-icon' })
-    for (const name of names) {
-      setIcon(iconEl, name)
-      if (iconEl.childElementCount > 0) {
-        return
-      }
-    }
+      },
+    })
   }
 
   /**
@@ -534,38 +344,5 @@ export class RoutineTimerView extends BasesView {
     void this.plugin.store.dispatch({ type: 'stop' })
   }
 
-  static getViewOptions(app: App): BasesOptions[] {
-    return [
-      {
-        key: 'focusProperty',
-        type: 'property',
-        displayName: 'Focus task property',
-        default: 'note.type',
-      },
-      {
-        key: 'focusValue',
-        type: 'text',
-        displayName: 'Focus task value',
-        default: 'work',
-      },
-      {
-        key: 'breakProperty',
-        type: 'property',
-        displayName: 'Break task property',
-        default: 'note.type',
-      },
-      {
-        key: 'breakValue',
-        type: 'text',
-        displayName: 'Break task value',
-        default: 'break',
-      },
-      {
-        key: 'routineFile',
-        type: 'file',
-        displayName: 'Routine file',
-        filter: (file: TFile) => app.metadataCache.getFileCache(file)?.frontmatter?.['is-routine'] === true,
-      },
-    ]
-  }
+  static getViewOptions = getViewOptions
 }
