@@ -110,7 +110,11 @@ class MockApp {
 void mock.module('obsidian', () => {
   return {
     BasesView: class {
+      containerEl = new MockElement()
       constructor(_controller: unknown) {}
+    },
+    PluginSettingTab: class {
+      containerEl = new MockElement()
     },
     Setting: class {
       settingEl = new MockElement()
@@ -126,6 +130,21 @@ void mock.module('obsidian', () => {
       }
 
       setDesc(_desc: string): this {
+        return this
+      }
+
+      addButton(fn: (b: unknown) => void): this {
+        const btn = {
+          setButtonText: () => btn,
+          setCta: () => btn,
+          setWarning: () => btn,
+          onClick: () => btn,
+        }
+        fn(btn)
+        return this
+      }
+
+      addToggle(): this {
         return this
       }
 
@@ -155,9 +174,31 @@ void mock.module('obsidian', () => {
     },
     Notice: class {},
     Modal: class {
+      containerEl = new MockElement()
+      modalEl = new MockElement()
+      contentEl = new MockElement()
+      titleEl = new MockElement()
+
+      setTitle(_t: string): void {}
+      open(): void {}
+      close(): void {}
       constructor(_app: unknown) {}
     },
+    ItemView: class {
+      containerEl = new MockElement()
+      contentEl = new MockElement()
+    },
+    WorkspaceLeaf: class {
+      containerEl = new MockElement()
+    },
+    AbstractInputSuggest: class {
+      onSelect(): void {}
+      close(): void {}
+    },
     App: MockApp,
+    Plugin: class {
+      constructor(public app: unknown = {}, public manifest: unknown = {}) {}
+    },
     TFile: MockTFile,
     setIcon: (el: MockElement, _name: string) => {
       el.createSpan()
