@@ -259,4 +259,35 @@ describe('createWriteBackHook', () => {
     expect(prompt.prompt).not.toHaveBeenCalled()
     expect(mutationsSkip).toEqual([{ kind: 'frontmatter', filePath: 'task.md', property: 'sessions', value: 2 }])
   })
+
+  test('cooldown reflection phase write-back captures notes and increments sessions on active task file', async () => {
+    const cooldownPhase: Phase = PhaseSchema.parse({
+      ...phaseDefaults,
+      id: 'cooldown',
+      kind: 'cooldown',
+      label: 'Cooldown reflection',
+      duration: null,
+      logTarget: { kind: 'activeItem' },
+    })
+
+    const reader = createFakeReader(2)
+    const prompt = createFakePrompt(defaults => ({
+      kind: 'submitted',
+      values: { ...defaults, value: 3 },
+    }))
+
+    const hook = createWriteBackHook(createDeps({
+      frontmatterReader: reader,
+      writeBackPrompt: prompt,
+      getWriteBackProperty: () => 'sessions',
+    }))
+
+    const context = buildContext(cooldownPhase, 'focus-sandwich/task-1.md')
+    const mutations = await hook(context)
+
+    expect(prompt.prompt).toHaveBeenCalledTimes(1)
+    expect(mutations).toEqual([
+      { kind: 'frontmatter', filePath: 'focus-sandwich/task-1.md', property: 'sessions', value: 3 },
+    ])
+  })
 })

@@ -648,4 +648,120 @@ describe('EngineStore notifications', () => {
     // Break phase has systemNotification: true, so system notification is emitted when entering Break
     expect(systemNotifications).toEqual([{ title: 'Routine Flow', body: 'Break phase started' }])
   })
+
+  test('focus sandwich routine lifecycle records activeItem write-back mutations in session history', async () => {
+    const writeBackMutation: FileMutation = {
+      kind: 'frontmatter',
+      filePath: 'focus-sandwich/task.md',
+      property: 'sessions',
+      value: 1,
+    }
+    const writeBackHook: Hook = async () => [writeBackMutation]
+    const registry: HookRegistry = {
+      resolve: name => (name === 'write-back' ? writeBackHook : undefined),
+    }
+
+    let appliedMutations: readonly FileMutation[] = []
+    const port: FileMutationPort = {
+      ...createNoopPort(),
+      writeFrontmatter: async (mutation) => {
+        appliedMutations = [...appliedMutations, mutation]
+      },
+    }
+
+    const focusSandwichGraph: PhaseGraph = PhaseGraphSchema.parse({
+      id: 'focus-sandwich',
+      name: 'Focus sandwich',
+      phases: [
+        PhaseSchema.parse({
+          ...phaseDefaults,
+          id: 'warmup',
+          label: 'Intention warm-up',
+          kind: 'warmup',
+          duration: null,
+          completionPolicy: { kind: 'manualClear' },
+        }),
+        PhaseSchema.parse({
+          ...phaseDefaults,
+          id: 'focus',
+          label: 'Deep focus',
+          kind: 'focus',
+          duration: Temporal.Duration.from({ minutes: 25 }),
+        }),
+        PhaseSchema.parse({
+          ...phaseDefaults,
+          id: 'cooldown',
+          label: 'Cooldown reflection',
+          kind: 'cooldown',
+          duration: null,
+          completionPolicy: { kind: 'manualClear' },
+          logTarget: { kind: 'activeItem' },
+          handlers: {
+            onEnter: [],
+            onComplete: [
+              {
+                kind: 'script',
+                scriptPath: 'write-back',
+              },
+            ],
+            onSkip: [],
+            onExit: [],
+          },
+        }),
+      ],
+      transitions: [
+        { fromPhaseId: 'warmup', toPhaseId: 'focus', condition: { kind: 'always' } },
+        { fromPhaseId: 'focus', toPhaseId: 'cooldown', condition: { kind: 'always' } },
+      ],
+    })
+
+    const store = new EngineStore(focusSandwichGraph, { hookRegistry: registry, port })
+    await store.dispatch({ type: 'set-active-file', filePath: 'focus-sandwich/task.md' })
+
+    // Start in warmup phase
+    await store.dispatch({ type: 'start' })
+    expect(store.getState().currentPhaseId).toBe(PhaseIdSchema.parse('warmup'))
+    expect(store.getState().status).toBe('running')
+
+    // Finish warmup phase (Done) -> status completed
+    await store.dispatch({ type: 'finish-phase' })
+    expect(store.getState().status).toBe('completed')
+
+    // Advance warmup phase (Clear) -> advances to focus
+    await store.dispatch({ type: 'advance-phase' })
+    expect(store.getState().currentPhaseId).toBe(PhaseIdSchema.parse('focus'))
+    expect(store.getState().status).toBe('stopped')
+
+    // Start focus phase
+    await store.dispatch({ type: 'start' })
+    expect(store.getState().status).toBe('running')
+
+    // Finish focus phase -> advances to cooldown
+    await store.dispatch({ type: 'finish-phase' })
+    expect(store.getState().currentPhaseId).toBe(PhaseIdSchema.parse('cooldown'))
+    expect(store.getState().status).toBe('stopped')
+
+    // Start cooldown phase
+    await store.dispatch({ type: 'start' })
+    expect(store.getState().status).toBe('running')
+
+    // Cooldown completes (Done) -> executes onComplete write-back hook
+    await store.dispatch({ type: 'finish-phase' })
+    expect(store.getState().status).toBe('completed')
+    expect(appliedMutations).toEqual([writeBackMutation])
+
+    // Advance cooldown phase (Clear) -> closes cooldown and ends session
+    await store.dispatch({ type: 'advance-phase' })
+    expect(store.getState().status).toBe('ended')
+
+    // Verify session history has recorded mutations on the closed cooldown phase instance
+    const sessionHistory = store.getState().session?.history
+    expect(sessionHistory).toBeDefined()
+    expect(sessionHistory).toHaveLength(3)
+
+    const cooldownHistoryEntry = sessionHistory?.find(p => p.phaseId === PhaseIdSchema.parse('cooldown'))
+    expect(cooldownHistoryEntry).toBeDefined()
+    expect(cooldownHistoryEntry?.mutationsApplied).toEqual([writeBackMutation])
+    expect(cooldownHistoryEntry?.endReason).toBe('completed')
+  })
 })
