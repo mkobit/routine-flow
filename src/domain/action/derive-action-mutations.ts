@@ -35,9 +35,27 @@ function deriveActionMutationsForPath(
             {
               kind: 'frontmatter',
               filePath: activeFilePath,
-              property: 'routine-due',
+              property: payload.property ?? 'routine-due',
               value: now.toZonedDateTimeISO('UTC').add(payload.after).toInstant().toString(),
             },
+            ...(payload.box !== undefined
+              ? [
+                  {
+                    kind: 'frontmatter' as const,
+                    filePath: activeFilePath,
+                    property: payload.boxProperty ?? 'box',
+                    value: payload.box,
+                  },
+                ]
+              : []),
+            ...(payload.setProperties !== undefined
+              ? Object.entries(payload.setProperties).map(([property, value]) => ({
+                  kind: 'frontmatter' as const,
+                  filePath: activeFilePath,
+                  property,
+                  value,
+                }))
+              : []),
           ]
         : [
             {
