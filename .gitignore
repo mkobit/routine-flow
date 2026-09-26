@@ -58,6 +58,7 @@ routine-flow-example-vault/evening-wind-down/
 routine-flow-example-vault/bug-triage-blitz/
 routine-flow-example-vault/ultradian-rhythm/
 routine-flow-example-vault/desk-micro-movement/
+routine-flow-example-vault/focus-sandwich/
 
 # Claude Code local-only settings
 .claude/settings.local.json

@@ -416,4 +416,131 @@ describe('routine examples validation', () => {
     expect(breakPhase?.handlers.onEnter).toHaveLength(1)
     expect(breakPhase?.handlers.onComplete).toHaveLength(1)
   })
+
+  test('focus sandwich routine combining untimed warmup, timed focus, and cooldown write-back lifecycle', () => {
+    const focusSandwichRoutine = {
+      id: 'focus-sandwich',
+      name: 'Focus sandwich',
+      phases: [
+        {
+          id: 'warmup',
+          name: 'Intention warm-up',
+          label: 'Intention warm-up',
+          kind: 'warmup',
+          duration: null,
+          onCompletion: 'autoAdvance',
+          taskSourceId: 'focus-queue',
+          handlers: {
+            onEnter: [
+              {
+                kind: 'preset',
+                preset: 'notify',
+                params: {
+                  title: 'Focus sandwich',
+                  body: 'Clarify intention and prepare focus task',
+                },
+              },
+            ],
+          },
+        },
+        {
+          id: 'focus',
+          name: 'Deep focus',
+          label: 'Deep focus',
+          kind: 'focus',
+          duration: 'PT25M',
+          onCompletion: 'autoAdvance',
+          taskSourceId: 'focus-queue',
+          notification: {
+            sound: 'chime-start',
+            systemNotification: true,
+          },
+          handlers: {},
+        },
+        {
+          id: 'cooldown',
+          name: 'Cooldown reflection',
+          label: 'Cooldown reflection',
+          kind: 'cooldown',
+          duration: null,
+          onCompletion: 'autoAdvance',
+          taskSourceId: 'focus-queue',
+          logTarget: { kind: 'activeItem' },
+          handlers: {
+            onComplete: [
+              {
+                kind: 'script',
+                scriptPath: 'scripts/log-reflection.js',
+                params: { category: 'deep-work' },
+              },
+            ],
+          },
+        },
+      ],
+      transitions: [
+        { from: 'warmup', to: 'focus', guard: { kind: 'always' } },
+        { from: 'focus', to: 'cooldown', guard: { kind: 'always' } },
+      ],
+    }
+
+    const parseResult = parseRoutineFile(wrapInRoutineNote(focusSandwichRoutine))
+    expect(parseResult.success).toBe(true)
+    if (!parseResult.success) {
+      return
+    }
+
+    const graph = parseResult.graph
+    expect(graph.phases).toHaveLength(3)
+
+    const warmupPhase = graph.phases[0]
+    expect(warmupPhase?.duration).toBeNull()
+    expect(warmupPhase?.handlers.onEnter).toHaveLength(1)
+
+    const focusPhase = graph.phases[1]
+    expect(focusPhase?.duration?.total({ unit: 'minutes' })).toBe(25)
+    expect(focusPhase?.notification?.sound).toBe('chime-start')
+
+    const cooldownPhase = graph.phases[2]
+    expect(cooldownPhase?.duration).toBeNull()
+    expect(cooldownPhase?.logTarget).toEqual({ kind: 'activeItem' })
+    expect(cooldownPhase?.handlers.onComplete).toHaveLength(1)
+
+    const now = Temporal.Now.instant()
+    let state = initialEngineState(graph)
+
+    // Start session in warmup phase
+    state = engineReducer(state, { type: 'start', now }, graph)
+    expect(state.currentPhaseId).toBe(PhaseIdSchema.parse('warmup'))
+    expect(state.remaining).toBeNull()
+    expect(state.status).toBe('running')
+
+    // Untimed warm-up advances to focus on finish-phase
+    state = engineReducer(state, { type: 'finish-phase', now }, graph)
+    expect(state.currentPhaseId).toBe(PhaseIdSchema.parse('focus'))
+    expect(state.status).toBe('stopped')
+    expect(state.remaining?.total({ unit: 'seconds' })).toBe(25 * 60)
+
+    // Start timed focus phase
+    state = engineReducer(state, { type: 'start', now }, graph)
+    expect(state.status).toBe('running')
+
+    // Focus ticks decrement duration
+    const tickTime = now.add({ seconds: 1 })
+    state = engineReducer(state, { type: 'tick', now: tickTime }, graph)
+    expect(state.remaining?.total({ unit: 'seconds' })).toBe(25 * 60 - 1)
+
+    // Finish focus phase advances to cooldown
+    state = engineReducer(state, { type: 'finish-phase', now: tickTime }, graph)
+    expect(state.currentPhaseId).toBe(PhaseIdSchema.parse('cooldown'))
+    expect(state.remaining).toBeNull()
+
+    // Start cooldown phase
+    state = engineReducer(state, { type: 'start', now: tickTime }, graph)
+    expect(state.status).toBe('running')
+
+    // Cooldown completes session cleanly (terminal node -> ended)
+    state = engineReducer(state, { type: 'finish-phase', now: tickTime }, graph)
+    expect(state.status).toBe('ended')
+    expect(state.remaining).toBeNull()
+  })
 })

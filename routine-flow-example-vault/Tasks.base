@@ -68,3 +68,7 @@ views:
   - type: routine-timer
     name: Desk micro-movement
     routineFile: desk-micro-movement/desk-micro-movement-routine.md
+  - type: routine-timer
+    name: Focus sandwich
+    routineFile: focus-sandwich/focus-sandwich-routine.md
+

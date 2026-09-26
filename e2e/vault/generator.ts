@@ -7,6 +7,7 @@ import { generateChoreListNotes } from './generators/chore-list'
 import { generateDeskMicroMovementNotes } from './generators/desk-micro-movement'
 import { generateDogWalkNotes } from './generators/dog-walk'
 import { generateEveningWindDownNotes } from './generators/evening-wind-down'
+import { generateFocusSandwichNotes } from './generators/focus-sandwich'
 import { generateLunchAndRechargeNotes } from './generators/lunch-and-recharge'
 import { generateManualClearNotes } from './generators/manual-clear'
 import { generateMorningKickoffNotes } from './generators/morning-kickoff'
@@ -33,6 +34,7 @@ export * from './generators/chore-list'
 export * from './generators/desk-micro-movement'
 export * from './generators/dog-walk'
 export * from './generators/evening-wind-down'
+export * from './generators/focus-sandwich'
 export * from './generators/lunch-and-recharge'
 export * from './generators/manual-clear'
 export * from './generators/morning-kickoff'
@@ -57,6 +59,7 @@ const ROUTINE_SEED_OFFSETS = {
   eveningWindDown: 6,
   bugTriageBlitz: 7,
   ultradianRhythm: 8,
+  focusSandwich: 9,
 } as const
 
 export const GENERATED_VAULT_FOLDERS = [
@@ -80,6 +83,7 @@ export const GENERATED_VAULT_FOLDERS = [
   'ultradian-rhythm',
   'desk-micro-movement',
   'audio-chime-notifications',
+  'focus-sandwich',
 ] as const
 
 export function generateVault(seed: number = resolveVaultSeed()): readonly NoteDefinition[] {
@@ -104,6 +108,7 @@ export function generateVault(seed: number = resolveVaultSeed()): readonly NoteD
     ...generateUltradianRhythmNotes(seed + ROUTINE_SEED_OFFSETS.ultradianRhythm),
     ...generateDeskMicroMovementNotes(),
     ...generateAudioChimeNotificationsNotes(),
+    ...generateFocusSandwichNotes(seed + ROUTINE_SEED_OFFSETS.focusSandwich),
   ]
 }
 
