@@ -15,6 +15,10 @@ export const MOBILE_VIEWPORTS = {
 
 export async function setMobileViewport(page: Page, device: MobileDevice): Promise<void> {
   await page.setViewportSize(MOBILE_VIEWPORTS[device])
+  await expect.poll(async () => {
+    const classes = await page.evaluate(() => Array.from(document.body.classList))
+    return classes.includes(`is-${device}`)
+  }).toBe(true)
 }
 
 export async function enableMobileEmulation(
