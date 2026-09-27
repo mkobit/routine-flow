@@ -1,0 +1,20 @@
+type: base
+properties:
+  note.box:
+    displayName: Box
+  note.routine-due:
+    displayName: Due date
+  note.routine-status:
+    displayName: Routine status
+views:
+  - type: routine-timer
+    name: Leitner box review
+    routineFile: leitner-box/leitner-box-routine.md
+    filters:
+      and:
+        - note.routine-due <= today
+  - type: table
+    name: Due review cards
+    filters:
+      and:
+        - note.routine-due <= today

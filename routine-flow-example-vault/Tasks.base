@@ -71,4 +71,9 @@ views:
   - type: routine-timer
     name: Focus sandwich
     routineFile: focus-sandwich/focus-sandwich-routine.md
+  - type: table
+    name: Leitner due cards
+    filters:
+      and:
+        - note.due <= today
 
