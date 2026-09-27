@@ -1,7 +1,9 @@
 import type { BasesPropertyId } from 'obsidian'
+import type { Temporal } from 'temporal-polyfill'
 import type { Phase } from '../domain/phase/phase'
 import { FOCUS_PHASE_KIND } from './phase-graph'
 import type { BaseQueryEntry } from './base-query-task-source'
+import { isDeferredInFuture, resolveNow } from './base-query-task-source'
 
 /**
  * getViewOptions' declared `default: 'note.type'` for focusProperty/breakProperty is only used
@@ -38,15 +40,20 @@ export function filterQueueCandidates(
   phase: Pick<Phase, 'kind'>,
   config: QueueFilterConfigSource | undefined,
   candidates: readonly QueueFilterCandidate[],
+  now?: Temporal.Instant | (() => Temporal.Instant),
 ): BaseQueryEntry[] {
   const isFocus = phase.kind === FOCUS_PHASE_KIND
   const propId = (isFocus ? config?.getAsPropertyId('focusProperty') : config?.getAsPropertyId('breakProperty')) ?? DEFAULT_QUEUE_PROPERTY_ID
   const rawTargetVal = isFocus ? config?.get('focusValue') : config?.get('breakValue')
   const targetValFallback = isFocus ? 'work' : 'break'
   const targetVal = typeof rawTargetVal === 'string' && rawTargetVal ? rawTargetVal : targetValFallback
+  const evaluationTime = resolveNow(now)
 
   return candidates
     .filter((candidate) => {
+      if (isDeferredInFuture(candidate.frontmatter, evaluationTime)) {
+        return false
+      }
       const valObj = candidate.getValue(propId)
       const valStr = valObj ? valObj.toString() : ''
       return valStr.toLowerCase() === targetVal.toLowerCase()
