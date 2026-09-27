@@ -97,4 +97,108 @@ describe('BaseQuerySource', () => {
       'back.md',
     ])
   })
+
+  describe('temporal filtering and status conversion', () => {
+    const EVAL_TIME = Temporal.Instant.from('2026-09-26T12:00:00Z')
+
+    test('excludes notes marked deferred with future review dates from getQueue', () => {
+      const source = createBaseQuerySource([
+        entry({
+          path: 'future.md',
+          basename: 'future',
+          frontmatter: {
+            'routine-status': 'deferred',
+            'routine-due': '2026-09-26T13:00:00Z',
+          },
+        }),
+        entry({
+          path: 'ready.md',
+          basename: 'ready',
+          frontmatter: {
+            'routine-status': 'pending',
+          },
+        }),
+      ], EVAL_TIME)
+
+      expect(source.getQueue().map(item => item.sourcePath)).toEqual(['ready.md'])
+    })
+
+    test('treats notes whose deferral timestamp has arrived as pending', () => {
+      const source = createBaseQuerySource([
+        entry({
+          path: 'arrived.md',
+          basename: 'arrived',
+          frontmatter: {
+            'routine-status': 'deferred',
+            'routine-due': '2026-09-26T11:00:00Z',
+          },
+        }),
+      ], EVAL_TIME)
+
+      const [item] = source.getQueue()
+      expect(item?.cycleStatus).toBe('pending')
+    })
+
+    test('treats notes whose deferral timestamp matches evaluation time exactly as pending', () => {
+      const source = createBaseQuerySource([
+        entry({
+          path: 'exact.md',
+          basename: 'exact',
+          frontmatter: {
+            'routine-status': 'deferred',
+            'next-review': '2026-09-26T12:00:00Z',
+          },
+        }),
+      ], EVAL_TIME)
+
+      const [item] = source.getQueue()
+      expect(item?.cycleStatus).toBe('pending')
+    })
+
+    test('retains deferred status when review date is missing or malformed', () => {
+      const source = createBaseQuerySource([
+        entry({
+          path: 'no-date.md',
+          basename: 'no-date',
+          frontmatter: {
+            'routine-status': 'deferred',
+          },
+        }),
+        entry({
+          path: 'malformed.md',
+          basename: 'malformed',
+          frontmatter: {
+            'routine-status': 'deferred',
+            'routine-due': 'invalid-date',
+          },
+        }),
+      ], EVAL_TIME)
+
+      const items = source.getQueue()
+      expect(items.map(item => item.cycleStatus)).toEqual(['deferred', 'deferred'])
+    })
+
+    test('dynamically evaluates evaluation time on successive getQueue calls', () => {
+      let currentTime = Temporal.Instant.from('2026-09-26T10:00:00Z')
+      const source = createBaseQuerySource([
+        entry({
+          path: 'item.md',
+          basename: 'item',
+          frontmatter: {
+            'routine-status': 'deferred',
+            'routine-due': '2026-09-26T11:00:00Z',
+          },
+        }),
+      ], () => currentTime)
+
+      // At 10:00, item is due in future (11:00) -> excluded
+      expect(source.getQueue()).toEqual([])
+
+      // Advance time to 12:00 -> item deferral arrived -> included and treated as pending
+      currentTime = Temporal.Instant.from('2026-09-26T12:00:00Z')
+      const queue = source.getQueue()
+      expect(queue.map(item => item.sourcePath)).toEqual(['item.md'])
+      expect(queue[0]?.cycleStatus).toBe('pending')
+    })
+  })
 })
