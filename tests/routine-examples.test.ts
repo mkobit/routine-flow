@@ -3,6 +3,9 @@ import { Temporal } from 'temporal-polyfill'
 import { parseRoutineFile } from '../src/domain/routine/routine-file'
 import { engineReducer, initialEngineState } from '../src/timer/reducer'
 import { PhaseIdSchema } from '../src/domain/phase/phase'
+import { TaskSourceIdSchema } from '../src/domain/queue/task-source'
+import { generateLeitnerBoxNotes } from '../e2e/vault/generator'
+import { serializeFrontmatter } from '../e2e/vault/serializer'
 
 function wrapInRoutineNote(graphJson: object): string {
   return `---
@@ -18,6 +21,46 @@ ${JSON.stringify(graphJson, null, 2)}
 }
 
 describe('routine examples validation', () => {
+  test('generated Leitner review routine grades cards and loops back to the review phase', () => {
+    const routineNote = generateLeitnerBoxNotes(123)
+      .find(note => note.relativePath.base === 'leitner-box-routine.md')
+    expect(routineNote).toBeDefined()
+    if (routineNote === undefined) {
+      return
+    }
+
+    const parseResult = parseRoutineFile(`${serializeFrontmatter(routineNote.frontmatter)}\n${routineNote.body ?? ''}`)
+    expect(parseResult.success).toBe(true)
+    if (!parseResult.success) {
+      return
+    }
+
+    const review = parseResult.graph.phases.find(phase => phase.id === 'review')
+    expect(review?.taskSourceId).toBe(TaskSourceIdSchema.parse('review-queue'))
+    expect(review?.duration).toBeNull()
+    expect(review?.actions.map(action => ({
+      id: action.id,
+      after: action.payload.kind === 'deferDuration' ? action.payload.after.toString() : null,
+      property: action.payload.kind === 'deferDuration' ? action.payload.property : null,
+      box: action.payload.kind === 'deferDuration' ? action.payload.box : null,
+    }))).toEqual([
+      { id: 'grade-again', after: 'PT10M', property: 'routine-due', box: 1 },
+      { id: 'grade-hard', after: 'P1D', property: 'routine-due', box: 2 },
+      { id: 'grade-good', after: 'P3D', property: 'routine-due', box: 3 },
+      { id: 'grade-easy', after: 'P7D', property: 'routine-due', box: 4 },
+    ])
+    expect(parseResult.graph.transitions).toHaveLength(1)
+    expect(parseResult.graph.transitions[0]).toMatchObject({ from: 'review', to: 'review', guard: { kind: 'always' } })
+
+    const now = Temporal.Instant.from('2026-01-01T12:00:00Z')
+    let state = engineReducer(initialEngineState(parseResult.graph), { type: 'start', now }, parseResult.graph)
+    state = engineReducer(state, { type: 'finish-phase', now }, parseResult.graph)
+    expect(state.status).toBe('completed')
+    state = engineReducer(state, { type: 'advance-phase', now }, parseResult.graph)
+    expect(state.currentPhaseId).toBe(PhaseIdSchema.parse('review'))
+    expect(state.status).toBe('stopped')
+  })
+
   test('pomodoro with variable break duration ladder evaluates everyNth transitions correctly', () => {
     const ladderRoutine = {
       id: 'pomodoro-ladder',
