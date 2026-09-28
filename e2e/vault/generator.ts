@@ -9,6 +9,7 @@ import { generateDogWalkNotes } from './generators/dog-walk'
 import { generateEveningWindDownNotes } from './generators/evening-wind-down'
 import { generateFocusSandwichNotes } from './generators/focus-sandwich'
 import { generateLunchAndRechargeNotes } from './generators/lunch-and-recharge'
+import { generateLeitnerBoxNotes } from './generators/leitner-box'
 import { generateManualClearNotes } from './generators/manual-clear'
 import { generateMorningKickoffNotes } from './generators/morning-kickoff'
 import { generatePomodoroNotes } from './generators/pomodoro'
@@ -36,6 +37,7 @@ export * from './generators/dog-walk'
 export * from './generators/evening-wind-down'
 export * from './generators/focus-sandwich'
 export * from './generators/lunch-and-recharge'
+export * from './generators/leitner-box'
 export * from './generators/manual-clear'
 export * from './generators/morning-kickoff'
 export * from './generators/pomodoro'
@@ -60,6 +62,7 @@ const ROUTINE_SEED_OFFSETS = {
   bugTriageBlitz: 7,
   ultradianRhythm: 8,
   focusSandwich: 9,
+  leitnerBox: 10,
 } as const
 
 export const GENERATED_VAULT_FOLDERS = [
@@ -109,6 +112,7 @@ export function generateVault(seed: number = resolveVaultSeed()): readonly NoteD
     ...generateDeskMicroMovementNotes(),
     ...generateAudioChimeNotificationsNotes(),
     ...generateFocusSandwichNotes(seed + ROUTINE_SEED_OFFSETS.focusSandwich),
+    ...generateLeitnerBoxNotes(seed + ROUTINE_SEED_OFFSETS.leitnerBox),
   ]
 }
 

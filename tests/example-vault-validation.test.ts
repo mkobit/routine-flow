@@ -4,13 +4,16 @@ import * as path from 'node:path'
 import { describe, expect, test } from 'bun:test'
 import { parseRoutineFile } from '../src/domain/routine/routine-file'
 import {
+  ANCHOR_DATE,
   DEFAULT_VAULT_SEED,
   GENERATED_VAULT_FOLDERS,
+  generateLeitnerBoxNotes,
   generateVault,
   rebuildGeneratedVault,
   resolveVaultSeed,
 } from '../e2e/vault/generator'
 import { serializeFrontmatter } from '../e2e/vault/serializer'
+import { NoteDefinitionSchema } from '../e2e/vault/schema'
 
 const isString = (m: unknown): m is string => typeof m === 'string'
 
@@ -24,6 +27,52 @@ function getNoteContent(note: ReturnType<typeof generateVault>[number]): string 
 }
 
 describe('example vault validation', () => {
+  test('Leitner cards cover every box and relation to the anchor date', () => {
+    const cards = generateLeitnerBoxNotes(DEFAULT_VAULT_SEED)
+      .filter(note => note.relativePath.dir === 'leitner-box' && note.relativePath.base !== 'README.md' && !note.relativePath.base.endsWith('-routine.md'))
+    const boxes = cards.map(card => card.frontmatter.box)
+    const dueDates = cards.map(card => card.frontmatter['routine-due'])
+
+    expect(boxes).toEqual(expect.arrayContaining([1, 2, 3, 4, 5]))
+    expect(dueDates.some(dueDate => dueDate instanceof Temporal.PlainDate && Temporal.PlainDate.compare(dueDate, ANCHOR_DATE) < 0)).toBe(true)
+    expect(dueDates.some(dueDate => dueDate instanceof Temporal.PlainDate && Temporal.PlainDate.compare(dueDate, ANCHOR_DATE) === 0)).toBe(true)
+    expect(dueDates.some(dueDate => dueDate instanceof Temporal.PlainDate && Temporal.PlainDate.compare(dueDate, ANCHOR_DATE) > 0)).toBe(true)
+  })
+
+  test('Leitner generation is deterministic across seeds and serializes card frontmatter', () => {
+    const seeds = [101, 202, 303, 404] as const
+    const decks = seeds.map(generateLeitnerBoxNotes)
+
+    for (const [index, seed] of seeds.entries()) {
+      expect(decks[index]).toEqual(generateLeitnerBoxNotes(seed))
+    }
+    expect(new Set(decks.map(deck => deck.map(getNoteContent).join('\n'))).size).toBeGreaterThan(1)
+
+    for (const note of decks[0] ?? []) {
+      expect(NoteDefinitionSchema.safeParse(note).success).toBe(true)
+      expect(() => serializeFrontmatter(note.frontmatter)).not.toThrow()
+      expect(getNoteContent(note)).not.toContain('undefined')
+    }
+
+    const expectedCards = [
+      { filename: '01-binary-search-complexity.md', box: 1, status: 'pending', dueDate: '2025-12-31' },
+      { filename: '02-difference-between-tcp-and-udp.md', box: 2, status: 'pending', dueDate: '2026-01-01' },
+      { filename: '03-react-useeffect-cleanup.md', box: 3, status: 'deferred', dueDate: '2026-01-02' },
+      { filename: '04-photosynthesis-equation.md', box: 4, status: 'deferred', dueDate: '2026-01-04' },
+      { filename: '05-spanish-word-for-bridge.md', box: 5, status: 'deferred', dueDate: '2026-01-08' },
+    ] as const
+    for (const expected of expectedCards) {
+      const card = (decks[0] ?? []).find(note => note.relativePath.base === expected.filename)
+      expect(card).toBeDefined()
+      if (card !== undefined) {
+        const serialized = serializeFrontmatter(card.frontmatter)
+        expect(serialized).toContain(`box: ${expected.box}`)
+        expect(serialized).toContain(`routine-status: "${expected.status}"`)
+        expect(serialized).toContain(`routine-due: ${expected.dueDate}`)
+      }
+    }
+  })
+
   test('resolveVaultSeed uses default seed or parses numeric env override', () => {
     expect(resolveVaultSeed({})).toBe(DEFAULT_VAULT_SEED)
     expect(resolveVaultSeed({ VAULT_SEED: '12345' })).toBe(12_345)
@@ -45,13 +94,14 @@ describe('example vault validation', () => {
       const routineNote = folderNotes.find(n => getNotePath(n).endsWith('-routine.md'))
       expect(routineNote).toBeDefined()
     }
+    expect(notes.some(note => getNotePath(note).startsWith('leitner-box/'))).toBe(true)
   })
 
   test('all generated routine files parse as valid PhaseGraphs via parseRoutineFile', () => {
     const notes = generateVault(DEFAULT_VAULT_SEED)
     const routineNotes = notes.filter(n => getNotePath(n).endsWith('-routine.md'))
 
-    expect(routineNotes.length).toBe(GENERATED_VAULT_FOLDERS.length)
+    expect(routineNotes.length).toBe(GENERATED_VAULT_FOLDERS.length + 1)
 
     for (const note of routineNotes) {
       expect(note.frontmatter['is-routine']).toBe(true)
@@ -299,6 +349,24 @@ describe('example vault validation', () => {
       // Second rebuild should succeed cleanly (idempotent clean & rebuild)
       const secondErrors = await rebuildGeneratedVault(tempDir, 999)
       expect(secondErrors).toHaveLength(0)
+    }
+    finally {
+      await fs.rm(tempDir, { recursive: true, force: true })
+    }
+  })
+
+  test('rebuildGeneratedVault preserves the static Leitner base configuration', async () => {
+    const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'routine-flow-test-vault-'))
+    const basePath = path.join(tempDir, 'leitner-box', 'leitner-box.base')
+    const baseContent = 'type: base\nviews: []\n'
+    try {
+      await fs.mkdir(path.dirname(basePath), { recursive: true })
+      await fs.writeFile(basePath, baseContent, 'utf-8')
+
+      const errors = await rebuildGeneratedVault(tempDir, 999)
+
+      expect(errors).toHaveLength(0)
+      expect(await fs.readFile(basePath, 'utf-8')).toBe(baseContent)
     }
     finally {
       await fs.rm(tempDir, { recursive: true, force: true })
