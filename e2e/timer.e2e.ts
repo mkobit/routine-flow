@@ -6,7 +6,7 @@ import type { NoteDefinition } from './vault'
 
 const PLUGIN_ID = 'routine-flow'
 
-/** Mirrors createBaseQuerySource's priority read (src/timer/base-query-task-source.ts) -- missing/non-numeric priority sorts as 0. */
+/** Mirrors createBaseQuerySource's priority read (src/adapters/obsidian/bases/query-task-source.ts) -- missing/non-numeric priority sorts as 0. */
 function routinePriorityOf(note: NoteDefinition): number {
   const value = note.frontmatter['routine-priority']
   return typeof value === 'number' ? value : 0
@@ -151,7 +151,7 @@ test.describe('BaseQuerySource-backed queue (base-query-task-source)', () => {
     // Derived from the same generateVault(resolveVaultSeed()) the vault was built from, rather than
     // duplicating its output as literals here (a VAULT_SEED override would otherwise change the
     // vault's contents without this assertion following along). Sort mirrors
-    // createBaseQuerySource (src/timer/base-query-task-source.ts): ascending by routine-priority,
+    // createBaseQuerySource (src/adapters/obsidian/bases/query-task-source.ts): ascending by routine-priority,
     // missing priority sorts as 0. displayName is the file's basename (indexedPath's slugified
     // filename), not the note's title.
     const expectedDisplayNames = generateVault(resolveVaultSeed())

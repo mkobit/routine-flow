@@ -13,7 +13,7 @@ The audio chime and notification workflow leverages four core domain mechanisms:
 
 1. **`NotificationPolicy` (`src/domain/notification-policy.ts`)**: Per-phase configuration specifying default sound tokens and system notification flags (`sound: string | null`, `systemNotification: boolean`).
 2. **`Handler` (`src/domain/handler/handler.ts`)**: Phase lifecycle action bindings declaring either `preset: notify` with parameters (`title`, `body`, `system`) or `script` pointing to a JavaScript hook file.
-3. **`NotificationPort` (`src/timer/notification-port.ts` & `src/timer/obsidian-notification-port.ts`)**: Infrastructure adapter delegating to Obsidian's `Notice` and the standard `window.Notification` API.
+3. **`NotificationPort` (`src/timer/notification-port.ts` & `src/adapters/obsidian/notification/notification-port.ts`)**: Infrastructure adapter delegating to Obsidian's `Notice` and the standard `window.Notification` API.
 4. **`createScriptHook` (`src/timer/script-hook.ts`)**: In-process executor providing `ScriptHookContext` with full access to `window.AudioContext` for procedural tone generation and gain envelopes.
 
 ### Phase lifecycle hooks and notification mapping

@@ -2,8 +2,8 @@ import { Temporal } from 'temporal-polyfill'
 import { mock, test, expect, describe } from 'bun:test'
 import type { FileMutation } from '../src/domain/mutation/file-mutation'
 import { TaskQueueItemIdSchema } from '../src/domain/queue/task-source'
-import { ObsidianFileMutationPort } from '../src/timer/obsidian-file-mutation-port'
-import type { ObsidianFileMutationPortDeps, VaultFile } from '../src/timer/obsidian-file-mutation-port'
+import { ObsidianFileMutationPort } from '../src/adapters/obsidian/mutation/file-mutation-port'
+import type { ObsidianFileMutationPortDeps, VaultFile } from '../src/adapters/obsidian/mutation/file-mutation-port'
 
 const itemId = TaskQueueItemIdSchema.parse('item-1')
 

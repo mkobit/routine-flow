@@ -1,6 +1,6 @@
-import type { FrontmatterReader } from '../domain/mutation/frontmatter-reader'
-import type { VaultFile } from './obsidian-file-mutation-port'
-import { resolveFile } from './obsidian-file-mutation-port'
+import type { FrontmatterReader } from '../../../domain/mutation/frontmatter-reader'
+import type { VaultFile } from './file-mutation-port'
+import { resolveFile } from './file-mutation-port'
 
 /** The exact metadataCache surface this reader needs, rather than the full `App`. */
 export interface ObsidianFrontmatterReaderDeps {

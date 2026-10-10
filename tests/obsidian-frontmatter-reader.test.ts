@@ -1,7 +1,7 @@
 import { mock, test, expect, describe } from 'bun:test'
-import { ObsidianFrontmatterReader } from '../src/timer/obsidian-frontmatter-reader'
-import type { ObsidianFrontmatterReaderDeps } from '../src/timer/obsidian-frontmatter-reader'
-import type { VaultFile } from '../src/timer/obsidian-file-mutation-port'
+import { ObsidianFrontmatterReader } from '../src/adapters/obsidian/mutation/frontmatter-reader'
+import type { ObsidianFrontmatterReaderDeps } from '../src/adapters/obsidian/mutation/frontmatter-reader'
+import type { VaultFile } from '../src/adapters/obsidian/mutation/file-mutation-port'
 
 const fakeFile = (path: string): VaultFile => ({ path })
 
