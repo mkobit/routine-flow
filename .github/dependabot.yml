@@ -12,6 +12,14 @@ updates:
       prefix: "deps"
       include: "scope"
     groups:
+      runtime-dependencies:
+        dependency-type: "production"
+        patterns:
+          - "*"
+      test-tooling:
+        patterns:
+          - "fast-check"
+          - "@fission-ai/openspec"
       lint-tooling:
         patterns:
           - "eslint*"
@@ -38,6 +46,21 @@ updates:
       # the Compiler API that TS 7.0 drops until 7.1. See flow-268.
       - dependency-name: "typescript"
         update-types: ["version-update:semver-major"]
+  - package-ecosystem: "bun"
+    directory: "/docs"
+    schedule:
+      interval: "monthly"
+    open-pull-requests-limit: 10
+    labels:
+      - "dependencies"
+      - "javascript"
+    commit-message:
+      prefix: "deps"
+      include: "scope"
+    groups:
+      docs-dependencies:
+        patterns:
+          - "*"
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
@@ -49,3 +72,4 @@ updates:
     commit-message:
       prefix: "deps"
       include: "scope"
+
