@@ -1,8 +1,8 @@
 import { Temporal } from 'temporal-polyfill'
 import { test, expect, describe } from 'bun:test'
 import type { BasesPropertyId } from 'obsidian'
-import { filterQueueCandidates } from '../src/timer/queue-filter'
-import type { QueueFilterCandidate, QueueFilterConfigSource } from '../src/timer/queue-filter'
+import { filterQueueCandidates } from '../src/adapters/obsidian/bases/queue-filter'
+import type { QueueFilterCandidate, QueueFilterConfigSource } from '../src/adapters/obsidian/bases/queue-filter'
 import { FOCUS_PHASE_KIND, BREAK_PHASE_KIND } from '../src/timer/phase-graph'
 
 function candidate(overrides: Partial<QueueFilterCandidate> & { value?: string | null } = {}): QueueFilterCandidate {

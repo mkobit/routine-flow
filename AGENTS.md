@@ -65,7 +65,7 @@ Read their close reasons via `bd show <id>` before starting a new surface.
 
 ### Caveats (observed, carry forward)
 
-- Stitch invents chrome the real single-panel model doesn't have — an internal tab bar (Focus/Queue/Stats/Settings), a bottom transport bar, an "Add task to queue" button (the queue is a live Bases query, `src/timer/base-query-task-source.ts`, not manually editable).
+- Stitch invents chrome the real single-panel model doesn't have — an internal tab bar (Focus/Queue/Stats/Settings), a bottom transport bar, an "Add task to queue" button (the queue is a live Bases query, `src/adapters/obsidian/bases/query-task-source.ts`, not manually editable).
   Disregard these uniformly; they're generation artifacts, not design direction.
 - Stitch can't see Obsidian's actual CSS values or native button styling.
   Describe them explicitly in the prompt (e.g. spell out the destructive-button look, per flow-gu1.19.11) instead of referencing "Obsidian's own styling".

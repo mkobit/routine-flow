@@ -1,6 +1,6 @@
 import { Temporal } from 'temporal-polyfill'
-import type { FileMutation } from '../domain/mutation/file-mutation'
-import type { FileMutationPort } from '../domain/mutation/apply-mutations'
+import type { FileMutation } from '../../../domain/mutation/file-mutation'
+import type { FileMutationPort } from '../../../domain/mutation/apply-mutations'
 
 /**
  * Only the field this port actually reads off a resolved file. Deliberately

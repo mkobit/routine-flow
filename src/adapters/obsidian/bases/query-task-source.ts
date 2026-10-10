@@ -1,6 +1,6 @@
 import { Temporal } from 'temporal-polyfill'
-import type { TaskQueueItem, TaskSource } from '../domain/queue/task-source'
-import { TaskQueueItemCycleStatusSchema, TaskQueueItemIdSchema } from '../domain/queue/task-source'
+import type { TaskQueueItem, TaskSource } from '../../../domain/queue/task-source'
+import { TaskQueueItemCycleStatusSchema, TaskQueueItemIdSchema } from '../../../domain/queue/task-source'
 
 /**
  * The exact shape a Bases entry needs to project into a TaskQueueItem —

@@ -272,9 +272,9 @@ export default tseslint.config(
       'depend/ban-dependencies': 'off',
     },
   },
-  // Overrides for Obsidian Plugin Code (Views, Main, Settings, Templates)
+  // Overrides for Obsidian Plugin Code (Views, Main, Settings, Templates, Adapters)
   {
-    files: ['src/views/**/*.ts', 'src/main.ts', 'src/settings.ts', 'src/settings-*.ts', 'src/timer/**/*.ts', 'src/onboarding/**/*.ts', 'src/templates/**/*.ts'],
+    files: ['src/views/**/*.ts', 'src/main.ts', 'src/settings.ts', 'src/settings-*.ts', 'src/timer/**/*.ts', 'src/adapters/**/*.ts', 'src/onboarding/**/*.ts', 'src/templates/**/*.ts'],
     rules: {
       // RELAX Functional Rules for Obsidian API
       // The Obsidian API necessitates classes, inheritance, side effects, and mutations (of 'this').

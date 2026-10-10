@@ -1,5 +1,5 @@
 import { Notice } from 'obsidian'
-import type { NotificationPort } from './notification-port'
+import type { NotificationPort } from '../../../timer/notification-port'
 
 export class ObsidianNotificationPort implements NotificationPort {
   public notifyInApp(message: string): void {

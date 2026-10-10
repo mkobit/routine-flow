@@ -1,9 +1,9 @@
 import type { BasesPropertyId } from 'obsidian'
 import type { Temporal } from 'temporal-polyfill'
-import type { Phase } from '../domain/phase/phase'
-import { FOCUS_PHASE_KIND } from './phase-graph'
-import type { BaseQueryEntry } from './base-query-task-source'
-import { isDeferredInFuture, resolveNow } from './base-query-task-source'
+import type { Phase } from '../../../domain/phase/phase'
+import { FOCUS_PHASE_KIND } from '../../../timer/phase-graph'
+import type { BaseQueryEntry } from './query-task-source'
+import { isDeferredInFuture, resolveNow } from './query-task-source'
 
 /**
  * getViewOptions' declared `default: 'note.type'` for focusProperty/breakProperty is only used
