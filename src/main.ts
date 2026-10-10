@@ -21,6 +21,9 @@ import { RoutineStatusBarItem } from './views/status-bar'
 import { RoutineSidePanelView, SIDE_PANEL_VIEW_TYPE } from './views/side-panel-view'
 import { RoutineGalleryModal } from './views/routine-gallery-modal'
 import { scaffoldExampleRoutine } from './onboarding/scaffold-example'
+import { RoutineReplaceModal } from './views/routine-replace-modal'
+import { runCadenceRoutine } from './timer/routine-selection'
+import { Temporal } from 'temporal-polyfill'
 
 /** Surfaces a dispatched hook's invocation failures and failed FileMutation applications — mirrors the reporting main.ts's old write-back subscriber did inline. */
 function reportFailedHookApplications(applications: readonly HookEventApplication[]): void {
@@ -134,6 +137,65 @@ export default class RoutineFlowPlugin extends Plugin {
         }
         else {
           new Notice('Routine flow: example files already exist in routine flow examples/')
+        }
+      },
+    })
+    this.addCommand({
+      id: 'run-scheduled-cadence',
+      name: 'Run scheduled cadence',
+      callback: async () => {
+        const activeFile = this.app.workspace.getActiveFile()
+        const tags = activeFile !== null
+          ? this.app.metadataCache.getFileCache(activeFile)?.frontmatter?.tags
+          : undefined
+        const tagList = Array.isArray(tags)
+          ? tags.filter((t): t is string => typeof t === 'string')
+          : typeof tags === 'string'
+            ? [tags]
+            : undefined
+
+        const result = await runCadenceRoutine(
+          this.settings.cadenceRules,
+          {
+            now: Temporal.Now.instant(),
+            tags: tagList,
+          },
+          {
+            readRoutineFile: async (path: string) => {
+              const file = this.app.vault.getFileByPath(path)
+              return file !== null ? this.app.vault.cachedRead(file) : null
+            },
+            getActiveRoutine: () => {
+              const graph = this.store.getGraph()
+              return {
+                graphId: graph.id,
+                graphName: graph.name,
+                status: this.store.getState().status,
+              }
+            },
+            confirmReplace: async (currentRoutineName: string, nextRoutineName: string) => {
+              return new RoutineReplaceModal(this.app, currentRoutineName, nextRoutineName).waitForResult()
+            },
+            setGraph: (graph) => {
+              this.store.setGraph(graph)
+            },
+            dispatch: async (action) => {
+              return this.store.dispatch(action)
+            },
+            activateView: async () => {
+              await this.activateView()
+            },
+          },
+        )
+
+        if (result === 'no-match') {
+          new Notice('Routine flow: no matching cadence routine for current time and context')
+        }
+        else if (result === 'file-not-found') {
+          new Notice('Routine flow: scheduled cadence routine file not found')
+        }
+        else if (result === 'parse-error') {
+          new Notice('Routine flow: failed to parse scheduled cadence routine file')
         }
       },
     })

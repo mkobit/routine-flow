@@ -9,6 +9,7 @@ import { HookNameSchema } from './domain/hook/hook-reference'
 import { scriptHookBindingsToListItems } from './settings-script-hook-list'
 import { ScriptHookConfirmModal } from './views/script-hook-confirm-modal'
 import { PROGRESS_METER_STYLE_LABELS, ProgressMeterStyleSchema } from './timer/progress-meter-style'
+import { CadenceRuleSchema } from './domain/routine/cadence-selection'
 
 /** A settings-authored name+formula pair for a 'custom' TransitionCondition predicate — see FormulaPredicateSetting (src/timer/formula-predicate-registry.ts), which this schema's parsed shape matches structurally. */
 export const FormulaPredicateSettingSchema = z.object({
@@ -38,6 +39,8 @@ export const RoutineFlowSettingsSchema = z.object({
   scriptsFolder: z.string().default(''),
   /** Named, bind-time-confirmed script-hook bindings, resolved via MutableScriptHookRegistry. */
   scriptHookBindings: z.array(ScriptHookBindingSettingSchema).default([]),
+  /** Scheduled cadence rules for criteria-based routine selection. */
+  cadenceRules: z.array(CadenceRuleSchema).default([]),
 })
 
 export type RoutineFlowSettings = z.infer<typeof RoutineFlowSettingsSchema>
@@ -50,6 +53,7 @@ export const DEFAULT_SETTINGS: RoutineFlowSettings = {
   formulaPredicates: [],
   scriptsFolder: '',
   scriptHookBindings: [],
+  cadenceRules: [],
 }
 
 /** Suggests `.js` files directly inside the configured scripts folder — not vault-wide, and not nested subfolders (see script-hook-source's "directly inside" requirement). */
