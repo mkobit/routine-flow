@@ -30,22 +30,26 @@ export interface QueueFilterCandidate extends BaseQueryEntry {
 }
 
 /**
- * Resolves which property/value a phase's queue filters on (isFocus -> propId/targetVal
- * resolution) and applies it to `candidates`, returning only the matching entries. Pulled out of
- * RoutineTimerView.buildTaskSource so this logic — including the unconfigured-View-Option
- * fallback that previously regressed silently (flow-djx) — is unit-testable with plain fakes
- * instead of only via slow e2e (flow-kg3).
+ * Resolves which property/value a phase's queue filters on (phase.queryFilter, or isFocus -> propId/targetVal
+ * fallback) and applies it to `candidates`, returning only the matching entries.
  */
 export function filterQueueCandidates(
-  phase: Pick<Phase, 'kind'>,
+  phase: Pick<Phase, 'kind'> & Partial<Pick<Phase, 'taskSourceId' | 'queryFilter'>>,
   config: QueueFilterConfigSource | undefined,
   candidates: readonly QueueFilterCandidate[],
   now?: Temporal.Instant | (() => Temporal.Instant),
 ): BaseQueryEntry[] {
   const isFocus = phase.kind === FOCUS_PHASE_KIND
-  const propId = (isFocus ? config?.getAsPropertyId('focusProperty') : config?.getAsPropertyId('breakProperty')) ?? DEFAULT_QUEUE_PROPERTY_ID
-  const rawTargetVal = isFocus ? config?.get('focusValue') : config?.get('breakValue')
   const targetValFallback = isFocus ? 'work' : 'break'
+
+  const propId: BasesPropertyId
+    = phase.queryFilter?.property
+      ?? (isFocus ? config?.getAsPropertyId('focusProperty') : config?.getAsPropertyId('breakProperty'))
+      ?? DEFAULT_QUEUE_PROPERTY_ID
+
+  const rawTargetVal
+    = phase.queryFilter?.value
+      ?? (isFocus ? config?.get('focusValue') : config?.get('breakValue'))
   const targetVal = typeof rawTargetVal === 'string' && rawTargetVal ? rawTargetVal : targetValFallback
   const evaluationTime = resolveNow(now)
 
