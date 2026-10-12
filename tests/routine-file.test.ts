@@ -174,4 +174,28 @@ describe('parseRoutineFile', () => {
     expect(result.success).toBe(false)
     expect(result.success === false && result.error.message).toContain('2 fenced JSON code blocks')
   })
+
+  test('parses a phase with queryFilter', () => {
+    const graph = {
+      ...validPhaseGraph,
+      phases: [
+        {
+          ...validPhaseGraph.phases[0],
+          taskSourceId: 'inbox-queue',
+          queryFilter: {
+            property: 'status',
+            value: 'inbox',
+          },
+        },
+      ],
+    }
+
+    const result = parseRoutineFile(routineFile(graph))
+
+    expect(result.success).toBe(true)
+    expect(result.success && result.graph.phases[0]?.queryFilter).toEqual({
+      property: 'note.status',
+      value: 'inbox',
+    })
+  })
 })

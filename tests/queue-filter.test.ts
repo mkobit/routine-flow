@@ -3,7 +3,11 @@ import { test, expect, describe } from 'bun:test'
 import type { BasesPropertyId } from 'obsidian'
 import { filterQueueCandidates } from '../src/adapters/obsidian/bases/queue-filter'
 import type { QueueFilterCandidate, QueueFilterConfigSource } from '../src/adapters/obsidian/bases/queue-filter'
+import { createBaseQuerySource } from '../src/adapters/obsidian/bases/query-task-source'
 import { FOCUS_PHASE_KIND, BREAK_PHASE_KIND } from '../src/timer/phase-graph'
+import { TaskSourceIdSchema } from '../src/domain/queue/task-source'
+import { PhaseQueryFilterSchema } from '../src/domain/phase/phase'
+import { createTaskSourceRegistry } from '../src/timer/task-source-registry'
 
 function candidate(overrides: Partial<QueueFilterCandidate> & { value?: string | null } = {}): QueueFilterCandidate {
   const { value = null, ...rest } = overrides
@@ -308,6 +312,130 @@ describe('filterQueueCandidates', () => {
       const result = filterQueueCandidates({ kind: FOCUS_PHASE_KIND }, undefined, candidates, EVAL_TIME)
 
       expect(result.map(c => c.path)).toEqual(['plaindate-past.md'])
+    })
+  })
+
+  describe('per-phase task source filtering (flow-1t1.2)', () => {
+    test('filters candidates by phase-specific queryFilter property and value', () => {
+      const candidates = [
+        candidate({ path: 'inbox-1.md', getValue: propId => (propId === 'note.status' ? { toString: () => 'inbox' } : null) }),
+        candidate({ path: 'project-1.md', getValue: propId => (propId === 'note.status' ? { toString: () => 'active' } : null) }),
+        candidate({ path: 'waiting-1.md', getValue: propId => (propId === 'note.status' ? { toString: () => 'waiting' } : null) }),
+      ]
+
+      const phase = {
+        kind: FOCUS_PHASE_KIND,
+        taskSourceId: TaskSourceIdSchema.parse('inbox-queue'),
+        queryFilter: PhaseQueryFilterSchema.parse({ property: 'status', value: 'inbox' }),
+      }
+
+      const result = filterQueueCandidates(phase, undefined, candidates)
+
+      expect(result.map(c => c.path)).toEqual(['inbox-1.md'])
+    })
+
+    test('supports sequential review phases pulling from distinct query criteria', () => {
+      const candidates = [
+        candidate({ path: 'inbox-item.md', getValue: propId => (propId === 'note.category' ? { toString: () => 'inbox' } : null) }),
+        candidate({ path: 'active-project.md', getValue: propId => (propId === 'note.category' ? { toString: () => 'projects' } : null) }),
+        candidate({ path: 'waiting-for.md', getValue: propId => (propId === 'note.category' ? { toString: () => 'waiting' } : null) }),
+      ]
+
+      const inboxPhase = {
+        kind: FOCUS_PHASE_KIND,
+        taskSourceId: TaskSourceIdSchema.parse('inbox-queue'),
+        queryFilter: PhaseQueryFilterSchema.parse({ property: 'note.category', value: 'inbox' }),
+      }
+      const projectsPhase = {
+        kind: FOCUS_PHASE_KIND,
+        taskSourceId: TaskSourceIdSchema.parse('projects-queue'),
+        queryFilter: PhaseQueryFilterSchema.parse({ property: 'note.category', value: 'projects' }),
+      }
+      const waitingPhase = {
+        kind: FOCUS_PHASE_KIND,
+        taskSourceId: TaskSourceIdSchema.parse('waiting-queue'),
+        queryFilter: PhaseQueryFilterSchema.parse({ property: 'note.category', value: 'waiting' }),
+      }
+
+      expect(filterQueueCandidates(inboxPhase, undefined, candidates).map(c => c.path)).toEqual(['inbox-item.md'])
+      expect(filterQueueCandidates(projectsPhase, undefined, candidates).map(c => c.path)).toEqual(['active-project.md'])
+      expect(filterQueueCandidates(waitingPhase, undefined, candidates).map(c => c.path)).toEqual(['waiting-for.md'])
+    })
+
+    test('falls back to focusProperty / breakProperty when queryFilter is not provided', () => {
+      const candidates = [
+        candidate({ path: 'work.md', getValue: propId => (propId === 'note.type' ? { toString: () => 'work' } : null) }),
+        candidate({ path: 'break.md', getValue: propId => (propId === 'note.type' ? { toString: () => 'break' } : null) }),
+      ]
+
+      const focusPhase = { kind: FOCUS_PHASE_KIND, taskSourceId: TaskSourceIdSchema.parse('focus-queue') }
+      const breakPhase = { kind: BREAK_PHASE_KIND, taskSourceId: TaskSourceIdSchema.parse('break-queue') }
+
+      expect(filterQueueCandidates(focusPhase, undefined, candidates).map(c => c.path)).toEqual(['work.md'])
+      expect(filterQueueCandidates(breakPhase, undefined, candidates).map(c => c.path)).toEqual(['break.md'])
+    })
+
+    test('matches queryFilter value case-insensitively', () => {
+      const candidates = [
+        candidate({ path: 'item.md', getValue: propId => (propId === 'note.status' ? { toString: () => 'INBOX' } : null) }),
+      ]
+
+      const phase = {
+        kind: FOCUS_PHASE_KIND,
+        queryFilter: PhaseQueryFilterSchema.parse({ property: 'status', value: 'inbox' }),
+      }
+
+      const result = filterQueueCandidates(phase, undefined, candidates)
+
+      expect(result.map(c => c.path)).toEqual(['item.md'])
+    })
+
+    test('falls back to kind default value when queryFilter has empty-string value', () => {
+      const candidates = [
+        candidate({ path: 'work.md', getValue: propId => (propId === 'note.status' ? { toString: () => 'work' } : null) }),
+      ]
+
+      const phase = {
+        kind: FOCUS_PHASE_KIND,
+        queryFilter: PhaseQueryFilterSchema.parse({ property: 'status', value: '' }),
+      }
+
+      const result = filterQueueCandidates(phase, undefined, candidates)
+
+      expect(result.map(c => c.path)).toEqual(['work.md'])
+    })
+
+    test('TaskSourceRegistry provides distinct queues when advancing between review phases', () => {
+      const candidates = [
+        candidate({ path: 'inbox-item.md', getValue: propId => (propId === 'note.status' ? { toString: () => 'inbox' } : null) }),
+        candidate({ path: 'active-project.md', getValue: propId => (propId === 'note.status' ? { toString: () => 'active' } : null) }),
+        candidate({ path: 'waiting-task.md', getValue: propId => (propId === 'note.status' ? { toString: () => 'waiting' } : null) }),
+      ]
+
+      const inboxPhase = {
+        kind: FOCUS_PHASE_KIND,
+        taskSourceId: TaskSourceIdSchema.parse('inbox-queue'),
+        queryFilter: PhaseQueryFilterSchema.parse({ property: 'note.status', value: 'inbox' }),
+      }
+      const projectsPhase = {
+        kind: FOCUS_PHASE_KIND,
+        taskSourceId: TaskSourceIdSchema.parse('projects-queue'),
+        queryFilter: PhaseQueryFilterSchema.parse({ property: 'note.status', value: 'active' }),
+      }
+      const waitingPhase = {
+        kind: FOCUS_PHASE_KIND,
+        taskSourceId: TaskSourceIdSchema.parse('waiting-queue'),
+        queryFilter: PhaseQueryFilterSchema.parse({ property: 'note.status', value: 'waiting' }),
+      }
+
+      const registry = createTaskSourceRegistry()
+      for (const p of [inboxPhase, projectsPhase, waitingPhase]) {
+        registry.register(p.taskSourceId, createBaseQuerySource(filterQueueCandidates(p, undefined, candidates)))
+      }
+
+      expect(registry.resolve(inboxPhase.taskSourceId)?.getQueue().map(c => c.sourcePath)).toEqual(['inbox-item.md'])
+      expect(registry.resolve(projectsPhase.taskSourceId)?.getQueue().map(c => c.sourcePath)).toEqual(['active-project.md'])
+      expect(registry.resolve(waitingPhase.taskSourceId)?.getQueue().map(c => c.sourcePath)).toEqual(['waiting-task.md'])
     })
   })
 })
