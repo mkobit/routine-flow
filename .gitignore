@@ -70,6 +70,7 @@ build_output.log
 .dolt/
 *.db
 .beads-credential-key
+*.gate.lock*
 
 # Beads exports — bd dolt push/pull (refs/dolt/data on origin) is the durable
 # sync path; these are just local passive exports for scripting/grep, not
