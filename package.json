@@ -56,8 +56,8 @@
     "typescript-eslint": "^8.70.1"
   },
   "dependencies": {
-    "obsidian": "1.13.1",
-    "remeda": "^2.50.0",
+    "obsidian": "1.14.4",
+    "remeda": "^2.51.0",
     "temporal-polyfill": "^1.0.5",
     "zod": "^4.6.5"
   },
