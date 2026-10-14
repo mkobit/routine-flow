@@ -4,7 +4,7 @@ import type { BasesPropertyId } from 'obsidian'
 import { filterQueueCandidates } from '../src/adapters/obsidian/bases/queue-filter'
 import type { QueueFilterCandidate, QueueFilterConfigSource } from '../src/adapters/obsidian/bases/queue-filter'
 import { createBaseQuerySource } from '../src/adapters/obsidian/bases/query-task-source'
-import { FOCUS_PHASE_KIND, BREAK_PHASE_KIND } from '../src/timer/phase-graph'
+import { FOCUS_PHASE_KIND, BREAK_PHASE_KIND, SELECTOR_PHASE_KIND } from '../src/timer/phase-graph'
 import { TaskSourceIdSchema } from '../src/domain/queue/task-source'
 import { PhaseQueryFilterSchema } from '../src/domain/phase/phase'
 import { createTaskSourceRegistry } from '../src/timer/task-source-registry'
@@ -59,6 +59,17 @@ describe('filterQueueCandidates', () => {
     ]
 
     const result = filterQueueCandidates({ kind: BREAK_PHASE_KIND }, undefined, candidates)
+
+    expect(result.map(c => c.path)).toEqual(['a.md'])
+  })
+
+  test('uses focusProperty/focusValue fallback for a selector phase', () => {
+    const candidates = [
+      candidate({ path: 'a.md', getValue: propId => (propId === 'note.type' ? { toString: () => 'work' } : null) }),
+      candidate({ path: 'b.md', getValue: propId => (propId === 'note.type' ? { toString: () => 'break' } : null) }),
+    ]
+
+    const result = filterQueueCandidates({ kind: SELECTOR_PHASE_KIND }, undefined, candidates)
 
     expect(result.map(c => c.path)).toEqual(['a.md'])
   })

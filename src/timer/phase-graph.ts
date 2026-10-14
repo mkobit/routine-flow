@@ -1,5 +1,5 @@
 import { Temporal } from 'temporal-polyfill'
-import { PhaseKindSchema, PhaseNodeSchema } from '../domain/phase/phase'
+import { FOCUS_PHASE_KIND, BREAK_PHASE_KIND, SELECTOR_PHASE_KIND, PhaseNodeSchema } from '../domain/phase/phase'
 import type { PhaseNode, PhaseId } from '../domain/phase/phase'
 import { PhaseGraphIdSchema, PhaseGraphSchema } from '../domain/phase/phase-graph'
 import type { PhaseGraph, EdgeGuard } from '../domain/phase/phase-graph'
@@ -8,9 +8,8 @@ import type { PredicateRegistry } from '../domain/hook/predicate'
 import { PredicateNameSchema } from '../domain/hook/predicate'
 import { TaskSourceIdSchema } from '../domain/queue/task-source'
 
-/** Built-in phase kinds used by the default phase graph. */
-export const FOCUS_PHASE_KIND = PhaseKindSchema.parse('focus')
-export const BREAK_PHASE_KIND = PhaseKindSchema.parse('break')
+/** Built-in phase kinds used by default and specialized phase graphs. */
+export { FOCUS_PHASE_KIND, BREAK_PHASE_KIND, SELECTOR_PHASE_KIND }
 
 export const FOCUS_QUEUE_TASK_SOURCE_ID = TaskSourceIdSchema.parse('focus-queue')
 export const BREAK_QUEUE_TASK_SOURCE_ID = TaskSourceIdSchema.parse('break-queue')
