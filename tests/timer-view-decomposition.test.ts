@@ -3,6 +3,7 @@ import type { App as AppType, BasesOptions, TFile as TFileType } from 'obsidian'
 import type { Temporal as TemporalType } from 'temporal-polyfill'
 import type { Phase, PhaseId, PhaseKind } from '../src/domain/phase/phase'
 import type { TaskQueueItem, TaskQueueItemId, TaskSourceId } from '../src/domain/queue/task-source'
+import type { QueuePanelOptions } from '../src/views/timer/queue-panel'
 
 class MockElement {
   className = ''
@@ -18,6 +19,7 @@ class MockElement {
   }
 
   childElementCount = 0
+  tagName = ''
 
   addClass(cls: string): void {
     const current = this.className.split(' ').filter(Boolean)
@@ -41,20 +43,63 @@ class MockElement {
     this.childElementCount = 0
   }
 
-  createEl(tag: string, o?: { text?: string, cls?: string }): MockElement {
+  private readonly attrs: Record<string, string> = {}
+  private readonly listeners: Record<string, ((e: unknown) => void)[]> = {}
+  text = ''
+
+  setAttribute(name: string, val: string): void {
+    this.attrs[name] = val
+  }
+
+  getAttribute(name: string): string | null {
+    return this.attrs[name] ?? null
+  }
+
+  hasAttribute(name: string): boolean {
+    return name in this.attrs
+  }
+
+  removeAttribute(name: string): void {
+    delete this.attrs[name]
+  }
+
+  setText(txt: string): void {
+    this.text = txt
+  }
+
+  getText(): string {
+    return this.text
+  }
+
+  createEl(tag: string, o?: { text?: string, cls?: string, attr?: Record<string, string> }): MockElement {
     const child = new MockElement()
+    child.tagName = tag.toUpperCase()
     if (o?.cls) {
       child.addClass(o.cls)
+    }
+    if (o?.text) {
+      child.setText(o.text)
+    }
+    if (o?.attr) {
+      for (const [k, v] of Object.entries(o.attr)) {
+        child.setAttribute(k, v)
+      }
     }
     this.children.push(child)
     this.childElementCount = this.children.length
     return child
   }
 
-  createDiv(o?: { cls?: string }): MockElement {
+  createDiv(o?: { cls?: string, attr?: Record<string, string> }): MockElement {
     const child = new MockElement()
+    child.tagName = 'DIV'
     if (o?.cls) {
       child.addClass(o.cls)
+    }
+    if (o?.attr) {
+      for (const [k, v] of Object.entries(o.attr)) {
+        child.setAttribute(k, v)
+      }
     }
     this.children.push(child)
     this.childElementCount = this.children.length
@@ -63,8 +108,12 @@ class MockElement {
 
   createSpan(o?: { text?: string, cls?: string }): MockElement {
     const child = new MockElement()
+    child.tagName = 'SPAN'
     if (o?.cls) {
       child.addClass(o.cls)
+    }
+    if (o?.text) {
+      child.setText(o.text)
     }
     this.children.push(child)
     this.childElementCount = this.children.length
@@ -73,6 +122,7 @@ class MockElement {
 
   createSvg(tag: string, o?: { cls?: string }): MockElement {
     const child = new MockElement()
+    child.tagName = tag.toUpperCase()
     if (o?.cls) {
       child.addClass(o.cls)
     }
@@ -81,7 +131,21 @@ class MockElement {
     return child
   }
 
-  addEventListener(): void {}
+  addEventListener(event: string, handler: (e: unknown) => void): void {
+    const list = this.listeners[event] ?? []
+    list.push(handler)
+    this.listeners[event] = list
+  }
+
+  click(): void {
+    const handlers = this.listeners.click ?? []
+    for (const h of handlers) {
+      h({
+        stopPropagation: () => {},
+        preventDefault: () => {},
+      })
+    }
+  }
 }
 
 // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- mock element helper
@@ -224,15 +288,10 @@ let renderConfigPanelFn: (parent: HTMLElement, options: {
   onRoutineFileChange: () => void
   onFilterConfigChange: () => void
 }) => HTMLElement
-let renderQueuePanelFn: (queueEl: HTMLElement, options: {
-  phase: Phase
-  activeFilePath: string | null
-  queueItems: readonly TaskQueueItem[]
-  app: AppType
-  onSelectTask: (path: string) => void
-}) => void
+let renderQueuePanelFn: (queueEl: HTMLElement, options: QueuePanelOptions) => void
 let FOCUS_PHASE_KIND_VAL: PhaseKind
 let BREAK_PHASE_KIND_VAL: PhaseKind
+let SELECTOR_PHASE_KIND_VAL: PhaseKind
 let PhaseIdSchemaParse: (val: string) => PhaseId
 let TaskSourceIdSchemaParse: (val: string) => TaskSourceId
 let TaskQueueItemIdSchemaParse: (val: string) => TaskQueueItemId
@@ -264,6 +323,7 @@ describe('Timer view decomposition', () => {
     const phaseGraphMod = await import('../src/timer/phase-graph')
     FOCUS_PHASE_KIND_VAL = phaseGraphMod.FOCUS_PHASE_KIND
     BREAK_PHASE_KIND_VAL = phaseGraphMod.BREAK_PHASE_KIND
+    SELECTOR_PHASE_KIND_VAL = phaseGraphMod.SELECTOR_PHASE_KIND
 
     const phaseMod = await import('../src/domain/phase/phase')
     PhaseIdSchemaParse = val => phaseMod.PhaseIdSchema.parse(val)
@@ -433,7 +493,7 @@ describe('Timer view decomposition', () => {
         onSelectTask: () => {},
       })
 
-      const ul = queueEl.children.find(c => c.children.length > 0)
+      const ul = queueEl.children.find(c => c.tagName === 'UL')
       expect(ul).toBeDefined()
       expect(ul?.children.some(li => li.hasClass('is-active-task'))).toBe(true)
     })
@@ -457,6 +517,220 @@ describe('Timer view decomposition', () => {
       })
 
       expect(queueEl.children.length).toBeGreaterThan(0)
+    })
+
+    test('selector phase renders spin button disabled when queue has fewer than 2 items', () => {
+      const queueEl = new MockElement()
+      // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- mock App
+      const app = new MockApp() as unknown as AppType
+      const selectorPhase: Phase = {
+        ...createDummyPhase(),
+        kind: SELECTOR_PHASE_KIND_VAL,
+        label: 'Wheel of tasks',
+      }
+      const singleItem: TaskQueueItem = {
+        id: TaskQueueItemIdSchemaParse('item-1'),
+        sourcePath: 'tasks/task-1.md',
+        displayName: 'Task 1',
+        cycleStatus: 'pending',
+        timeSpent: Temporal.Duration.from({ minutes: 0 }),
+        lastCycledAt: null,
+      }
+
+      renderQueuePanelFn(asElement(queueEl), {
+        phase: selectorPhase,
+        activeFilePath: null,
+        queueItems: [singleItem],
+        app,
+        onSelectTask: () => {},
+      })
+
+      const header = queueEl.children.find(c => c.hasClass('routine-queue-header'))
+      expect(header).toBeDefined()
+      const toolbar = header?.children.find(c => c.hasClass('routine-queue-header-toolbar'))
+      expect(toolbar).toBeDefined()
+      const spinBtn = toolbar?.children.find(c => c.hasClass('routine-queue-spin-btn'))
+      expect(spinBtn).toBeDefined()
+      expect(spinBtn?.hasAttribute('disabled')).toBe(true)
+    })
+
+    test('selector phase renders spin button enabled with 2 or more items and live announcer', () => {
+      const queueEl = new MockElement()
+      // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- mock App
+      const app = new MockApp() as unknown as AppType
+      const selectorPhase: Phase = {
+        ...createDummyPhase(),
+        kind: SELECTOR_PHASE_KIND_VAL,
+        label: 'Wheel of tasks',
+      }
+      const item1: TaskQueueItem = {
+        id: TaskQueueItemIdSchemaParse('item-1'),
+        sourcePath: 'tasks/task-1.md',
+        displayName: 'Task 1',
+        cycleStatus: 'pending',
+        timeSpent: Temporal.Duration.from({ minutes: 0 }),
+        lastCycledAt: null,
+      }
+      const item2: TaskQueueItem = {
+        id: TaskQueueItemIdSchemaParse('item-2'),
+        sourcePath: 'tasks/task-2.md',
+        displayName: 'Task 2',
+        cycleStatus: 'pending',
+        timeSpent: Temporal.Duration.from({ minutes: 0 }),
+        lastCycledAt: null,
+      }
+
+      renderQueuePanelFn(asElement(queueEl), {
+        phase: selectorPhase,
+        activeFilePath: null,
+        queueItems: [item1, item2],
+        app,
+        onSelectTask: () => {},
+      })
+
+      const header = queueEl.children.find(c => c.hasClass('routine-queue-header'))
+      expect(header).toBeDefined()
+      const toolbar = header?.children.find(c => c.hasClass('routine-queue-header-toolbar'))
+      expect(toolbar).toBeDefined()
+      const spinBtn = toolbar?.children.find(c => c.hasClass('routine-queue-spin-btn'))
+      expect(spinBtn).toBeDefined()
+      expect(spinBtn?.hasAttribute('disabled')).toBe(false)
+
+      const liveRegion = queueEl.children.find(c => c.hasClass('routine-queue-announcer'))
+      expect(liveRegion).toBeDefined()
+      expect(liveRegion?.getAttribute('aria-live')).toBe('polite')
+    })
+
+    test('spin button click with prefersReducedMotion selects immediately without animation', () => {
+      const queueEl = new MockElement()
+      // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- mock App
+      const app = new MockApp() as unknown as AppType
+      const selectorPhase: Phase = {
+        ...createDummyPhase(),
+        kind: SELECTOR_PHASE_KIND_VAL,
+        label: 'Wheel of tasks',
+      }
+      const item1: TaskQueueItem = {
+        id: TaskQueueItemIdSchemaParse('item-1'),
+        sourcePath: 'tasks/task-1.md',
+        displayName: 'Task 1',
+        cycleStatus: 'pending',
+        timeSpent: Temporal.Duration.from({ minutes: 0 }),
+        lastCycledAt: null,
+      }
+      const item2: TaskQueueItem = {
+        id: TaskQueueItemIdSchemaParse('item-2'),
+        sourcePath: 'tasks/task-2.md',
+        displayName: 'Task 2',
+        cycleStatus: 'pending',
+        timeSpent: Temporal.Duration.from({ minutes: 0 }),
+        lastCycledAt: null,
+      }
+
+      let selectedPath = ''
+      let spunWinnerPath = ''
+
+      renderQueuePanelFn(asElement(queueEl), {
+        phase: selectorPhase,
+        activeFilePath: null,
+        queueItems: [item1, item2],
+        app,
+        prefersReducedMotion: true,
+        rng: () => 0.8, // selects item2
+        onSelectTask: (path) => {
+          selectedPath = path
+        },
+        onSpinEnd: (winner) => {
+          spunWinnerPath = winner.sourcePath
+        },
+      })
+
+      const header = queueEl.children.find(c => c.hasClass('routine-queue-header'))
+      const toolbar = header?.children.find(c => c.hasClass('routine-queue-header-toolbar'))
+      const spinBtn = toolbar?.children.find(c => c.hasClass('routine-queue-spin-btn'))
+      expect(spinBtn).toBeDefined()
+
+      spinBtn?.click()
+
+      expect(selectedPath).toBe('tasks/task-2.md')
+      expect(spunWinnerPath).toBe('tasks/task-2.md')
+
+      const liveRegion = queueEl.children.find(c => c.hasClass('routine-queue-announcer'))
+      expect(liveRegion?.getText()).toBe('Selected task: Task 2')
+
+      const ul = queueEl.children.find(c => c.tagName === 'UL')
+      const winnerLi = ul?.children[1]
+      expect(winnerLi?.hasClass('is-roulette-winner')).toBe(true)
+    })
+
+    test('spin button click with animation steps through highlights to winner', async () => {
+      const queueEl = new MockElement()
+      // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- mock App
+      const app = new MockApp() as unknown as AppType
+      const selectorPhase: Phase = {
+        ...createDummyPhase(),
+        kind: SELECTOR_PHASE_KIND_VAL,
+        label: 'Wheel of tasks',
+      }
+      const item1: TaskQueueItem = {
+        id: TaskQueueItemIdSchemaParse('item-1'),
+        sourcePath: 'tasks/task-1.md',
+        displayName: 'Task 1',
+        cycleStatus: 'pending',
+        timeSpent: Temporal.Duration.from({ minutes: 0 }),
+        lastCycledAt: null,
+      }
+      const item2: TaskQueueItem = {
+        id: TaskQueueItemIdSchemaParse('item-2'),
+        sourcePath: 'tasks/task-2.md',
+        displayName: 'Task 2',
+        cycleStatus: 'pending',
+        timeSpent: Temporal.Duration.from({ minutes: 0 }),
+        lastCycledAt: null,
+      }
+
+      let selectedPath = ''
+      let spunWinnerPath = ''
+
+      renderQueuePanelFn(asElement(queueEl), {
+        phase: selectorPhase,
+        activeFilePath: null,
+        queueItems: [item1, item2],
+        app,
+        prefersReducedMotion: false,
+        scheduleTotalSteps: 3,
+        rng: () => 0.1, // selects item1
+        onSelectTask: (path) => {
+          selectedPath = path
+        },
+        onSpinEnd: (winner) => {
+          spunWinnerPath = winner.sourcePath
+        },
+      })
+
+      const header = queueEl.children.find(c => c.hasClass('routine-queue-header'))
+      const toolbar = header?.children.find(c => c.hasClass('routine-queue-header-toolbar'))
+      const spinBtn = toolbar?.children.find(c => c.hasClass('routine-queue-spin-btn'))
+      expect(spinBtn).toBeDefined()
+
+      spinBtn?.click()
+
+      // During spinning, button is disabled
+      expect(spinBtn?.hasAttribute('disabled')).toBe(true)
+
+      // Wait for 3-step animation to complete (steps + deceleration intervals)
+      await new Promise(resolve => setTimeout(resolve, 800))
+
+      expect(selectedPath).toBe('tasks/task-1.md')
+      expect(spunWinnerPath).toBe('tasks/task-1.md')
+      expect(spinBtn?.hasAttribute('disabled')).toBe(false)
+
+      const liveRegion = queueEl.children.find(c => c.hasClass('routine-queue-announcer'))
+      expect(liveRegion?.getText()).toBe('Selected task: Task 1')
+
+      const ul = queueEl.children.find(c => c.tagName === 'UL')
+      const winnerLi = ul?.children[0]
+      expect(winnerLi?.hasClass('is-roulette-winner')).toBe(true)
     })
   })
 })

@@ -1,10 +1,12 @@
 import { Notice, setIcon } from 'obsidian'
 import type { App } from 'obsidian'
+import { Temporal } from 'temporal-polyfill'
 import type { Phase } from '../../domain/phase/phase'
 import type { TaskQueueItem } from '../../domain/queue/task-source'
 import type { QueueItemAction } from '../../domain/action/queue-item-action'
 import type { ApplyMutationsResult } from '../../domain/mutation/apply-mutations'
 import { FOCUS_PHASE_KIND, SELECTOR_PHASE_KIND } from '../../timer/phase-graph'
+import { createDecelerationSchedule, selectRandomQueueItem } from '../../domain/queue/random-task-selector'
 import { renderStateIcon } from './state-icon'
 
 export interface QueueActionExecutor {
@@ -19,10 +21,45 @@ export interface QueuePanelOptions {
   readonly actionExecutor?: QueueActionExecutor
   readonly onSelectTask: (filePath: string) => void
   readonly onOpenFile?: (filePath: string) => void
+  readonly rng?: () => number
+  readonly scheduleTotalSteps?: number
+  readonly prefersReducedMotion?: boolean
+  readonly setTimeout?: (callback: () => void, delayMs: number) => number
+  readonly onSpinEnd?: (winner: TaskQueueItem) => void
+}
+
+const DEFAULT_SCHEDULE_TOTAL_STEPS = 20
+const MIN_STEP_INTERVAL = Temporal.Duration.from({ milliseconds: 50 })
+const MAX_STEP_INTERVAL = Temporal.Duration.from({ milliseconds: 400 })
+
+function safeSetTimeout(callback: () => void, delayMs: number, customSetTimeout?: (callback: () => void, delayMs: number) => number): number {
+  if (customSetTimeout) {
+    return customSetTimeout(callback, delayMs)
+  }
+  if (typeof window !== 'undefined' && typeof window.setTimeout === 'function') {
+    return window.setTimeout(callback, delayMs)
+  }
+  // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- fallback for headless test runners where window is not in global scope
+  return (setTimeout as unknown as (cb: () => void, ms: number) => number)(callback, delayMs)
+}
+
+function checkPrefersReducedMotion(override?: boolean): boolean {
+  if (override !== undefined) {
+    return override
+  }
+  if (typeof window !== 'undefined' && typeof window.matchMedia === 'function') {
+    try {
+      return window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    }
+    catch {
+      return false
+    }
+  }
+  return false
 }
 
 /**
- * Renders the work/break queue panel, item list, and action buttons.
+ * Renders the work/break/selection queue panel, item list, spin controls, and action buttons.
  */
 export function renderQueuePanel(queueEl: HTMLElement, options: QueuePanelOptions): void {
   queueEl.empty()
@@ -31,7 +68,17 @@ export function renderQueuePanel(queueEl: HTMLElement, options: QueuePanelOption
     : options.phase.kind === FOCUS_PHASE_KIND
       ? 'Work queue'
       : 'Break queue'
-  queueEl.createEl('h3', { text: queueTitle })
+
+  const headerEl = queueEl.createDiv({ cls: 'routine-queue-header' })
+  headerEl.createEl('h3', { text: queueTitle })
+
+  const liveRegion = queueEl.createDiv({
+    cls: 'routine-queue-announcer sr-only',
+    attr: {
+      'aria-live': 'polite',
+      'aria-atomic': 'true',
+    },
+  })
 
   if (options.queueItems.length === 0) {
     const emptyEl = queueEl.createDiv({ cls: 'routine-queue-empty' })
@@ -40,8 +87,27 @@ export function renderQueuePanel(queueEl: HTMLElement, options: QueuePanelOption
     return
   }
 
+  const isSelectorPhase = options.phase.kind === SELECTOR_PHASE_KIND
+  const canSpin = options.queueItems.length >= 2
+  let spinBtn: HTMLElement | null = null
+
+  if (isSelectorPhase) {
+    const toolbarEl = headerEl.createDiv({ cls: 'routine-queue-header-toolbar' })
+    spinBtn = toolbarEl.createEl('button', {
+      cls: 'routine-queue-spin-btn',
+      attr: {
+        'aria-label': 'Spin queue',
+        'title': 'Spin queue',
+      },
+    })
+    setIcon(spinBtn, 'dices')
+    if (!canSpin) {
+      spinBtn.setAttribute('disabled', 'true')
+    }
+  }
+
   const ul = queueEl.createEl('ul')
-  for (const item of options.queueItems) {
+  const itemEls = options.queueItems.map((item) => {
     const li = ul.createEl('li')
     const itemRow = li.createDiv({ cls: 'routine-queue-item-row' })
     const taskBtn = itemRow.createEl('button', { cls: 'routine-task-name', text: item.displayName })
@@ -99,6 +165,117 @@ export function renderQueuePanel(queueEl: HTMLElement, options: QueuePanelOption
 
     taskBtn.addEventListener('click', () => {
       options.onSelectTask(item.sourcePath)
+    })
+
+    return { item, li }
+  })
+
+  if (isSelectorPhase && spinBtn && canSpin) {
+    let isSpinning = false
+
+    const triggerSpin = (): void => {
+      if (isSpinning) {
+        return
+      }
+
+      const winner = selectRandomQueueItem(options.queueItems, { rng: options.rng })
+      if (!winner) {
+        return
+      }
+
+      const winnerIndex = options.queueItems.findIndex(i => i.sourcePath === winner.sourcePath)
+      if (winnerIndex < 0) {
+        return
+      }
+
+      const announceWinner = (): void => {
+        liveRegion.setText(`Selected task: ${winner.displayName}`)
+      }
+
+      const finishSelection = (winnerLi: HTMLElement): void => {
+        for (const { li } of itemEls) {
+          li.removeClass('is-roulette-highlight')
+          li.removeClass('is-roulette-winner')
+        }
+        winnerLi.addClass('is-roulette-winner')
+        announceWinner()
+        options.onSelectTask(winner.sourcePath)
+        options.onSpinEnd?.(winner)
+        isSpinning = false
+        spinBtn?.removeAttribute('disabled')
+      }
+
+      const prefersReduced = checkPrefersReducedMotion(options.prefersReducedMotion)
+      if (prefersReduced) {
+        const winnerEntry = itemEls[winnerIndex]
+        if (winnerEntry) {
+          finishSelection(winnerEntry.li)
+        }
+        return
+      }
+
+      isSpinning = true
+      spinBtn?.setAttribute('disabled', 'true')
+      for (const { li } of itemEls) {
+        li.removeClass('is-roulette-winner')
+        li.removeClass('is-roulette-highlight')
+      }
+
+      const numCandidates = options.queueItems.length
+      const baseSteps = options.scheduleTotalSteps ?? DEFAULT_SCHEDULE_TOTAL_STEPS
+      const remainder = baseSteps % numCandidates
+      const adjustment = (winnerIndex - remainder + numCandidates) % numCandidates
+      const totalSteps = Math.max(1, baseSteps + adjustment)
+
+      const schedule = createDecelerationSchedule({
+        totalSteps,
+        minInterval: MIN_STEP_INTERVAL,
+        maxInterval: MAX_STEP_INTERVAL,
+      })
+
+      let currentStep = 0
+      const runStep = (): void => {
+        const step = schedule[currentStep]
+        if (!step) {
+          const winnerEntry = itemEls[winnerIndex]
+          if (winnerEntry) {
+            finishSelection(winnerEntry.li)
+          }
+          return
+        }
+
+        const candidateIndex = step.index % numCandidates
+        for (let i = 0; i < itemEls.length; i++) {
+          const entry = itemEls[i]
+          if (entry) {
+            if (i === candidateIndex) {
+              entry.li.addClass('is-roulette-highlight')
+            }
+            else {
+              entry.li.removeClass('is-roulette-highlight')
+            }
+          }
+        }
+
+        currentStep++
+        if (currentStep < schedule.length) {
+          safeSetTimeout(runStep, step.intervalMs, options.setTimeout)
+        }
+        else {
+          safeSetTimeout(() => {
+            const winnerEntry = itemEls[winnerIndex]
+            if (winnerEntry) {
+              finishSelection(winnerEntry.li)
+            }
+          }, step.intervalMs, options.setTimeout)
+        }
+      }
+
+      runStep()
+    }
+
+    spinBtn.addEventListener('click', () => {
+      triggerSpin()
     })
   }
 }
