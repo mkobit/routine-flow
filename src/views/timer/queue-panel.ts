@@ -4,7 +4,7 @@ import type { Phase } from '../../domain/phase/phase'
 import type { TaskQueueItem } from '../../domain/queue/task-source'
 import type { QueueItemAction } from '../../domain/action/queue-item-action'
 import type { ApplyMutationsResult } from '../../domain/mutation/apply-mutations'
-import { FOCUS_PHASE_KIND } from '../../timer/phase-graph'
+import { FOCUS_PHASE_KIND, SELECTOR_PHASE_KIND } from '../../timer/phase-graph'
 import { renderStateIcon } from './state-icon'
 
 export interface QueueActionExecutor {
@@ -26,7 +26,11 @@ export interface QueuePanelOptions {
  */
 export function renderQueuePanel(queueEl: HTMLElement, options: QueuePanelOptions): void {
   queueEl.empty()
-  const queueTitle = options.phase.kind === FOCUS_PHASE_KIND ? 'Work queue' : 'Break queue'
+  const queueTitle = options.phase.kind === SELECTOR_PHASE_KIND
+    ? 'Selection queue'
+    : options.phase.kind === FOCUS_PHASE_KIND
+      ? 'Work queue'
+      : 'Break queue'
   queueEl.createEl('h3', { text: queueTitle })
 
   if (options.queueItems.length === 0) {

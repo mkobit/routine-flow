@@ -2,7 +2,7 @@ import { ItemView, Notice, setIcon } from 'obsidian'
 import type { WorkspaceLeaf } from 'obsidian'
 import type RoutineFlowPlugin from '../main'
 import type { EngineState } from '../domain/session/engine-state'
-import { findNextPhase, findPhaseById, FOCUS_PHASE_KIND } from '../timer/phase-graph'
+import { findNextPhase, findPhaseById, FOCUS_PHASE_KIND, SELECTOR_PHASE_KIND } from '../timer/phase-graph'
 import { formatPhaseHeader } from '../timer/format'
 import { ResetConfirmModal } from './reset-confirm-modal'
 
@@ -121,7 +121,11 @@ export class RoutineSidePanelView extends ItemView {
       return
     }
 
-    const queueTitle = phase.kind === FOCUS_PHASE_KIND ? 'Work queue' : 'Break queue'
+    const queueTitle = phase.kind === SELECTOR_PHASE_KIND
+      ? 'Selection queue'
+      : phase.kind === FOCUS_PHASE_KIND
+        ? 'Work queue'
+        : 'Break queue'
     const queueItems = this.plugin.taskSourceRegistry.resolve(phase.taskSourceId)?.getQueue() ?? []
 
     const queueEl = this.contentEl.createDiv({ cls: 'routine-queue' })

@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { Temporal } from 'temporal-polyfill'
 import type { BasesPropertyId } from 'obsidian'
 import { PositiveDurationSchema } from '../duration'
 import { TaskSourceIdSchema } from '../queue/task-source'
@@ -18,6 +19,19 @@ export type PhaseId = z.infer<typeof PhaseIdSchema>
  */
 export const PhaseKindSchema = z.string().min(1).brand<'PhaseKind'>()
 export type PhaseKind = z.infer<typeof PhaseKindSchema>
+
+export const FOCUS_PHASE_KIND = PhaseKindSchema.parse('focus')
+export const BREAK_PHASE_KIND = PhaseKindSchema.parse('break')
+export const SELECTOR_PHASE_KIND = PhaseKindSchema.parse('selector')
+
+/**
+ * Configuration for dedicated task selector phases.
+ */
+export const PhaseSelectorConfigSchema = z.object({
+  autoSpin: z.boolean().default(false),
+  promoteToFront: z.boolean().default(false),
+}).readonly()
+export type PhaseSelectorConfig = z.infer<typeof PhaseSelectorConfigSchema>
 
 /**
  * Name of a write-back target resolver looked up in a LogTargetResolverRegistry.
@@ -99,6 +113,38 @@ function extractHandlers(raw: Record<string, unknown>): unknown {
   }
 }
 
+function extractSelector(raw: Record<string, unknown>): unknown {
+  return raw.selector === null
+    ? undefined
+    : raw.selector !== undefined
+      ? raw.selector
+      : raw.autoSpin !== undefined || raw.promoteToFront !== undefined
+        ? {
+            autoSpin: raw.autoSpin,
+            promoteToFront: raw.promoteToFront,
+          }
+        : undefined
+}
+
+function parseDurationLike(val: unknown): unknown {
+  try {
+    return typeof val === 'string'
+      ? Temporal.Duration.from(val)
+      : typeof val === 'object' && val !== null && !(val instanceof Temporal.Duration)
+        ? Temporal.Duration.from(val)
+        : val
+  }
+  catch {
+    return val
+  }
+}
+
+function extractDuration(raw: Record<string, unknown>): unknown {
+  return typeof raw.duration === 'string' || (typeof raw.duration === 'object' && raw.duration !== null && !(raw.duration instanceof Temporal.Duration))
+    ? parseDurationLike(raw.duration)
+    : raw.duration
+}
+
 /**
  * A single named node stage in a routine graph.
  */
@@ -110,6 +156,8 @@ export const PhaseNodeSchema = z.preprocess((val) => {
   const completionPolicy = raw ? getRawRecord(raw.completionPolicy) : null
   const onCompletion = raw ? (raw.onCompletion ?? (completionPolicy?.kind === 'manualClear' ? 'waitForManual' : 'autoAdvance')) : 'autoAdvance'
   const handlers = raw ? extractHandlers(raw) : undefined
+  const selector = raw ? extractSelector(raw) : undefined
+  const duration = raw ? extractDuration(raw) : undefined
 
   return raw
     ? {
@@ -119,13 +167,15 @@ export const PhaseNodeSchema = z.preprocess((val) => {
         taskSourceId,
         onCompletion,
         handlers,
+        selector,
+        duration,
       }
     : val
 }, z.object({
   id: PhaseIdSchema,
   name: z.string().min(1),
   label: z.string().min(1),
-  kind: PhaseKindSchema.default(PhaseKindSchema.parse('focus')),
+  kind: PhaseKindSchema.default(FOCUS_PHASE_KIND),
   duration: PositiveDurationSchema.nullable(),
   onCompletion: z.enum(['autoAdvance', 'waitForManual']).default('autoAdvance'),
   taskSourceId: TaskSourceIdSchema.nullable().default(null),
@@ -140,6 +190,7 @@ export const PhaseNodeSchema = z.preprocess((val) => {
   }),
   actions: z.array(QueueItemActionSchema).readonly().optional().default([]),
   timeFormat: TimeFormatSchema.optional(),
+  selector: PhaseSelectorConfigSchema.optional(),
 }).readonly()).readonly()
 
 export type PhaseNode = z.infer<typeof PhaseNodeSchema>
