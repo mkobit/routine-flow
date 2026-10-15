@@ -422,10 +422,46 @@
 
 /* ---- Queue (surface #1 tertiary; shared with the side panel) -------------------------------- */
 
+.routine-queue-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--size-4-2);
+}
+
+.routine-queue-header h3,
 .routine-queue h3 {
   margin-block: var(--size-4-2);
   font-size: var(--font-ui-medium);
   color: var(--text-normal);
+}
+
+.routine-queue-header-toolbar {
+  display: flex;
+  align-items: center;
+  gap: var(--size-4-1);
+}
+
+.routine-queue-spin-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--size-4-1);
+  color: var(--text-muted);
+  border-radius: var(--radius-s);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+}
+
+.routine-queue-spin-btn:hover:not(:disabled) {
+  color: var(--text-normal);
+  background-color: var(--background-modifier-hover);
+}
+
+.routine-queue-spin-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
 }
 
 .routine-queue ul {
@@ -452,6 +488,7 @@
 .routine-queue-item-row > button.routine-task-name {
   flex: 1;
   text-align: start;
+  transition: background-color 0.15s ease, color 0.15s ease, transform 0.15s ease;
 }
 
 .routine-open-file-btn {
@@ -471,6 +508,56 @@
   font-weight: var(--font-bold);
   color: var(--text-on-accent);
   background-color: var(--interactive-accent);
+}
+
+/* Roulette animation stepping highlight */
+.routine-queue li.is-roulette-highlight .routine-task-name {
+  background-color: var(--background-modifier-hover);
+  color: var(--text-accent);
+  outline: 1px solid var(--text-accent);
+}
+
+/* Roulette animation winner celebration styling */
+.routine-queue li.is-roulette-winner .routine-task-name {
+  font-weight: var(--font-bold);
+  color: var(--text-on-accent);
+  background-color: var(--interactive-accent);
+  animation: routine-flow-roulette-pulse 0.4s ease-out 1;
+}
+
+@keyframes routine-flow-roulette-pulse {
+  0% {
+    transform: scale(0.98);
+  }
+  50% {
+    transform: scale(1.02);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .routine-queue-item-row > button.routine-task-name {
+    transition: none;
+  }
+  .routine-queue li.is-roulette-winner .routine-task-name {
+    animation: none;
+  }
+}
+
+/* Visually hidden announcer for screen readers (aria-live) */
+.routine-queue-announcer.sr-only,
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
 }
 
 .routine-queue-actions {
