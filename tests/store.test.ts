@@ -5,7 +5,7 @@ import { PhaseGraphSchema, PhaseGraphIdSchema } from '../src/domain/phase/phase-
 import type { PhaseGraph } from '../src/domain/phase/phase-graph'
 import { PhaseIdSchema, PhaseSchema, SELECTOR_PHASE_KIND, FOCUS_PHASE_KIND } from '../src/domain/phase/phase'
 import { DEFAULT_PHASE_GRAPH } from '../src/timer/phase-graph'
-import { handleSelectorWinner } from '../src/views/timer-view'
+import { handleSelectorWinner } from '../src/timer/selector-winner'
 import { TaskQueueItemIdSchema, TaskSourceIdSchema } from '../src/domain/queue/task-source'
 import type { TaskQueueItem, TaskSource, TaskSourceRegistry } from '../src/domain/queue/task-source'
 import { HookNameSchema, HookReferenceSchema } from '../src/domain/hook/hook-reference'

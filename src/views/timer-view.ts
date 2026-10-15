@@ -5,9 +5,7 @@ import type { EngineState } from '../domain/session/engine-state'
 import type { PhaseGraph } from '../domain/phase/phase-graph'
 import type { Phase } from '../domain/phase/phase'
 import { findNextPhase, findPhaseById, DEFAULT_PHASE_GRAPH, SELECTOR_PHASE_KIND } from '../timer/phase-graph'
-import { TaskQueueItemIdSchema } from '../domain/queue/task-source'
-import type { ApplyMutationsResult } from '../domain/mutation/apply-mutations'
-import type { EngineStore } from '../timer/store'
+import { handleSelectorWinner } from '../timer/selector-winner'
 import { formatCountdown } from '../timer/format'
 import { decideStartAction, resolveRoutineGraph } from '../timer/routine-selection'
 import type { RoutineResolution } from '../timer/routine-selection'
@@ -272,7 +270,7 @@ export class RoutineTimerView extends BasesView {
       actionExecutor: this.plugin.store,
       onSelectTask: (filePath) => {
         if (isSelector) {
-          void handleSelectorWinner(this.plugin.store, phase, filePath)
+          void handleSelectorWinner(this.plugin.store, phase, filePath, msg => new Notice(msg))
         }
         else {
           void this.plugin.store.dispatch({ type: 'start', filePath })
@@ -357,29 +355,4 @@ export class RoutineTimerView extends BasesView {
   static getViewOptions = getViewOptions
 }
 
-/**
- * Dispatches active file update, optional promotion mutation, and auto-advance on selector winner.
- */
-export async function handleSelectorWinner(
-  store: Pick<EngineStore, 'dispatch' | 'reorderQueueItem'>,
-  phase: Phase,
-  filePath: string,
-): Promise<ApplyMutationsResult | null> {
-  await store.dispatch({ type: 'set-active-file', filePath })
-
-  let mutationResult: ApplyMutationsResult | null = null
-  if (phase.selector?.promoteToFront && store.reorderQueueItem) {
-    const itemId = TaskQueueItemIdSchema.parse(filePath)
-    mutationResult = await store.reorderQueueItem(itemId, 'front')
-    if (mutationResult !== null && !mutationResult.success) {
-      const causeMsg = mutationResult.cause instanceof Error ? mutationResult.cause.message : String(mutationResult.cause)
-      new Notice(`Routine Flow: queue reorder failed — ${causeMsg}`)
-    }
-  }
-
-  if (phase.onCompletion === 'autoAdvance') {
-    await store.dispatch({ type: 'finish-phase' })
-  }
-
-  return mutationResult
-}
+export { handleSelectorWinner } from '../timer/selector-winner'
