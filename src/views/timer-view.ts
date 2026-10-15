@@ -1,10 +1,11 @@
-import { BasesView } from 'obsidian'
+import { BasesView, Notice } from 'obsidian'
 import type { QueryController, BasesPropertyId, BasesEntry } from 'obsidian'
 import type RoutineFlowPlugin from '../main'
 import type { EngineState } from '../domain/session/engine-state'
 import type { PhaseGraph } from '../domain/phase/phase-graph'
 import type { Phase } from '../domain/phase/phase'
-import { findNextPhase, findPhaseById, DEFAULT_PHASE_GRAPH } from '../timer/phase-graph'
+import { findNextPhase, findPhaseById, DEFAULT_PHASE_GRAPH, SELECTOR_PHASE_KIND } from '../timer/phase-graph'
+import { handleSelectorWinner } from '../timer/selector-winner'
 import { formatCountdown } from '../timer/format'
 import { decideStartAction, resolveRoutineGraph } from '../timer/routine-selection'
 import type { RoutineResolution } from '../timer/routine-selection'
@@ -259,6 +260,8 @@ export class RoutineTimerView extends BasesView {
       ? (this.plugin.taskSourceRegistry.resolve(phase.taskSourceId)?.getQueue() ?? [])
       : []
 
+    const isSelector = phase.kind === SELECTOR_PHASE_KIND
+
     renderQueuePanel(queueEl, {
       phase,
       activeFilePath: state.activeFilePath,
@@ -266,8 +269,13 @@ export class RoutineTimerView extends BasesView {
       app: this.plugin.app,
       actionExecutor: this.plugin.store,
       onSelectTask: (filePath) => {
-        void this.plugin.store.dispatch({ type: 'start', filePath })
-        void this.plugin.activateView()
+        if (isSelector) {
+          void handleSelectorWinner(this.plugin.store, phase, filePath, msg => new Notice(msg))
+        }
+        else {
+          void this.plugin.store.dispatch({ type: 'start', filePath })
+          void this.plugin.activateView()
+        }
       },
     })
   }
@@ -346,3 +354,5 @@ export class RoutineTimerView extends BasesView {
 
   static getViewOptions = getViewOptions
 }
+
+export { handleSelectorWinner } from '../timer/selector-winner'

@@ -3,8 +3,9 @@ import { Temporal } from 'temporal-polyfill'
 import { EngineStore } from '../src/timer/store'
 import { PhaseGraphSchema, PhaseGraphIdSchema } from '../src/domain/phase/phase-graph'
 import type { PhaseGraph } from '../src/domain/phase/phase-graph'
-import { PhaseIdSchema, PhaseSchema } from '../src/domain/phase/phase'
+import { PhaseIdSchema, PhaseSchema, SELECTOR_PHASE_KIND, FOCUS_PHASE_KIND } from '../src/domain/phase/phase'
 import { DEFAULT_PHASE_GRAPH } from '../src/timer/phase-graph'
+import { handleSelectorWinner } from '../src/timer/selector-winner'
 import { TaskQueueItemIdSchema, TaskSourceIdSchema } from '../src/domain/queue/task-source'
 import type { TaskQueueItem, TaskSource, TaskSourceRegistry } from '../src/domain/queue/task-source'
 import { HookNameSchema, HookReferenceSchema } from '../src/domain/hook/hook-reference'
@@ -763,5 +764,90 @@ describe('EngineStore notifications', () => {
     expect(cooldownHistoryEntry).toBeDefined()
     expect(cooldownHistoryEntry?.mutationsApplied).toEqual([writeBackMutation])
     expect(cooldownHistoryEntry?.endReason).toBe('completed')
+  })
+
+  test('reorderQueueItem applies queueReorder mutation through FileMutationPort', async () => {
+    let reorderedMutation: unknown = null
+    const port: FileMutationPort = {
+      writeFrontmatter: async () => {},
+      appendText: async () => {},
+      reorderQueueItem: async (mutation) => {
+        reorderedMutation = mutation
+      },
+      changeQueueItemStatus: async () => {},
+    }
+
+    const store = new EngineStore(DEFAULT_PHASE_GRAPH, { port })
+    const itemId = TaskQueueItemIdSchema.parse('tasks/task-1.md')
+    const result = await store.reorderQueueItem(itemId, 'front')
+
+    expect(result).toEqual({ success: true })
+    expect(reorderedMutation).toEqual({
+      kind: 'queueReorder',
+      itemId,
+      position: 'front',
+    })
+  })
+
+  test('reorderQueueItem returns null when no mutation port is configured', async () => {
+    const store = new EngineStore(DEFAULT_PHASE_GRAPH)
+    const itemId = TaskQueueItemIdSchema.parse('tasks/task-1.md')
+    const result = await store.reorderQueueItem(itemId, 'front')
+    expect(result).toBeNull()
+  })
+
+  test('handleSelectorWinner dispatches set-active-file, updates frontmatter priority, and auto-advances', async () => {
+    const selectorPhase = PhaseSchema.parse({
+      ...phaseDefaults,
+      id: 'select',
+      name: 'Task selector',
+      label: 'Task selector',
+      kind: SELECTOR_PHASE_KIND,
+      duration: null,
+      onCompletion: 'autoAdvance',
+      selector: { autoSpin: false, promoteToFront: true },
+    })
+    const focusPhase = PhaseSchema.parse({
+      ...phaseDefaults,
+      id: 'focus',
+      name: 'Focus',
+      label: 'Focus',
+      kind: FOCUS_PHASE_KIND,
+      duration: Temporal.Duration.from({ minutes: 25 }),
+      onCompletion: 'autoAdvance',
+    })
+
+    const selectorGraph: PhaseGraph = PhaseGraphSchema.parse({
+      id: 'selector-graph',
+      name: 'Selector routine',
+      phases: [selectorPhase, focusPhase],
+      transitions: [{ fromPhaseId: selectorPhase.id, toPhaseId: focusPhase.id, condition: { kind: 'always' } }],
+    })
+
+    let reorderedMutation: unknown = null
+    const port: FileMutationPort = {
+      writeFrontmatter: async () => {},
+      appendText: async () => {},
+      reorderQueueItem: async (mutation) => {
+        reorderedMutation = mutation
+      },
+      changeQueueItemStatus: async () => {},
+    }
+
+    const store = new EngineStore(selectorGraph, { port })
+    expect(store.getState().currentPhaseId).toBe(selectorPhase.id)
+    expect(store.getState().activeFilePath).toBeNull()
+
+    const winnerPath = 'tasks/winning-task.md'
+    const result = await handleSelectorWinner(store, selectorPhase, winnerPath)
+
+    expect(result).toEqual({ success: true })
+    expect(store.getState().activeFilePath).toBe(winnerPath)
+    expect(reorderedMutation).toEqual({
+      kind: 'queueReorder',
+      itemId: TaskQueueItemIdSchema.parse(winnerPath),
+      position: 'front',
+    })
+    expect(store.getState().currentPhaseId).toBe(focusPhase.id)
   })
 })
