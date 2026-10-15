@@ -11,6 +11,7 @@ import { applyMutations } from '../domain/mutation/apply-mutations'
 import type { ApplyMutationsResult } from '../domain/mutation/apply-mutations'
 import { deriveActionMutations } from '../domain/action/derive-action-mutations'
 import type { QueueItemAction } from '../domain/action/queue-item-action'
+import type { TaskQueueItemId } from '../domain/queue/task-source'
 import type { EngineDeps } from './engine-deps'
 import { findPhaseById } from './phase-graph'
 import { executeHandlers } from './handler-executor'
@@ -106,6 +107,14 @@ export class EngineStore {
       return null
     }
     return applyMutations(port, mutations)
+  }
+
+  public async reorderQueueItem(itemId: TaskQueueItemId, position: 'front' | 'back'): Promise<ApplyMutationsResult | null> {
+    const { port } = this.deps
+    if (port === undefined) {
+      return null
+    }
+    return applyMutations(port, [{ kind: 'queueReorder', itemId, position }])
   }
 
   private async runDispatch(action: EngineAction): Promise<readonly HookEventApplication[]> {

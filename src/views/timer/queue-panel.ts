@@ -2,7 +2,7 @@ import { Notice, setIcon } from 'obsidian'
 import type { App } from 'obsidian'
 import { Temporal } from 'temporal-polyfill'
 import type { Phase } from '../../domain/phase/phase'
-import type { TaskQueueItem } from '../../domain/queue/task-source'
+import type { TaskQueueItem, TaskQueueItemId } from '../../domain/queue/task-source'
 import type { QueueItemAction } from '../../domain/action/queue-item-action'
 import type { ApplyMutationsResult } from '../../domain/mutation/apply-mutations'
 import { FOCUS_PHASE_KIND, SELECTOR_PHASE_KIND } from '../../timer/phase-graph'
@@ -11,6 +11,7 @@ import { renderStateIcon } from './state-icon'
 
 export interface QueueActionExecutor {
   readonly executeAction: (action: QueueItemAction, targetPath?: string) => Promise<ApplyMutationsResult | null>
+  readonly reorderQueueItem?: (itemId: TaskQueueItemId, position: 'front' | 'back') => Promise<ApplyMutationsResult | null>
 }
 
 export interface QueuePanelOptions {
@@ -90,6 +91,7 @@ export function renderQueuePanel(queueEl: HTMLElement, options: QueuePanelOption
   const isSelectorPhase = options.phase.kind === SELECTOR_PHASE_KIND
   const canSpin = options.queueItems.length >= 2
   let spinBtn: HTMLElement | null = null
+  let isSpinning = false
 
   if (isSelectorPhase) {
     const toolbarEl = headerEl.createDiv({ cls: 'routine-queue-header-toolbar' })
@@ -164,15 +166,30 @@ export function renderQueuePanel(queueEl: HTMLElement, options: QueuePanelOption
     }
 
     taskBtn.addEventListener('click', () => {
+      if (isSelectorPhase) {
+        if (isSpinning) {
+          return
+        }
+        triggerWinnerSelection(item, li)
+        return
+      }
       options.onSelectTask(item.sourcePath)
     })
 
     return { item, li }
   })
 
-  if (isSelectorPhase && spinBtn && canSpin) {
-    let isSpinning = false
+  const triggerWinnerSelection = (selectedItem: TaskQueueItem, selectedLi: HTMLElement): void => {
+    for (const { li } of itemEls) {
+      li.removeClass('is-roulette-highlight')
+      li.removeClass('is-roulette-winner')
+    }
+    selectedLi.addClass('is-roulette-winner')
+    liveRegion.setText(`Selected task: ${selectedItem.displayName}`)
+    options.onSelectTask(selectedItem.sourcePath)
+  }
 
+  if (isSelectorPhase && spinBtn && canSpin) {
     const triggerSpin = (): void => {
       if (isSpinning) {
         return
@@ -188,18 +205,8 @@ export function renderQueuePanel(queueEl: HTMLElement, options: QueuePanelOption
         return
       }
 
-      const announceWinner = (): void => {
-        liveRegion.setText(`Selected task: ${winner.displayName}`)
-      }
-
       const finishSelection = (winnerLi: HTMLElement): void => {
-        for (const { li } of itemEls) {
-          li.removeClass('is-roulette-highlight')
-          li.removeClass('is-roulette-winner')
-        }
-        winnerLi.addClass('is-roulette-winner')
-        announceWinner()
-        options.onSelectTask(winner.sourcePath)
+        triggerWinnerSelection(winner, winnerLi)
         options.onSpinEnd?.(winner)
         isSpinning = false
         spinBtn?.removeAttribute('disabled')

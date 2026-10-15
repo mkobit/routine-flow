@@ -4,6 +4,7 @@ import type { Temporal as TemporalType } from 'temporal-polyfill'
 import type { Phase, PhaseId, PhaseKind } from '../src/domain/phase/phase'
 import type { TaskQueueItem, TaskQueueItemId, TaskSourceId } from '../src/domain/queue/task-source'
 import type { QueuePanelOptions } from '../src/views/timer/queue-panel'
+import type { handleSelectorWinner } from '../src/views/timer-view'
 
 class MockElement {
   className = ''
@@ -289,6 +290,7 @@ let renderConfigPanelFn: (parent: HTMLElement, options: {
   onFilterConfigChange: () => void
 }) => HTMLElement
 let renderQueuePanelFn: (queueEl: HTMLElement, options: QueuePanelOptions) => void
+let handleSelectorWinnerFn: typeof handleSelectorWinner
 let FOCUS_PHASE_KIND_VAL: PhaseKind
 let BREAK_PHASE_KIND_VAL: PhaseKind
 let SELECTOR_PHASE_KIND_VAL: PhaseKind
@@ -306,6 +308,7 @@ describe('Timer view decomposition', () => {
 
     const timerViewMod = await import('../src/views/timer-view')
     RoutineTimerViewClass = timerViewMod.RoutineTimerView
+    handleSelectorWinnerFn = timerViewMod.handleSelectorWinner
 
     const stateIconMod = await import('../src/views/timer/state-icon')
     renderStateIconFn = stateIconMod.renderStateIcon
@@ -331,6 +334,26 @@ describe('Timer view decomposition', () => {
     const queueMod = await import('../src/domain/queue/task-source')
     TaskSourceIdSchemaParse = val => queueMod.TaskSourceIdSchema.parse(val)
     TaskQueueItemIdSchemaParse = val => queueMod.TaskQueueItemIdSchema.parse(val)
+  })
+
+  const createDummyPhase = (): Phase => ({
+    id: PhaseIdSchemaParse('focus-phase'),
+    name: 'Focus',
+    label: 'Focus',
+    kind: FOCUS_PHASE_KIND_VAL,
+    duration: Temporal.Duration.from({ minutes: 25 }),
+    onCompletion: 'autoAdvance',
+    timeFormat: 'mm:ss',
+    taskSourceId: TaskSourceIdSchemaParse('focus-queue'),
+    actions: [],
+    logTarget: { kind: 'activeItem' },
+    notification: null,
+    handlers: {
+      onEnter: [],
+      onComplete: [],
+      onSkip: [],
+      onExit: [],
+    },
   })
 
   describe('view-options', () => {
@@ -437,26 +460,6 @@ describe('Timer view decomposition', () => {
   })
 
   describe('queue-panel', () => {
-    const createDummyPhase = (): Phase => ({
-      id: PhaseIdSchemaParse('focus-phase'),
-      name: 'Focus',
-      label: 'Focus',
-      kind: FOCUS_PHASE_KIND_VAL,
-      duration: Temporal.Duration.from({ minutes: 25 }),
-      onCompletion: 'autoAdvance',
-      timeFormat: 'mm:ss',
-      taskSourceId: TaskSourceIdSchemaParse('focus-queue'),
-      actions: [],
-      logTarget: { kind: 'activeItem' },
-      notification: null,
-      handlers: {
-        onEnter: [],
-        onComplete: [],
-        onSkip: [],
-        onExit: [],
-      },
-    })
-
     test('renders empty state when queue items is empty', () => {
       const queueEl = new MockElement()
       // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- mock App
@@ -731,6 +734,185 @@ describe('Timer view decomposition', () => {
       const ul = queueEl.children.find(c => c.tagName === 'UL')
       const winnerLi = ul?.children[0]
       expect(winnerLi?.hasClass('is-roulette-winner')).toBe(true)
+    })
+
+    test('manual task click in selector phase sets roulette winner highlight and live announcer', () => {
+      const queueEl = new MockElement()
+      // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- mock App
+      const app = new MockApp() as unknown as AppType
+      const selectorPhase: Phase = {
+        ...createDummyPhase(),
+        kind: SELECTOR_PHASE_KIND_VAL,
+        label: 'Wheel of tasks',
+      }
+      const item1: TaskQueueItem = {
+        id: TaskQueueItemIdSchemaParse('item-1'),
+        sourcePath: 'tasks/task-1.md',
+        displayName: 'Task 1',
+        cycleStatus: 'pending',
+        timeSpent: Temporal.Duration.from({ minutes: 0 }),
+        lastCycledAt: null,
+      }
+      const item2: TaskQueueItem = {
+        id: TaskQueueItemIdSchemaParse('item-2'),
+        sourcePath: 'tasks/task-2.md',
+        displayName: 'Task 2',
+        cycleStatus: 'pending',
+        timeSpent: Temporal.Duration.from({ minutes: 0 }),
+        lastCycledAt: null,
+      }
+
+      let selectedPath = ''
+
+      renderQueuePanelFn(asElement(queueEl), {
+        phase: selectorPhase,
+        activeFilePath: null,
+        queueItems: [item1, item2],
+        app,
+        onSelectTask: (path) => {
+          selectedPath = path
+        },
+      })
+
+      const ul = queueEl.children.find(c => c.tagName === 'UL')
+      expect(ul).toBeDefined()
+      const item2Row = ul?.children[1]?.children.find(c => c.hasClass('routine-queue-item-row'))
+      const task2Btn = item2Row?.children.find(c => c.hasClass('routine-task-name'))
+      expect(task2Btn).toBeDefined()
+
+      task2Btn?.click()
+
+      expect(selectedPath).toBe('tasks/task-2.md')
+      const liveRegion = queueEl.children.find(c => c.hasClass('routine-queue-announcer'))
+      expect(liveRegion?.getText()).toBe('Selected task: Task 2')
+
+      const item1Li = ul?.children[0]
+      const item2Li = ul?.children[1]
+      expect(item1Li?.hasClass('is-roulette-winner')).toBe(false)
+      expect(item2Li?.hasClass('is-roulette-winner')).toBe(true)
+    })
+
+    test('manual task click while spinning is ignored', () => {
+      const queueEl = new MockElement()
+      // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- mock App
+      const app = new MockApp() as unknown as AppType
+      const selectorPhase: Phase = {
+        ...createDummyPhase(),
+        kind: SELECTOR_PHASE_KIND_VAL,
+        label: 'Wheel of tasks',
+      }
+      const item1: TaskQueueItem = {
+        id: TaskQueueItemIdSchemaParse('item-1'),
+        sourcePath: 'tasks/task-1.md',
+        displayName: 'Task 1',
+        cycleStatus: 'pending',
+        timeSpent: Temporal.Duration.from({ minutes: 0 }),
+        lastCycledAt: null,
+      }
+      const item2: TaskQueueItem = {
+        id: TaskQueueItemIdSchemaParse('item-2'),
+        sourcePath: 'tasks/task-2.md',
+        displayName: 'Task 2',
+        cycleStatus: 'pending',
+        timeSpent: Temporal.Duration.from({ minutes: 0 }),
+        lastCycledAt: null,
+      }
+
+      let selectedPath = ''
+
+      renderQueuePanelFn(asElement(queueEl), {
+        phase: selectorPhase,
+        activeFilePath: null,
+        queueItems: [item1, item2],
+        app,
+        prefersReducedMotion: false,
+        scheduleTotalSteps: 10,
+        setTimeout: () => 123, // stall animation so isSpinning remains true
+        onSelectTask: (path) => {
+          selectedPath = path
+        },
+      })
+
+      const header = queueEl.children.find(c => c.hasClass('routine-queue-header'))
+      const toolbar = header?.children.find(c => c.hasClass('routine-queue-header-toolbar'))
+      const spinBtn = toolbar?.children.find(c => c.hasClass('routine-queue-spin-btn'))
+      spinBtn?.click()
+
+      // Attempt to click item2 while spin is running
+      const ul = queueEl.children.find(c => c.tagName === 'UL')
+      const item2Row = ul?.children[1]?.children.find(c => c.hasClass('routine-queue-item-row'))
+      const task2Btn = item2Row?.children.find(c => c.hasClass('routine-task-name'))
+      task2Btn?.click()
+
+      expect(selectedPath).toBe('')
+    })
+  })
+
+  describe('handleSelectorWinner', () => {
+    test('dispatches set-active-file and reorders when promoteToFront is enabled', async () => {
+      const selectorPhase: Phase = {
+        ...createDummyPhase(),
+        kind: SELECTOR_PHASE_KIND_VAL,
+        label: 'Wheel of tasks',
+        onCompletion: 'waitForManual',
+        selector: { autoSpin: false, promoteToFront: true },
+      }
+
+      let dispatchedActions: readonly unknown[] = []
+      let reorderedItemId = ''
+      let reorderedPosition = ''
+
+      const mockStore = {
+        dispatch: async (action: unknown) => {
+          dispatchedActions = [...dispatchedActions, action]
+          return []
+        },
+        reorderQueueItem: async (itemId: string, position: 'front' | 'back') => {
+          reorderedItemId = itemId
+          reorderedPosition = position
+          return { success: true as const }
+        },
+      }
+
+      const result = await handleSelectorWinnerFn(mockStore, selectorPhase, 'tasks/task-1.md')
+
+      expect(result).toEqual({ success: true })
+      expect(dispatchedActions).toEqual([{ type: 'set-active-file', filePath: 'tasks/task-1.md' }])
+      expect(reorderedItemId).toBe('tasks/task-1.md')
+      expect(reorderedPosition).toBe('front')
+    })
+
+    test('dispatches finish-phase when onCompletion is autoAdvance', async () => {
+      const selectorPhase: Phase = {
+        ...createDummyPhase(),
+        kind: SELECTOR_PHASE_KIND_VAL,
+        label: 'Wheel of tasks',
+        onCompletion: 'autoAdvance',
+        selector: { autoSpin: false, promoteToFront: false },
+      }
+
+      let dispatchedActions: readonly unknown[] = []
+      let reorderCalled = false
+
+      const mockStore = {
+        dispatch: async (action: unknown) => {
+          dispatchedActions = [...dispatchedActions, action]
+          return []
+        },
+        reorderQueueItem: async () => {
+          reorderCalled = true
+          return { success: true as const }
+        },
+      }
+
+      const result = await handleSelectorWinnerFn(mockStore, selectorPhase, 'tasks/task-2.md')
+
+      expect(result).toBeNull()
+      expect(reorderCalled).toBe(false)
+      expect(dispatchedActions).toEqual([
+        { type: 'set-active-file', filePath: 'tasks/task-2.md' },
+        { type: 'finish-phase' },
+      ])
     })
   })
 })
