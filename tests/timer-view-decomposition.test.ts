@@ -846,6 +846,49 @@ describe('Timer view decomposition', () => {
 
       expect(selectedPath).toBe('')
     })
+
+    test('selector phase preserves roulette winner highlight and live region when rendered with activeFilePath', () => {
+      const queueEl = new MockElement()
+      // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- mock App
+      const app = new MockApp() as unknown as AppType
+      const selectorPhase: Phase = {
+        ...createDummyPhase(),
+        kind: SELECTOR_PHASE_KIND_VAL,
+        label: 'Wheel of tasks',
+      }
+      const item1: TaskQueueItem = {
+        id: TaskQueueItemIdSchemaParse('item-1'),
+        sourcePath: 'tasks/task-1.md',
+        displayName: 'Task 1',
+        cycleStatus: 'pending',
+        timeSpent: Temporal.Duration.from({ minutes: 0 }),
+        lastCycledAt: null,
+      }
+      const item2: TaskQueueItem = {
+        id: TaskQueueItemIdSchemaParse('item-2'),
+        sourcePath: 'tasks/task-2.md',
+        displayName: 'Task 2',
+        cycleStatus: 'pending',
+        timeSpent: Temporal.Duration.from({ minutes: 0 }),
+        lastCycledAt: null,
+      }
+
+      renderQueuePanelFn(asElement(queueEl), {
+        phase: selectorPhase,
+        activeFilePath: 'tasks/task-2.md',
+        queueItems: [item1, item2],
+        app,
+        onSelectTask: () => {},
+      })
+
+      const ul = queueEl.children.find(c => c.tagName === 'UL')
+      expect(ul?.children[0]?.hasClass('is-roulette-winner')).toBe(false)
+      expect(ul?.children[1]?.hasClass('is-roulette-winner')).toBe(true)
+      expect(ul?.children[1]?.hasClass('is-active-task')).toBe(true)
+
+      const liveRegion = queueEl.children.find(c => c.hasClass('routine-queue-announcer'))
+      expect(liveRegion?.getText()).toBe('Selected task: Task 2')
+    })
   })
 
   describe('handleSelectorWinner', () => {

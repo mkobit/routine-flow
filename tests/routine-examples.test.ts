@@ -586,4 +586,156 @@ describe('routine examples validation', () => {
     expect(state.status).toBe('ended')
     expect(state.remaining).toBeNull()
   })
+
+  test('random task selector routine transitions through multi-cycle roulette selection, focus, and break phases', () => {
+    const randomSelectorRoutine = {
+      id: 'random-selector',
+      name: 'Random task selector',
+      phases: [
+        {
+          id: 'selector',
+          name: 'Spin task wheel',
+          label: 'Spin task wheel',
+          kind: 'selector',
+          duration: null,
+          onCompletion: 'autoAdvance',
+          taskSourceId: 'selector-queue',
+          queryFilter: {
+            property: 'note.type',
+            value: 'random-selector-task',
+          },
+          selector: {
+            autoSpin: false,
+            promoteToFront: true,
+          },
+          handlers: {},
+        },
+        {
+          id: 'focus',
+          name: 'Focus sprint',
+          label: 'Focus sprint',
+          kind: 'focus',
+          duration: 'PT25M',
+          onCompletion: 'autoAdvance',
+          taskSourceId: 'selector-queue',
+          queryFilter: {
+            property: 'note.type',
+            value: 'random-selector-task',
+          },
+          handlers: {},
+        },
+        {
+          id: 'short-break',
+          name: 'Short break',
+          label: 'Short break',
+          kind: 'break',
+          duration: 'PT5M',
+          onCompletion: 'autoAdvance',
+          handlers: {},
+        },
+      ],
+      transitions: [
+        { from: 'selector', to: 'focus', guard: { kind: 'always' } },
+        { from: 'focus', to: 'short-break', guard: { kind: 'always' } },
+        { from: 'short-break', to: 'selector', guard: { kind: 'always' } },
+      ],
+    }
+
+    const parseResult = parseRoutineFile(wrapInRoutineNote(randomSelectorRoutine))
+    expect(parseResult.success).toBe(true)
+    if (!parseResult.success) {
+      return
+    }
+
+    const graph = parseResult.graph
+    expect(graph.phases).toHaveLength(3)
+
+    const selectorPhase = graph.phases[0]
+    expect(String(selectorPhase?.kind)).toBe('selector')
+    expect(selectorPhase?.duration).toBeNull()
+    expect(selectorPhase?.taskSourceId).toBe(TaskSourceIdSchema.parse('selector-queue'))
+    expect(selectorPhase?.selector).toEqual({ autoSpin: false, promoteToFront: true })
+
+    const focusPhase = graph.phases[1]
+    expect(focusPhase?.duration?.total({ unit: 'minutes' })).toBe(25)
+
+    const breakPhase = graph.phases[2]
+    expect(breakPhase?.duration?.total({ unit: 'minutes' })).toBe(5)
+
+    const selectorId = PhaseIdSchema.parse('selector')
+    const focusId = PhaseIdSchema.parse('focus')
+    const breakId = PhaseIdSchema.parse('short-break')
+    const now = Temporal.Instant.from('2026-01-01T09:00:00Z')
+
+    let state = initialEngineState(graph)
+    expect(state.currentPhaseId).toBe(selectorId)
+    expect(state.remaining).toBeNull()
+
+    // Cycle 1: selector -> focus -> short-break -> selector
+    state = engineReducer(state, { type: 'start', now }, graph)
+    expect(state.status).toBe('running')
+    expect(state.currentPhaseId).toBe(selectorId)
+
+    state = engineReducer(state, { type: 'set-active-file', filePath: 'random-selector/01-task-alpha.md' }, graph)
+    expect(state.activeFilePath).toBe('random-selector/01-task-alpha.md')
+
+    const cycle1FocusStart = now.add({ seconds: 10 })
+    state = engineReducer(state, { type: 'finish-phase', now: cycle1FocusStart }, graph)
+    expect(state.currentPhaseId).toBe(focusId)
+    expect(state.status).toBe('stopped')
+    expect(state.remaining?.total({ unit: 'minutes' })).toBe(25)
+    expect(state.phaseVisitCounts[selectorId]).toBe(1)
+    expect(state.activeFilePath).toBe('random-selector/01-task-alpha.md')
+
+    state = engineReducer(state, { type: 'start', now: cycle1FocusStart }, graph)
+    expect(state.status).toBe('running')
+
+    const cycle1BreakStart = cycle1FocusStart.add({ minutes: 25 })
+    state = engineReducer(state, { type: 'finish-phase', now: cycle1BreakStart }, graph)
+    expect(state.currentPhaseId).toBe(breakId)
+    expect(state.status).toBe('stopped')
+    expect(state.remaining?.total({ unit: 'minutes' })).toBe(5)
+    expect(state.phaseVisitCounts[focusId]).toBe(1)
+
+    state = engineReducer(state, { type: 'start', now: cycle1BreakStart }, graph)
+    const cycle2SelectorStart = cycle1BreakStart.add({ minutes: 5 })
+    state = engineReducer(state, { type: 'finish-phase', now: cycle2SelectorStart }, graph)
+    expect(state.currentPhaseId).toBe(selectorId)
+    expect(state.status).toBe('stopped')
+    expect(state.remaining).toBeNull()
+    expect(state.phaseVisitCounts[breakId]).toBe(1)
+
+    // Cycle 2: selector -> focus -> short-break -> selector
+    state = engineReducer(state, { type: 'start', now: cycle2SelectorStart }, graph)
+    expect(state.status).toBe('running')
+
+    state = engineReducer(state, { type: 'set-active-file', filePath: 'random-selector/02-task-beta.md' }, graph)
+    expect(state.activeFilePath).toBe('random-selector/02-task-beta.md')
+
+    const cycle2FocusStart = cycle2SelectorStart.add({ seconds: 8 })
+    state = engineReducer(state, { type: 'finish-phase', now: cycle2FocusStart }, graph)
+    expect(state.currentPhaseId).toBe(focusId)
+    expect(state.phaseVisitCounts[selectorId]).toBe(2)
+    expect(state.activeFilePath).toBe('random-selector/02-task-beta.md')
+
+    state = engineReducer(state, { type: 'start', now: cycle2FocusStart }, graph)
+    const cycle2BreakStart = cycle2FocusStart.add({ minutes: 25 })
+    state = engineReducer(state, { type: 'finish-phase', now: cycle2BreakStart }, graph)
+    expect(state.currentPhaseId).toBe(breakId)
+    expect(state.phaseVisitCounts[focusId]).toBe(2)
+
+    state = engineReducer(state, { type: 'start', now: cycle2BreakStart }, graph)
+    const cycle2End = cycle2BreakStart.add({ minutes: 5 })
+    state = engineReducer(state, { type: 'finish-phase', now: cycle2End }, graph)
+    expect(state.currentPhaseId).toBe(selectorId)
+    expect(state.phaseVisitCounts[breakId]).toBe(2)
+    expect(state.session?.history.map(instance => instance.phaseId)).toEqual([
+      selectorId,
+      focusId,
+      breakId,
+      selectorId,
+      focusId,
+      breakId,
+    ])
+  })
 })
