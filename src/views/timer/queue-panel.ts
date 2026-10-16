@@ -136,6 +136,10 @@ export function renderQueuePanel(queueEl: HTMLElement, options: QueuePanelOption
 
     if (options.activeFilePath === item.sourcePath) {
       li.addClass('is-active-task')
+      if (isSelectorPhase) {
+        li.addClass('is-roulette-winner')
+        liveRegion.setText(`Selected task: ${item.displayName}`)
+      }
       if (options.phase.actions.length > 0) {
         const actionsEl = li.createDiv({ cls: 'routine-queue-actions' })
         for (const action of options.phase.actions) {
