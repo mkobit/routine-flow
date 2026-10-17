@@ -9,6 +9,7 @@ const ROUTINE_FOLDER = 'random-selector'
 const ROUTINE_FILENAME = 'random-selector-routine.md'
 const ROUTINE_PATH = `${ROUTINE_FOLDER}/${ROUTINE_FILENAME}`
 
+const TASK_TYPE = 'random-selector-e2e-task'
 const TASK_ALPHA_PATH = `${ROUTINE_FOLDER}/01-task-alpha.md`
 const TASK_BETA_PATH = `${ROUTINE_FOLDER}/02-task-beta.md`
 const TASK_GAMMA_PATH = `${ROUTINE_FOLDER}/03-task-gamma.md`
@@ -27,7 +28,7 @@ const SELECTOR_ROUTINE_GRAPH = {
       taskSourceId: 'selector-queue',
       queryFilter: {
         property: 'note.type',
-        value: 'random-selector-task',
+        value: TASK_TYPE,
       },
       selector: {
         autoSpin: false,
@@ -45,7 +46,7 @@ const SELECTOR_ROUTINE_GRAPH = {
       taskSourceId: 'selector-queue',
       queryFilter: {
         property: 'note.type',
-        value: 'random-selector-task',
+        value: TASK_TYPE,
       },
       handlers: {},
     },
@@ -80,9 +81,9 @@ test.describe('Random task selector workflow', () => {
       'Spin the queue roulette wheel to pick and promote the next focus task.',
     )
     const taskNotes = [
-      createNote(TASK_ALPHA_PATH, { 'type': 'random-selector-task', 'routine-priority': 10 }),
-      createNote(TASK_BETA_PATH, { 'type': 'random-selector-task', 'routine-priority': 20 }),
-      createNote(TASK_GAMMA_PATH, { 'type': 'random-selector-task', 'routine-priority': 30 }),
+      createNote(TASK_ALPHA_PATH, { 'type': TASK_TYPE, 'routine-priority': 10 }),
+      createNote(TASK_BETA_PATH, { 'type': TASK_TYPE, 'routine-priority': 20 }),
+      createNote(TASK_GAMMA_PATH, { 'type': TASK_TYPE, 'routine-priority': 30 }),
     ]
 
     for (const note of [routineNote, ...taskNotes]) {
@@ -91,9 +92,9 @@ test.describe('Random task selector workflow', () => {
     }
 
     await expect.poll(() => readFrontmatterValue(page, ROUTINE_PATH, 'is-routine')).toBe(true)
-    await expect.poll(() => readFrontmatterValue(page, TASK_ALPHA_PATH, 'type')).toBe('random-selector-task')
-    await expect.poll(() => readFrontmatterValue(page, TASK_BETA_PATH, 'type')).toBe('random-selector-task')
-    await expect.poll(() => readFrontmatterValue(page, TASK_GAMMA_PATH, 'type')).toBe('random-selector-task')
+    await expect.poll(() => readFrontmatterValue(page, TASK_ALPHA_PATH, 'type')).toBe(TASK_TYPE)
+    await expect.poll(() => readFrontmatterValue(page, TASK_BETA_PATH, 'type')).toBe(TASK_TYPE)
+    await expect.poll(() => readFrontmatterValue(page, TASK_GAMMA_PATH, 'type')).toBe(TASK_TYPE)
 
     await evaluateObsidian(page, async (app) => {
       const file = app.vault.getFileByPath('Tasks.base')

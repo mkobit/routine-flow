@@ -71,9 +71,13 @@ views:
   - type: routine-timer
     name: Focus sandwich
     routineFile: focus-sandwich/focus-sandwich-routine.md
+  - type: routine-timer
+    name: Random task selector
+    routineFile: random-selector/random-selector-routine.md
   - type: table
     name: Leitner due cards
     filters:
       and:
         - note.due <= today
+
 

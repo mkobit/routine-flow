@@ -13,6 +13,7 @@ import { generateLeitnerBoxNotes } from './generators/leitner-box'
 import { generateManualClearNotes } from './generators/manual-clear'
 import { generateMorningKickoffNotes } from './generators/morning-kickoff'
 import { generatePomodoroNotes } from './generators/pomodoro'
+import { generateRandomSelectorNotes } from './generators/random-selector'
 import { generateShutdownRitualNotes } from './generators/shutdown-ritual'
 import { generateSilentMeetingNotes } from './generators/silent-meeting'
 import { generateSpacedRepetitionNotes } from './generators/spaced-repetition'
@@ -41,6 +42,7 @@ export * from './generators/leitner-box'
 export * from './generators/manual-clear'
 export * from './generators/morning-kickoff'
 export * from './generators/pomodoro'
+export * from './generators/random-selector'
 export * from './generators/shutdown-ritual'
 export * from './generators/silent-meeting'
 export * from './generators/spaced-repetition'
@@ -63,6 +65,7 @@ const ROUTINE_SEED_OFFSETS = {
   ultradianRhythm: 8,
   focusSandwich: 9,
   leitnerBox: 10,
+  randomSelector: 11,
 } as const
 
 export const GENERATED_VAULT_FOLDERS = [
@@ -87,6 +90,7 @@ export const GENERATED_VAULT_FOLDERS = [
   'desk-micro-movement',
   'audio-chime-notifications',
   'focus-sandwich',
+  'random-selector',
 ] as const
 
 export function generateVault(seed: number = resolveVaultSeed()): readonly NoteDefinition[] {
@@ -113,6 +117,7 @@ export function generateVault(seed: number = resolveVaultSeed()): readonly NoteD
     ...generateAudioChimeNotificationsNotes(),
     ...generateFocusSandwichNotes(seed + ROUTINE_SEED_OFFSETS.focusSandwich),
     ...generateLeitnerBoxNotes(seed + ROUTINE_SEED_OFFSETS.leitnerBox),
+    ...generateRandomSelectorNotes(seed + ROUTINE_SEED_OFFSETS.randomSelector),
   ]
 }
 
