@@ -42,7 +42,14 @@ export function findNextPhase(
     ...state.phaseVisitCounts,
     [state.currentPhaseId]: (state.phaseVisitCounts[state.currentPhaseId] ?? 0) + 1,
   }
-  const nextPhaseId = resolveNextPhaseId(graph, state.currentPhaseId, updatedCounts, predicateRegistry, state.queueExhausted)
+  const nextPhaseId = resolveNextPhaseId(
+    graph,
+    state.currentPhaseId,
+    updatedCounts,
+    predicateRegistry,
+    state.queueExhausted,
+    state.trackerFrontmatter,
+  )
   if (nextPhaseId === null) {
     return undefined
   }
@@ -58,11 +65,12 @@ export function resolveNextPhaseId(
   visitCounts: Readonly<Record<PhaseId, number>>,
   predicateRegistry?: PredicateRegistry,
   queueExhausted = false,
+  trackerFrontmatter?: Readonly<Record<string, unknown>>,
 ): PhaseId | null {
   const candidates = graph.transitions.filter(transition => transition.from === fromPhaseId || transition.fromPhaseId === fromPhaseId)
   for (const transition of candidates) {
     const guard = transition.guard ?? transition.condition
-    if (isGuardSatisfied(guard, fromPhaseId, visitCounts, predicateRegistry, queueExhausted)) {
+    if (isGuardSatisfied(guard, fromPhaseId, visitCounts, predicateRegistry, queueExhausted, trackerFrontmatter)) {
       return transition.to ?? transition.toPhaseId
     }
   }
@@ -75,6 +83,7 @@ function isGuardSatisfied(
   visitCounts: Readonly<Record<PhaseId, number>>,
   predicateRegistry: PredicateRegistry | undefined,
   queueExhausted: boolean,
+  trackerFrontmatter: Readonly<Record<string, unknown>> | undefined,
 ): boolean {
   switch (guard.kind) {
     case 'always':
@@ -88,7 +97,7 @@ function isGuardSatisfied(
       const rec = getGuardRecord(guard)
       const predicateName = typeof guard.predicateName === 'string' ? guard.predicateName : (typeof rec.predicate === 'string' ? rec.predicate : undefined)
       const predicate = predicateName !== undefined ? predicateRegistry?.resolve(PredicateNameSchema.parse(predicateName)) : undefined
-      return predicate !== undefined && predicate(fromPhaseId, visitCounts)
+      return predicate !== undefined && predicate({ fromPhaseId, visitCounts, trackerFrontmatter })
     }
     case 'queueExhausted':
       return queueExhausted

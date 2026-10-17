@@ -79,6 +79,7 @@ export default class RoutineFlowPlugin extends Plugin {
       predicateRegistry: this.formulaPredicateRegistry,
       taskSourceRegistry: this.taskSourceRegistry,
       notificationPort: new ObsidianNotificationPort(),
+      frontmatterReader,
     })
     this.ticker = new TimerTicker(
       (action) => {

@@ -68,12 +68,25 @@ export type PhaseTransition = TransitionEdge
 /**
  * A named graph of PhaseNodes plus the transition edges between them.
  */
-export const PhaseGraphSchema = z.object({
+export const PhaseGraphSchema = z.preprocess((val) => {
+  const raw = toRecord(val)
+  const trackerFilePath = raw
+    ? (typeof raw.trackerFilePath === 'string'
+        ? raw.trackerFilePath
+        : typeof raw.trackerFile === 'string'
+          ? raw.trackerFile
+          : undefined)
+    : undefined
+  return raw && trackerFilePath !== undefined
+    ? { ...raw, trackerFilePath }
+    : val
+}, z.object({
   id: PhaseGraphIdSchema,
   name: z.string().min(1),
   phases: z.array(PhaseNodeSchema).min(1).readonly(),
   transitions: z.array(TransitionEdgeSchema).readonly(),
-}).readonly()
+  trackerFilePath: z.string().min(1).optional(),
+}).readonly()).readonly()
 
 export type PhaseGraph = z.infer<typeof PhaseGraphSchema>
 

@@ -13,8 +13,20 @@ describe('MutableFormulaPredicateRegistry', () => {
     const predicate = registry.resolve(PredicateNameSchema.parse('focused-enough'))
 
     expect(predicate).toBeDefined()
-    expect(predicate?.(focusId, { [focusId]: 4 })).toBe(true)
-    expect(predicate?.(focusId, { [focusId]: 1 })).toBe(false)
+    expect(predicate?.({ fromPhaseId: focusId, visitCounts: { [focusId]: 4 } })).toBe(true)
+    expect(predicate?.({ fromPhaseId: focusId, visitCounts: { [focusId]: 1 } })).toBe(false)
+  })
+
+  test('resolves a tracker.<property> formula to a working predicate reading trackerFrontmatter', () => {
+    const registry = createFormulaPredicateRegistry()
+    registry.setFormulas([{ name: PredicateNameSchema.parse('star-jar-full'), formula: 'tracker.stars >= 15' }])
+
+    const predicate = registry.resolve(PredicateNameSchema.parse('star-jar-full'))
+
+    expect(predicate).toBeDefined()
+    expect(predicate?.({ fromPhaseId: focusId, visitCounts: {}, trackerFrontmatter: { stars: 15 } })).toBe(true)
+    expect(predicate?.({ fromPhaseId: focusId, visitCounts: {}, trackerFrontmatter: { stars: 12 } })).toBe(false)
+    expect(predicate?.({ fromPhaseId: focusId, visitCounts: {} })).toBe(false)
   })
 
   test('an unregistered name resolves to undefined', () => {

@@ -21,6 +21,7 @@ export type EngineAction
     | { type: 'advance-phase' }
     | { type: 'set-active-file', filePath: string | null }
     | { type: 'set-queue-exhausted', exhausted: boolean }
+    | { type: 'set-tracker-frontmatter', trackerFrontmatter: Readonly<Record<string, unknown>> | undefined }
     | { type: 'record-item-touch', item: ItemTouch }
     | { type: 'record-hook-outcome', phaseInstanceId: PhaseInstanceId, event: HookEvent, outcome: HookInvocationOutcome }
 
@@ -34,6 +35,7 @@ export type StampedEngineAction
     | { type: 'advance-phase', now: Temporal.Instant }
     | { type: 'set-active-file', filePath: string | null }
     | { type: 'set-queue-exhausted', exhausted: boolean }
+    | { type: 'set-tracker-frontmatter', trackerFrontmatter: Readonly<Record<string, unknown>> | undefined }
     | { type: 'record-item-touch', item: ItemTouch }
     | { type: 'record-hook-outcome', phaseInstanceId: PhaseInstanceId, event: HookEvent, outcome: HookInvocationOutcome }
 
@@ -99,6 +101,10 @@ export function engineReducer(
       return action.exhausted === state.queueExhausted
         ? state
         : { ...state, queueExhausted: action.exhausted }
+    case 'set-tracker-frontmatter':
+      return action.trackerFrontmatter === state.trackerFrontmatter
+        ? state
+        : { ...state, trackerFrontmatter: action.trackerFrontmatter }
     case 'record-item-touch':
       return recordItemTouch(state, action.item)
     case 'record-hook-outcome':
@@ -212,7 +218,14 @@ function advancePhase(
     ...state.phaseVisitCounts,
     [state.currentPhaseId]: (state.phaseVisitCounts[state.currentPhaseId] ?? 0) + 1,
   }
-  const nextPhaseId = resolveNextPhaseId(graph, state.currentPhaseId, updatedCounts, predicateRegistry, state.queueExhausted)
+  const nextPhaseId = resolveNextPhaseId(
+    graph,
+    state.currentPhaseId,
+    updatedCounts,
+    predicateRegistry,
+    state.queueExhausted,
+    state.trackerFrontmatter,
+  )
 
   if (nextPhaseId === null) {
     return {
