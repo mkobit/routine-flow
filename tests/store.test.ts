@@ -15,6 +15,8 @@ import type { FileMutationPort } from '../src/domain/mutation/apply-mutations'
 import { FileMutationSchema } from '../src/domain/mutation/file-mutation'
 import type { FileMutation } from '../src/domain/mutation/file-mutation'
 import { QueueItemActionSchema } from '../src/domain/action/queue-item-action'
+import { createFormulaPredicateRegistry } from '../src/timer/formula-predicate-registry'
+import { PredicateNameSchema } from '../src/domain/hook/predicate'
 
 const phaseDefaults = {
   taskSourceId: null,
@@ -220,6 +222,55 @@ describe('EngineStore queueExhausted sync', () => {
     await store.dispatch({ type: 'advance-phase' })
 
     expect(store.getState().currentPhaseId).toBe(PhaseIdSchema.parse('warmup'))
+  })
+})
+
+describe('EngineStore trackerFrontmatter sync', () => {
+  test('synchronously pre-reads tracker note frontmatter before engineReducer dispatch to evaluate tracker.stars >= 15', async () => {
+    let stars = 10
+    const frontmatterReader = {
+      readValue: (_path: string, prop: string) => (prop === 'stars' ? stars : undefined),
+      readAll: (path: string) => (path === 'rewards/star-jar.md' ? { stars } : null),
+    }
+    const predicateRegistry = createFormulaPredicateRegistry()
+    predicateRegistry.setFormulas([
+      { name: PredicateNameSchema.parse('star-jar-full'), formula: 'tracker.stars >= 15' },
+    ])
+
+    const starJarGraph = PhaseGraphSchema.parse({
+      id: 'star-jar',
+      name: 'Star jar routine',
+      trackerFilePath: 'rewards/star-jar.md',
+      phases: [
+        PhaseSchema.parse({ ...phaseDefaults, id: 'focus', label: 'Focus', kind: 'focus', duration: Temporal.Duration.from({ seconds: 10 }), logTarget: { kind: 'activeItem' } }),
+        PhaseSchema.parse({ ...phaseDefaults, id: 'short-break', label: 'Short break', kind: 'break', duration: Temporal.Duration.from({ seconds: 5 }), logTarget: { kind: 'activeItem' } }),
+        PhaseSchema.parse({ ...phaseDefaults, id: 'prize-break', label: 'Prize break', kind: 'break', duration: Temporal.Duration.from({ seconds: 20 }), logTarget: { kind: 'activeItem' } }),
+      ],
+      transitions: [
+        { fromPhaseId: 'focus', toPhaseId: 'prize-break', condition: { kind: 'custom', predicate: 'star-jar-full' } },
+        { fromPhaseId: 'focus', toPhaseId: 'short-break', condition: { kind: 'always' } },
+        { fromPhaseId: 'short-break', toPhaseId: 'focus', condition: { kind: 'always' } },
+        { fromPhaseId: 'prize-break', toPhaseId: 'focus', condition: { kind: 'always' } },
+      ],
+    })
+
+    const store = new EngineStore(starJarGraph, { predicateRegistry, frontmatterReader })
+    await store.dispatch({ type: 'start' })
+
+    // Below threshold (10 < 15) -> transitions to short-break
+    await store.dispatch({ type: 'advance-phase' })
+    expect(store.getState().currentPhaseId).toBe(PhaseIdSchema.parse('short-break'))
+    expect(store.getState().trackerFrontmatter).toEqual({ stars: 10 })
+
+    // Return to focus
+    await store.dispatch({ type: 'advance-phase' })
+    expect(store.getState().currentPhaseId).toBe(PhaseIdSchema.parse('focus'))
+
+    // Update cached tracker frontmatter to meet threshold (15 >= 15)
+    stars = 15
+    await store.dispatch({ type: 'advance-phase' })
+    expect(store.getState().currentPhaseId).toBe(PhaseIdSchema.parse('prize-break'))
+    expect(store.getState().trackerFrontmatter).toEqual({ stars: 15 })
   })
 })
 

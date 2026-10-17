@@ -566,6 +566,31 @@ describe('engineReducer', () => {
       const next = engineReducer(state, { type: 'advance-phase', now }, onlyCustomGraph, { predicateRegistry: registryResolvingTo(false) })
       expect(next.status).toBe('ended')
     })
+
+    test('passes state.trackerFrontmatter in PredicateContext to custom predicate', () => {
+      const starRegistry: PredicateRegistry = {
+        resolve: name => (name === isRestDayName
+          ? context => typeof context.trackerFrontmatter?.stars === 'number' && context.trackerFrontmatter.stars >= 15
+          : undefined),
+      }
+      const belowThreshold: EngineState = {
+        ...initialEngineState(customConditionGraph),
+        status: 'running',
+        trackerFrontmatter: { stars: 10 },
+      }
+      expect(
+        engineReducer(belowThreshold, { type: 'advance-phase', now }, customConditionGraph, { predicateRegistry: starRegistry }).currentPhaseId,
+      ).toBe(normalNextId)
+
+      const atThreshold: EngineState = {
+        ...initialEngineState(customConditionGraph),
+        status: 'running',
+        trackerFrontmatter: { stars: 15 },
+      }
+      expect(
+        engineReducer(atThreshold, { type: 'advance-phase', now }, customConditionGraph, { predicateRegistry: starRegistry }).currentPhaseId,
+      ).toBe(skipToId)
+    })
   })
 
   describe('queueExhausted TransitionCondition resolution', () => {

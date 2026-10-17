@@ -28,5 +28,7 @@ export interface EngineState {
   readonly phaseVisitCounts: Readonly<Record<PhaseId, number>>
   /** Whether the current phase's TaskSource queue is known to be empty. */
   readonly queueExhausted: boolean
+  /** Pre-read frontmatter snapshot of the routine's tracker note, if any. */
+  readonly trackerFrontmatter?: Readonly<Record<string, unknown>>
   readonly session: Session | null
 }

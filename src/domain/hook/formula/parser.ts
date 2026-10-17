@@ -17,21 +17,23 @@ import { tokenize } from './tokenizer'
  * primary     = ifExpr | literal | reference | "(" orExpr ")"
  * ifExpr      = "if" "(" orExpr "," orExpr "," orExpr ")"
  * literal     = number | string | "true" | "false"
- * reference   = "fromPhaseId" | "visitCounts" "." identifier
+ * reference   = "fromPhaseId" | "visitCounts" "." identifier | "tracker" "." identifier
  * ```
  *
  * `reference` is the grammar's entire identifier/member-access surface —
- * `fromPhaseId` resolves to the predicate's own `fromPhaseId` argument
- * (a string), `visitCounts.<name>` resolves to `visitCounts[name] ?? 0`.
+ * `fromPhaseId` resolves to the predicate's own `fromPhaseId` context field
+ * (a string), `visitCounts.<name>` resolves to `visitCounts[name] ?? 0`, and
+ * `tracker.<property>` resolves to `trackerFrontmatter?.[property] ?? 0`.
  * No other identifier or member-access target is resolvable; a property name
  * that could reach the prototype chain (`constructor`, `__proto__`, etc.) is
  * rejected here at parse time rather than left to evaluation.
  *
  * Types are inferred statically (see evaluator.ts's `inferType`) rather than
  * checked at evaluation time: `fromPhaseId` is always `string`,
- * `visitCounts.<name>` is always `number`, comparisons require same-typed
- * non-boolean operands and produce `boolean`, `and`/`or`/`not` require and
- * produce `boolean`, and `if`'s two branches must agree in type. A formula
+ * `visitCounts.<name>` is always `number`, `tracker.<property>` can compare
+ * against `number` or `string`, comparisons require compatible non-boolean
+ * operands and produce `boolean`, `and`/`or`/`not` require and produce
+ * `boolean`, and `if`'s two branches must agree in type. A formula
  * must type as `boolean` overall to be registrable as a `Predicate`.
  */
 export type FormulaExpression
@@ -40,6 +42,7 @@ export type FormulaExpression
     | { readonly kind: 'boolean', readonly value: boolean }
     | { readonly kind: 'fromPhaseId' }
     | { readonly kind: 'visitCount', readonly phaseKey: string }
+    | { readonly kind: 'trackerProperty', readonly property: string }
     | { readonly kind: 'comparison', readonly operator: ComparisonOperator, readonly left: FormulaExpression, readonly right: FormulaExpression }
     | { readonly kind: 'and', readonly left: FormulaExpression, readonly right: FormulaExpression }
     | { readonly kind: 'or', readonly left: FormulaExpression, readonly right: FormulaExpression }
@@ -61,8 +64,9 @@ function andThen<T, U>(result: Parsed<T>, step: (value: T, next: number) => Pars
 
 /**
  * Own-property names of `Object.prototype` (and legacy accessor-pair names)
- * that a hand-rolled `visitCounts.<name>` member access must not be allowed
- * to resolve, closing off prototype-chain traversal as an injection vector.
+ * that a hand-rolled `visitCounts.<name>` or `tracker.<property>` member
+ * access must not be allowed to resolve, closing off prototype-chain
+ * traversal as an injection vector.
  */
 const RESERVED_PROPERTY_NAMES: ReadonlySet<string> = new Set([
   'constructor',
@@ -102,6 +106,17 @@ function parseVisitCountAccess(tokens: readonly Token[], index: number): Parsed<
   })
 }
 
+function parseTrackerAccess(tokens: readonly Token[], index: number): Parsed<FormulaExpression> {
+  return andThen(expectPunct(tokens, index, '.'), (_dot, afterDot) => {
+    const propertyToken = tokens[afterDot]
+    return propertyToken === undefined || propertyToken.kind !== 'identifier'
+      ? { ok: false, error: 'Expected a property name after "tracker."' }
+      : RESERVED_PROPERTY_NAMES.has(propertyToken.value)
+        ? { ok: false, error: `"tracker.${propertyToken.value}" references a disallowed prototype-chain property` }
+        : { ok: true, value: { kind: 'trackerProperty', property: propertyToken.value }, next: afterDot + 1 }
+  })
+}
+
 function parseParenthesized(tokens: readonly Token[], index: number): Parsed<FormulaExpression> {
   return andThen(parseOr(tokens, index), (expression, afterExpr) =>
     andThen(expectPunct(tokens, afterExpr, ')'), (_close, afterClose) =>
@@ -126,9 +141,11 @@ function parsePrimary(tokens: readonly Token[], index: number): Parsed<FormulaEx
                 ? { ok: true, value: { kind: 'fromPhaseId' }, next: index + 1 }
                 : token.kind === 'identifier' && token.value === 'visitCounts'
                   ? parseVisitCountAccess(tokens, index + 1)
-                  : token.kind === 'identifier'
-                    ? { ok: false, error: `Unknown identifier "${token.value}" — only "fromPhaseId" and "visitCounts.<phaseId>" are allowed` }
-                    : { ok: false, error: `Unexpected token ${describeToken(token)}` }
+                  : token.kind === 'identifier' && token.value === 'tracker'
+                    ? parseTrackerAccess(tokens, index + 1)
+                    : token.kind === 'identifier'
+                      ? { ok: false, error: `Unknown identifier "${token.value}" — only "fromPhaseId", "visitCounts.<phaseId>", and "tracker.<property>" are allowed` }
+                      : { ok: false, error: `Unexpected token ${describeToken(token)}` }
 }
 
 function parseIf(tokens: readonly Token[], index: number): Parsed<FormulaExpression> {

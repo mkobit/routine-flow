@@ -106,7 +106,9 @@ export class EngineStore {
     if (mutations.length === 0) {
       return null
     }
-    return applyMutations(port, mutations)
+    const result = await applyMutations(port, mutations)
+    this.syncTrackerFrontmatter()
+    return result
   }
 
   public async reorderQueueItem(itemId: TaskQueueItemId, position: 'front' | 'back'): Promise<ApplyMutationsResult | null> {
@@ -119,6 +121,7 @@ export class EngineStore {
 
   private async runDispatch(action: EngineAction): Promise<readonly HookEventApplication[]> {
     this.syncQueueExhausted()
+    this.syncTrackerFrontmatter(action)
 
     const now = Temporal.Now.instant()
     const stamped = stampNow(action, now)
@@ -127,7 +130,7 @@ export class EngineStore {
     this.applyState(nextState)
     this.syncItemTouch()
 
-    const { hookRegistry, port, notificationPort } = this.deps
+    const { hookRegistry, port, notificationPort, frontmatterReader } = this.deps
 
     if (notificationPort !== undefined && prevState.currentPhaseId !== nextState.currentPhaseId && nextState.status !== 'ended') {
       const newPhase = findPhaseById(this.graph, nextState.currentPhaseId)
@@ -157,6 +160,7 @@ export class EngineStore {
 
       const effects = await executeHandlers(handlers, handlerContext, {
         hookRegistry,
+        frontmatterReader,
       })
 
       for (const effect of effects) {
@@ -164,6 +168,7 @@ export class EngineStore {
           const result = await applyMutations(port, effect.mutations)
           const outcome: HookInvocationOutcome = { stage: 'applied', mutations: effect.mutations, result }
           this.applyState(engineReducer(this.state, { type: 'record-hook-outcome', phaseInstanceId, event, outcome }, this.graph, this.deps))
+          this.syncTrackerFrontmatter()
           applications = [...applications, { event, phase, outcome }]
         }
         else if (effect.kind === 'invocationFailed') {
@@ -200,6 +205,50 @@ export class EngineStore {
     const source = phase !== undefined && phase.taskSourceId !== null ? taskSourceRegistry.resolve(phase.taskSourceId) : undefined
     const exhausted = source !== undefined && source.getQueue().length === 0
     this.applyState(engineReducer(this.state, { type: 'set-queue-exhausted', exhausted }, this.graph, this.deps))
+  }
+
+  private syncTrackerFrontmatter(action?: EngineAction): void {
+    const { frontmatterReader } = this.deps
+    if (frontmatterReader === undefined) {
+      return
+    }
+    const trackerPath = this.resolveTrackerFilePath(action)
+    let frontmatter: Readonly<Record<string, unknown>> | undefined
+    try {
+      const read = frontmatterReader.readAll(trackerPath ?? '')
+      frontmatter = read ?? undefined
+    }
+    catch {
+      frontmatter = undefined
+    }
+    this.applyState(engineReducer(this.state, { type: 'set-tracker-frontmatter', trackerFrontmatter: frontmatter }, this.graph, this.deps))
+  }
+
+  private resolveTrackerFilePath(action?: EngineAction): string | null {
+    if (this.deps.trackerFilePath !== undefined) {
+      return this.deps.trackerFilePath
+    }
+    if (this.graph.trackerFilePath !== undefined) {
+      return this.graph.trackerFilePath
+    }
+    for (const transition of this.graph.transitions) {
+      if ((transition.from === this.state.currentPhaseId || transition.fromPhaseId === this.state.currentPhaseId) && transition.guard.kind === 'custom') {
+        const params = transition.guard.params
+        if (typeof params?.trackerFilePath === 'string') {
+          return params.trackerFilePath
+        }
+        if (typeof params?.trackerFile === 'string') {
+          return params.trackerFile
+        }
+      }
+    }
+    if (action?.type === 'start' && action.filePath !== undefined) {
+      return action.filePath
+    }
+    if (action?.type === 'set-active-file') {
+      return action.filePath
+    }
+    return this.state.activeFilePath
   }
 
   private syncItemTouch(): void {
