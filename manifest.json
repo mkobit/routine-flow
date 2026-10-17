@@ -1,7 +1,7 @@
 {
   "id": "routine-flow",
   "name": "Routine Flow",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "minAppVersion": "1.13.4",
   "description": "Customizable routine timer with Obsidian Bases support.",
   "author": "mkobit",
