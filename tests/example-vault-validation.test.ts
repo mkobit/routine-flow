@@ -8,6 +8,7 @@ import {
   DEFAULT_VAULT_SEED,
   GENERATED_VAULT_FOLDERS,
   generateLeitnerBoxNotes,
+  generateRandomSelectorNotes,
   generateVault,
   rebuildGeneratedVault,
   resolveVaultSeed,
@@ -69,6 +70,58 @@ describe('example vault validation', () => {
         expect(serialized).toContain(`box: ${expected.box}`)
         expect(serialized).toContain(`routine-status: "${expected.status}"`)
         expect(serialized).toContain(`routine-due: ${expected.dueDate}`)
+      }
+    }
+  })
+
+  test('random selector generation is deterministic across seeds and matches Bases query schema', () => {
+    const seeds = [101, 202, 303, 404] as const
+    const routines = seeds.map(generateRandomSelectorNotes)
+
+    for (const [index, seed] of seeds.entries()) {
+      expect(routines[index]).toEqual(generateRandomSelectorNotes(seed))
+    }
+    expect(new Set(routines.map(deck => deck.map(getNoteContent).join('\n'))).size).toBeGreaterThan(1)
+
+    for (const note of routines[0] ?? []) {
+      expect(NoteDefinitionSchema.safeParse(note).success).toBe(true)
+      expect(() => serializeFrontmatter(note.frontmatter)).not.toThrow()
+      expect(getNoteContent(note)).not.toContain('undefined')
+    }
+
+    const defaultNotes = generateRandomSelectorNotes(DEFAULT_VAULT_SEED)
+    const readmeNote = defaultNotes.find(note => note.relativePath.base === 'README.md')
+    expect(readmeNote).toBeDefined()
+
+    const routineNote = defaultNotes.find(note => note.relativePath.base === 'random-selector-routine.md')
+    expect(routineNote).toBeDefined()
+    if (routineNote !== undefined) {
+      const parseResult = parseRoutineFile(getNoteContent(routineNote))
+      expect(parseResult.success).toBe(true)
+      if (parseResult.success) {
+        expect(String(parseResult.graph.id)).toBe('random-selector')
+        expect(parseResult.graph.phases).toHaveLength(3)
+        const selectorPhase = parseResult.graph.phases.find(phase => phase.id === 'selector')
+        expect(selectorPhase).toBeDefined()
+        expect(String(selectorPhase?.kind)).toBe('selector')
+        expect(selectorPhase?.selector).toEqual({ autoSpin: false, promoteToFront: true })
+        expect(selectorPhase?.queryFilter).toEqual({
+          property: 'note.type',
+          value: 'random-selector-task',
+        })
+      }
+    }
+
+    const taskNotes = defaultNotes.filter(
+      note => note.relativePath.dir === 'random-selector' && note.relativePath.base !== 'README.md' && !note.relativePath.base.endsWith('-routine.md'),
+    )
+    expect(taskNotes.length).toBeGreaterThan(0)
+    for (const task of taskNotes) {
+      expect(task.frontmatter.type).toBe('random-selector-task')
+      expect(typeof task.frontmatter['routine-priority']).toBe('number')
+      expect(task.frontmatter.due).toBeInstanceOf(Temporal.PlainDate)
+      if (task.frontmatter.due instanceof Temporal.PlainDate) {
+        expect(Temporal.PlainDate.compare(task.frontmatter.due, ANCHOR_DATE)).toBeGreaterThanOrEqual(0)
       }
     }
   })
