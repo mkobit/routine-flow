@@ -1,6 +1,6 @@
 import type RoutineFlowPlugin from '../main'
 import type { EngineState } from '../domain/session/engine-state'
-import { findPhaseById } from '../timer/phase-graph'
+import { findPhaseById } from '../timer/phase-graph-query'
 import { formatPhaseHeader } from '../timer/format'
 
 /**

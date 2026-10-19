@@ -3,7 +3,7 @@ import { Temporal } from 'temporal-polyfill'
 import { PhaseSchema, PhaseNodeSchema, SELECTOR_PHASE_KIND, FOCUS_PHASE_KIND, BREAK_PHASE_KIND } from '../src/domain/phase/phase'
 import { PhaseGraphIdSchema, PhaseGraphSchema, checkPhaseGraphIntegrity } from '../src/domain/phase/phase-graph'
 import type { PhaseGraph } from '../src/domain/phase/phase-graph'
-import { resolveNextPhaseId, findNextPhase } from '../src/timer/phase-graph'
+import { resolveNextPhaseId, findNextPhase } from '../src/timer/phase-graph-query'
 import { formatPhaseHeader } from '../src/timer/format'
 import type { EngineState } from '../src/domain/session/engine-state'
 

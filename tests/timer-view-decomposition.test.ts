@@ -323,7 +323,7 @@ describe('Timer view decomposition', () => {
     const queuePanelMod = await import('../src/views/timer/queue-panel')
     renderQueuePanelFn = queuePanelMod.renderQueuePanel
 
-    const phaseGraphMod = await import('../src/timer/phase-graph')
+    const phaseGraphMod = await import('../src/timer/phase-graph-query')
     FOCUS_PHASE_KIND_VAL = phaseGraphMod.FOCUS_PHASE_KIND
     BREAK_PHASE_KIND_VAL = phaseGraphMod.BREAK_PHASE_KIND
     SELECTOR_PHASE_KIND_VAL = phaseGraphMod.SELECTOR_PHASE_KIND

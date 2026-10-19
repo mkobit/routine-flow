@@ -11,7 +11,7 @@ void mock.module('obsidian', () => {
 })
 
 import { Temporal } from 'temporal-polyfill'
-import { findNextPhase, DEFAULT_PHASE_GRAPH } from '../src/timer/phase-graph'
+import { findNextPhase, DEFAULT_PHASE_GRAPH } from '../src/timer/phase-graph-query'
 import { initialEngineState } from '../src/timer/reducer'
 import { PhaseGraphSchema } from '../src/domain/phase/phase-graph'
 import type { PhaseGraph } from '../src/domain/phase/phase-graph'

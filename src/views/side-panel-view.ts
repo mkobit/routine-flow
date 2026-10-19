@@ -2,7 +2,7 @@ import { ItemView, Notice, setIcon } from 'obsidian'
 import type { WorkspaceLeaf } from 'obsidian'
 import type RoutineFlowPlugin from '../main'
 import type { EngineState } from '../domain/session/engine-state'
-import { findNextPhase, findPhaseById, FOCUS_PHASE_KIND, SELECTOR_PHASE_KIND } from '../timer/phase-graph'
+import { findNextPhase, findPhaseById, FOCUS_PHASE_KIND, SELECTOR_PHASE_KIND } from '../timer/phase-graph-query'
 import { formatPhaseHeader } from '../timer/format'
 import { ResetConfirmModal } from './reset-confirm-modal'
 

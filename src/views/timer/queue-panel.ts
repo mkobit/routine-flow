@@ -5,7 +5,7 @@ import type { Phase } from '../../domain/phase/phase'
 import type { TaskQueueItem, TaskQueueItemId } from '../../domain/queue/task-source'
 import type { QueueItemAction } from '../../domain/action/queue-item-action'
 import type { ApplyMutationsResult } from '../../domain/mutation/apply-mutations'
-import { FOCUS_PHASE_KIND, SELECTOR_PHASE_KIND } from '../../timer/phase-graph'
+import { FOCUS_PHASE_KIND, SELECTOR_PHASE_KIND } from '../../timer/phase-graph-query'
 import { createDecelerationSchedule, selectRandomQueueItem } from '../../domain/queue/random-task-selector'
 import { renderStateIcon } from './state-icon'
 

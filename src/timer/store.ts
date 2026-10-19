@@ -13,7 +13,7 @@ import { deriveActionMutations } from '../domain/action/derive-action-mutations'
 import type { QueueItemAction } from '../domain/action/queue-item-action'
 import type { TaskQueueItemId } from '../domain/queue/task-source'
 import type { EngineDeps } from './engine-deps'
-import { findPhaseById } from './phase-graph'
+import { findPhaseById } from './phase-graph-query'
 import { executeHandlers } from './handler-executor'
 import type { HandlerContext } from './handler-executor'
 
