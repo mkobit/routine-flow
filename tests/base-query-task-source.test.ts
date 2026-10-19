@@ -201,4 +201,88 @@ describe('BaseQuerySource', () => {
       expect(queue[0]?.cycleStatus).toBe('pending')
     })
   })
+
+  describe('extraProperties projection lens', () => {
+    test('does not set extraProperties on items when no lens or property list is configured', () => {
+      const source = createBaseQuerySource([
+        entry({
+          frontmatter: {
+            stars: 3,
+            difficulty: 'hard',
+          },
+        }),
+      ])
+
+      const [item] = source.getQueue()
+      expect(item?.extraProperties).toBeUndefined()
+    })
+
+    test('projects configured property list from frontmatter into extraProperties', () => {
+      const source = createBaseQuerySource([
+        entry({
+          frontmatter: {
+            stars: 3,
+            difficulty: 'hard',
+            other: 'ignored',
+          },
+        }),
+      ], {
+        extraPropertiesLens: ['stars', 'difficulty'],
+      })
+
+      const [item] = source.getQueue()
+      expect(item?.extraProperties).toEqual({
+        stars: 3,
+        difficulty: 'hard',
+      })
+    })
+
+    test('ignores properties missing from frontmatter and leaves extraProperties undefined when none match', () => {
+      const source = createBaseQuerySource([
+        entry({
+          frontmatter: {
+            other: 'ignored',
+          },
+        }),
+      ], {
+        extraPropertiesLens: ['stars', 'difficulty'],
+      })
+
+      const [item] = source.getQueue()
+      expect(item?.extraProperties).toBeUndefined()
+    })
+
+    test('supports functional projection lens for custom extraProperties derivation', () => {
+      const source = createBaseQuerySource([
+        entry({
+          frontmatter: {
+            points: 5,
+          },
+        }),
+      ], {
+        extraPropertiesLens: entry => (entry.frontmatter?.points ? { reward: Number(entry.frontmatter.points) * 10 } : undefined),
+      })
+
+      const [item] = source.getQueue()
+      expect(item?.extraProperties).toEqual({
+        reward: 50,
+      })
+    })
+
+    test('preserves extraProperties immutability', () => {
+      const source = createBaseQuerySource([
+        entry({
+          frontmatter: {
+            stars: 2,
+          },
+        }),
+      ], {
+        extraPropertiesLens: ['stars'],
+      })
+
+      const [item] = source.getQueue()
+      expect(item?.extraProperties).toBeDefined()
+      expect(Object.isFrozen(item?.extraProperties)).toBe(true)
+    })
+  })
 })

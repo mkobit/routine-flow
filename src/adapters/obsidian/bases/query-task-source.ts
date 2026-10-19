@@ -1,5 +1,5 @@
 import { Temporal } from 'temporal-polyfill'
-import type { TaskQueueItem, TaskSource } from '../../../domain/queue/task-source'
+import type { TaskQueueItem, TaskQueueItemExtraProperties, TaskSource } from '../../../domain/queue/task-source'
 import { TaskQueueItemCycleStatusSchema, TaskQueueItemIdSchema } from '../../../domain/queue/task-source'
 
 /**
@@ -169,8 +169,42 @@ function readPriority(frontmatter: Record<string, unknown> | undefined): number 
   return typeof value === 'number' && Number.isFinite(value) ? value : 0
 }
 
-function toTaskQueueItem(entry: BaseQueryEntry, now: Temporal.Instant): TaskQueueItem {
+export type ExtraPropertiesLens
+  = | readonly string[]
+    | ((entry: BaseQueryEntry) => TaskQueueItemExtraProperties | undefined)
+
+export interface BaseQuerySourceOptions {
+  readonly now?: Temporal.Instant | (() => Temporal.Instant)
+  readonly extraPropertiesLens?: ExtraPropertiesLens
+}
+
+function resolveExtraProperties(
+  entry: BaseQueryEntry,
+  lens?: ExtraPropertiesLens,
+): TaskQueueItemExtraProperties | undefined {
+  if (!lens) {
+    return undefined
+  }
+  if (typeof lens === 'function') {
+    const projected = lens(entry)
+    return projected && Object.keys(projected).length > 0 ? Object.freeze({ ...projected }) : undefined
+  }
+  if (!entry.frontmatter) {
+    return undefined
+  }
+  const matchingEntries = lens
+    .filter(prop => entry.frontmatter?.[prop] !== undefined)
+    .map(prop => [prop, entry.frontmatter?.[prop]] as const)
+  return matchingEntries.length > 0 ? Object.freeze(Object.fromEntries(matchingEntries)) : undefined
+}
+
+function toTaskQueueItem(
+  entry: BaseQueryEntry,
+  now: Temporal.Instant,
+  lens?: ExtraPropertiesLens,
+): TaskQueueItem {
   const id = TaskQueueItemIdSchema.parse(entry.path)
+  const extraProperties = resolveExtraProperties(entry, lens)
   return {
     id,
     sourcePath: entry.path,
@@ -178,6 +212,7 @@ function toTaskQueueItem(entry: BaseQueryEntry, now: Temporal.Instant): TaskQueu
     cycleStatus: readCycleStatus(entry.frontmatter, now),
     timeSpent: readTimeSpent(entry.frontmatter),
     lastCycledAt: readLastCycledAt(entry.frontmatter),
+    ...(extraProperties !== undefined ? { extraProperties } : {}),
   }
 }
 
@@ -188,15 +223,21 @@ function toTaskQueueItem(entry: BaseQueryEntry, now: Temporal.Instant): TaskQueu
  */
 export function createBaseQuerySource(
   entries: readonly BaseQueryEntry[],
-  now?: Temporal.Instant | (() => Temporal.Instant),
+  nowOrOptions?: Temporal.Instant | (() => Temporal.Instant) | BaseQuerySourceOptions,
+  options?: BaseQuerySourceOptions,
 ): TaskSource {
+  const isOptionsObject = typeof nowOrOptions === 'object' && nowOrOptions !== null && !(nowOrOptions instanceof Temporal.Instant)
+  const effectiveNow = isOptionsObject ? nowOrOptions.now : nowOrOptions
+  const effectiveOptions = isOptionsObject ? nowOrOptions : options
+  const extraPropertiesLens = effectiveOptions?.extraPropertiesLens
+
   return {
     getQueue: () => {
-      const evaluationTime = resolveNow(now)
+      const evaluationTime = resolveNow(effectiveNow)
       return entries
         .filter(entry => !isDeferredInFuture(entry.frontmatter, evaluationTime))
         .map((entry, index) => ({
-          item: toTaskQueueItem(entry, evaluationTime),
+          item: toTaskQueueItem(entry, evaluationTime, extraPropertiesLens),
           priority: readPriority(entry.frontmatter),
           index,
         }))
