@@ -2,7 +2,7 @@ import { test, expect, describe } from 'bun:test'
 import type { BasesPropertyId } from 'obsidian'
 import { filterQueueCandidates } from '../src/adapters/obsidian/bases/queue-filter'
 import type { QueueFilterCandidate, QueueFilterConfigSource } from '../src/adapters/obsidian/bases/queue-filter'
-import { FOCUS_PHASE_KIND, BREAK_PHASE_KIND } from '../src/timer/phase-graph'
+import { FOCUS_PHASE_KIND, BREAK_PHASE_KIND } from '../src/timer/phase-graph-query'
 
 const isPropertyId = (val: unknown): val is BasesPropertyId => typeof val === 'string' && val.length > 0
 

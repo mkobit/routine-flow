@@ -3,7 +3,7 @@ import { DEFAULT_SETTINGS, type RoutineFlowSettings, RoutineFlowSettingTab } fro
 import { EngineStore } from './timer/store'
 import type { HookEventApplication } from './timer/store'
 import { TimerTicker } from './timer/ticker'
-import { DEFAULT_PHASE_GRAPH } from './timer/phase-graph'
+import { DEFAULT_PHASE_GRAPH } from './timer/phase-graph-query'
 import { ObsidianFileMutationPort } from './adapters/obsidian/mutation/file-mutation-port'
 import { ObsidianFrontmatterReader } from './adapters/obsidian/mutation/frontmatter-reader'
 import { createWriteBackHook, WRITE_BACK_HOOK_NAME } from './timer/write-back'

@@ -1,7 +1,7 @@
 import type { BasesPropertyId } from 'obsidian'
 import type { Temporal } from 'temporal-polyfill'
 import type { Phase } from '../../../domain/phase/phase'
-import { FOCUS_PHASE_KIND, SELECTOR_PHASE_KIND } from '../../../timer/phase-graph'
+import { FOCUS_PHASE_KIND, SELECTOR_PHASE_KIND } from '../../../timer/phase-graph-query'
 import type { BaseQueryEntry } from './query-task-source'
 import { isDeferredInFuture, resolveNow } from './query-task-source'
 

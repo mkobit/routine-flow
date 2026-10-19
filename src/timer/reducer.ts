@@ -7,7 +7,7 @@ import type { PredicateRegistry } from '../domain/hook/predicate'
 import type { FileMutation } from '../domain/mutation/file-mutation'
 import { closePhaseInstance, openPhaseInstance, openSession } from '../domain/session/session'
 import type { ItemTouch, PhaseInstance, PhaseInstanceEndReason, PhaseInstanceHookFailure, PhaseInstanceId, Session } from '../domain/session/session'
-import { findPhaseById, resolveNextPhaseId } from './phase-graph'
+import { findPhaseById, resolveNextPhaseId } from './phase-graph-query'
 import type { EngineDeps } from './engine-deps'
 
 /** Actions dispatched by external callers (ticker, views) via EngineStore.dispatch. */
