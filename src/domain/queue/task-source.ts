@@ -18,6 +18,13 @@ export const TaskQueueItemCycleStatusSchema = z.enum(['pending', 'active', 'done
 export type TaskQueueItemCycleStatus = z.infer<typeof TaskQueueItemCycleStatusSchema>
 
 /**
+ * Optional additional properties projected from source frontmatter or metadata.
+ * Kept generic to prevent routine-specific concepts (such as scores or tags)
+ * from coupling to the core domain queue model.
+ */
+export type TaskQueueItemExtraProperties = Readonly<Record<string, unknown>>
+
+/**
  * A task pulled from a TaskSource, projected into the shape the engine needs.
  * Queue reordering (e.g. "cycle to back") is a mutation on a persisted
  * priority field, not a reorder of the live query itself — a live Base query
@@ -30,6 +37,7 @@ export interface TaskQueueItem {
   readonly cycleStatus: TaskQueueItemCycleStatus
   readonly timeSpent: Temporal.Duration
   readonly lastCycledAt: Temporal.Instant | null
+  readonly extraProperties?: TaskQueueItemExtraProperties
 }
 
 /**
