@@ -7,6 +7,7 @@ import type { QueueItemAction } from '../../domain/action/queue-item-action'
 import type { ApplyMutationsResult } from '../../domain/mutation/apply-mutations'
 import { FOCUS_PHASE_KIND, SELECTOR_PHASE_KIND } from '../../timer/phase-graph-query'
 import { createDecelerationSchedule, selectRandomQueueItem } from '../../domain/queue/random-task-selector'
+import { projectQueueItemBadges } from '../../domain/queue/queue-badge'
 import { renderStateIcon } from './state-icon'
 
 export interface QueueActionExecutor {
@@ -113,6 +114,22 @@ export function renderQueuePanel(queueEl: HTMLElement, options: QueuePanelOption
     const li = ul.createEl('li')
     const itemRow = li.createDiv({ cls: 'routine-queue-item-row' })
     const taskBtn = itemRow.createEl('button', { cls: 'routine-task-name', text: item.displayName })
+
+    const badges = projectQueueItemBadges(item, options.phase.badges ?? [])
+    if (badges.length > 0) {
+      const badgesEl = itemRow.createDiv({ cls: 'routine-queue-badges' })
+      for (const badge of badges) {
+        const badgeEl = badgesEl.createSpan({
+          cls: `routine-queue-badge mod-${badge.variant}`,
+          attr: badge.label ? { 'aria-label': badge.label, 'title': badge.label } : {},
+        })
+        if (badge.icon) {
+          const iconEl = badgeEl.createSpan({ cls: 'routine-queue-badge-icon' })
+          setIcon(iconEl, badge.icon)
+        }
+        badgeEl.createSpan({ cls: 'routine-queue-badge-text', text: badge.text })
+      }
+    }
 
     const openFileBtn = itemRow.createEl('button', {
       cls: 'routine-open-file-btn',
