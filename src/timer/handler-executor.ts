@@ -6,7 +6,9 @@ import type { PhaseInstance, Session } from '../domain/session/session'
 import type { HookContext, HookRegistry } from '../domain/hook/hook'
 import { HookNameSchema } from '../domain/hook/hook-reference'
 import type { FrontmatterReader } from '../domain/mutation/frontmatter-reader'
+import type { TaskSourceRegistry } from '../domain/queue/task-source'
 import { TaskQueueItemIdSchema } from '../domain/queue/task-source'
+import { ACCUMULATOR_HOOK_NAME, createAccumulatorHook } from './accumulator'
 
 export interface HandlerContext {
   readonly phase: PhaseNode
@@ -19,6 +21,13 @@ export interface HandlerContext {
 export interface HandlerDeps {
   readonly hookRegistry?: HookRegistry
   readonly frontmatterReader?: FrontmatterReader
+  readonly taskSourceRegistry?: TaskSourceRegistry
+  readonly trackerFilePath?: string | null
+}
+
+const noopFrontmatterReader: FrontmatterReader = {
+  readValue: () => undefined,
+  readAll: () => null,
 }
 
 function resolveFrontmatterValue(val: unknown, fallback: string): string | number | boolean {
@@ -96,6 +105,43 @@ export async function executeHandler(
             notification: { title, body, system },
           }]
         }
+        case 'resetReward':
+        case 'deductReward':
+        case 'accumulateReward': {
+          const baseParams = handler.params ?? {}
+          const action = handler.preset === 'resetReward'
+            ? 'reset'
+            : handler.preset === 'deductReward'
+              ? 'deduct'
+              : 'accumulate'
+          const hookParams: Readonly<Record<string, unknown>> = {
+            ...baseParams,
+            action,
+            ...(baseParams.trackerFilePath === undefined && baseParams.trackerFile === undefined && deps.trackerFilePath !== undefined && deps.trackerFilePath !== null
+              ? { trackerFilePath: deps.trackerFilePath }
+              : {}),
+          }
+          const hookContext: HookContext = {
+            phase: context.phase,
+            instance: context.instance,
+            session: context.session,
+            activeFilePath: context.activeFilePath,
+            params: hookParams,
+          }
+          const registeredHook = deps.hookRegistry?.resolve(ACCUMULATOR_HOOK_NAME)
+          const fallbackHook = createAccumulatorHook({
+            frontmatterReader: deps.frontmatterReader ?? noopFrontmatterReader,
+            taskSourceRegistry: deps.taskSourceRegistry,
+            getTrackerFilePath: ctx => deps.trackerFilePath ?? (ctx.phase.logTarget === null ? ctx.activeFilePath : null),
+          })
+          const mutations = registeredHook !== undefined
+            ? await registeredHook(hookContext)
+            : await fallbackHook(hookContext)
+          if (mutations.length === 0) {
+            return []
+          }
+          return [{ kind: 'fileMutation', mutations: [...mutations] }]
+        }
       }
     }
 
@@ -104,16 +150,25 @@ export async function executeHandler(
       if (hookRegistry === undefined) {
         return []
       }
-      const hook = hookRegistry.resolve(HookNameSchema.parse(handler.scriptPath))
+      const hookName = HookNameSchema.parse(handler.scriptPath)
+      const hook = hookRegistry.resolve(hookName)
       if (hook === undefined) {
         return []
       }
+      const baseParams = handler.params ?? {}
+      const params: Readonly<Record<string, unknown>> = hookName === ACCUMULATOR_HOOK_NAME
+        && baseParams.trackerFilePath === undefined
+        && baseParams.trackerFile === undefined
+        && deps.trackerFilePath !== undefined
+        && deps.trackerFilePath !== null
+        ? { ...baseParams, trackerFilePath: deps.trackerFilePath }
+        : baseParams
       const hookContext: HookContext = {
         phase: context.phase,
         instance: context.instance,
         session: context.session,
         activeFilePath: context.activeFilePath,
-        params: handler.params ?? {},
+        params,
       }
       const mutations = await hook(hookContext)
       return [{ kind: 'fileMutation', mutations: [...mutations] }]

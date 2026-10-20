@@ -161,6 +161,8 @@ export class EngineStore {
       const effects = await executeHandlers(handlers, handlerContext, {
         hookRegistry,
         frontmatterReader,
+        taskSourceRegistry: this.deps.taskSourceRegistry,
+        trackerFilePath: this.resolveConfiguredTrackerFilePath(),
       })
 
       for (const effect of effects) {
@@ -224,7 +226,7 @@ export class EngineStore {
     this.applyState(engineReducer(this.state, { type: 'set-tracker-frontmatter', trackerFrontmatter: frontmatter }, this.graph, this.deps))
   }
 
-  private resolveTrackerFilePath(action?: EngineAction): string | null {
+  private resolveConfiguredTrackerFilePath(): string | null {
     if (this.deps.trackerFilePath !== undefined) {
       return this.deps.trackerFilePath
     }
@@ -241,6 +243,25 @@ export class EngineStore {
           return params.trackerFile
         }
       }
+    }
+    for (const transition of this.graph.transitions) {
+      if (transition.guard.kind === 'custom') {
+        const params = transition.guard.params
+        if (typeof params?.trackerFilePath === 'string') {
+          return params.trackerFilePath
+        }
+        if (typeof params?.trackerFile === 'string') {
+          return params.trackerFile
+        }
+      }
+    }
+    return null
+  }
+
+  private resolveTrackerFilePath(action?: EngineAction): string | null {
+    const configured = this.resolveConfiguredTrackerFilePath()
+    if (configured !== null) {
+      return configured
     }
     if (action?.type === 'start' && action.filePath !== undefined) {
       return action.filePath

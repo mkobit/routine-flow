@@ -6,6 +6,9 @@ export const PresetHandlerNameSchema = z.enum([
   'deferDuration',
   'setFrontmatter',
   'notify',
+  'resetReward',
+  'deductReward',
+  'accumulateReward',
 ])
 export type PresetHandlerName = z.infer<typeof PresetHandlerNameSchema>
 

@@ -105,4 +105,49 @@ describe('executeHandler', () => {
       notification: { title: 'Custom Title', body: 'Custom Body', system: false },
     }])
   })
+
+  test('derives accumulateReward, deductReward, and resetReward preset effects', async () => {
+    const frontmatterReader = {
+      readValue: (path: string, prop: string) => {
+        if (path === 'rewards/star-jar.md' && prop === 'stars') {
+          return 10
+        }
+        if (path === 'notes/task-1.md' && prop === 'stars') {
+          return 3
+        }
+        return undefined
+      },
+      readAll: () => null,
+    }
+
+    const accumulateEffects = await executeHandler(
+      { kind: 'preset', preset: 'accumulateReward', params: { trackerFilePath: 'rewards/star-jar.md' } },
+      baseContext,
+      { frontmatterReader },
+    )
+    expect(accumulateEffects).toEqual([{
+      kind: 'fileMutation',
+      mutations: [{ kind: 'frontmatter', filePath: 'rewards/star-jar.md', property: 'stars', value: 13 }],
+    }])
+
+    const deductEffects = await executeHandler(
+      { kind: 'preset', preset: 'deductReward', params: { trackerFilePath: 'rewards/star-jar.md', amount: 4 } },
+      baseContext,
+      { frontmatterReader },
+    )
+    expect(deductEffects).toEqual([{
+      kind: 'fileMutation',
+      mutations: [{ kind: 'frontmatter', filePath: 'rewards/star-jar.md', property: 'stars', value: 6 }],
+    }])
+
+    const resetEffects = await executeHandler(
+      { kind: 'preset', preset: 'resetReward', params: { trackerFilePath: 'rewards/star-jar.md' } },
+      baseContext,
+      { frontmatterReader },
+    )
+    expect(resetEffects).toEqual([{
+      kind: 'fileMutation',
+      mutations: [{ kind: 'frontmatter', filePath: 'rewards/star-jar.md', property: 'stars', value: 0 }],
+    }])
+  })
 })
