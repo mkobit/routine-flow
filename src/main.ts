@@ -6,6 +6,7 @@ import { TimerTicker } from './timer/ticker'
 import { DEFAULT_PHASE_GRAPH } from './timer/phase-graph-query'
 import { ObsidianFileMutationPort } from './adapters/obsidian/mutation/file-mutation-port'
 import { ObsidianFrontmatterReader } from './adapters/obsidian/mutation/frontmatter-reader'
+import { ACCUMULATOR_HOOK_NAME, createAccumulatorHook } from './timer/accumulator'
 import { createWriteBackHook, WRITE_BACK_HOOK_NAME } from './timer/write-back'
 import type { HookRegistry } from './domain/hook/hook'
 import { createTaskSourceRegistry } from './timer/task-source-registry'
@@ -70,8 +71,21 @@ export default class RoutineFlowPlugin extends Plugin {
       getWriteBackProperty: () => this.settings.writeBackProperty,
       getConfirmWriteBack: () => this.settings.confirmWriteBack,
     })
+    const accumulatorHook = createAccumulatorHook({
+      frontmatterReader,
+      taskSourceRegistry: this.taskSourceRegistry,
+      getTrackerFilePath: () => this.store.getGraph().trackerFilePath ?? null,
+    })
     this.hookRegistry = {
-      resolve: name => name === WRITE_BACK_HOOK_NAME ? writeBackHook : this.scriptHookRegistry.resolve(name),
+      resolve: (name) => {
+        if (name === WRITE_BACK_HOOK_NAME) {
+          return writeBackHook
+        }
+        if (name === ACCUMULATOR_HOOK_NAME) {
+          return accumulatorHook
+        }
+        return this.scriptHookRegistry.resolve(name)
+      },
     }
     this.store = new EngineStore(DEFAULT_PHASE_GRAPH, {
       hookRegistry: this.hookRegistry,
