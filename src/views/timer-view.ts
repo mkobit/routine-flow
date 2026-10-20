@@ -302,7 +302,12 @@ export class RoutineTimerView extends BasesView {
       frontmatter: this.plugin.app.metadataCache.getFileCache(entry.file)?.frontmatter,
       getValue: (propId: BasesPropertyId) => entry.getValue(propId),
     }))
-    return createBaseQuerySource(filterQueueCandidates(phase, this.config, candidates))
+    const badgeProps = phase.badges?.map(b => b.property) ?? []
+    const extraPropertiesLens = badgeProps.length > 0 ? badgeProps : undefined
+    return createBaseQuerySource(
+      filterQueueCandidates(phase, this.config, candidates),
+      { extraPropertiesLens },
+    )
   }
 
   private getConfiguredRoutineFilePath(): string | null {

@@ -503,6 +503,41 @@
   color: var(--text-normal);
 }
 
+.routine-queue-badges {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--size-4-1);
+}
+
+.routine-queue-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--size-4-1);
+  font-size: var(--font-ui-smaller);
+  color: var(--text-muted);
+  background-color: var(--background-secondary);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: var(--radius-s);
+  padding: 0 var(--size-4-1);
+  white-space: nowrap;
+}
+
+.routine-queue-badge.mod-accent {
+  color: var(--text-accent);
+  border-color: var(--interactive-accent);
+}
+
+.routine-queue-badge.mod-muted {
+  color: var(--text-faint);
+  border-color: var(--background-modifier-border);
+}
+
+.routine-queue-badge-icon svg {
+  width: var(--font-ui-smaller);
+  height: var(--font-ui-smaller);
+  vertical-align: middle;
+}
+
 /* The active queue item is visually distinct, not just structurally marked (design.md #1). */
 .routine-queue li.is-active-task .routine-task-name {
   font-weight: var(--font-bold);

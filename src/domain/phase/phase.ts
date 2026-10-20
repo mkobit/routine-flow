@@ -85,6 +85,16 @@ export const PhaseQueryFilterSchema = z.preprocess((val) => {
 }).readonly()).readonly()
 export type PhaseQueryFilter = z.infer<typeof PhaseQueryFilterSchema>
 
+export const PhaseQueueBadgeSchema = z.object({
+  property: z.string().min(1),
+  label: z.string().min(1).optional(),
+  icon: z.string().min(1).optional(),
+  prefix: z.string().min(1).optional(),
+  suffix: z.string().min(1).optional(),
+  variant: z.enum(['default', 'accent', 'muted']).default('default'),
+}).readonly()
+export type PhaseQueueBadge = z.infer<typeof PhaseQueueBadgeSchema>
+
 export const PhaseNodeHandlersSchema = z.object({
   onEnter: z.array(HandlerSchema).readonly().default([]),
   onComplete: z.array(HandlerSchema).readonly().default([]),
@@ -189,6 +199,7 @@ export const PhaseNodeSchema = z.preprocess((val) => {
     onExit: [],
   }),
   actions: z.array(QueueItemActionSchema).readonly().optional().default([]),
+  badges: z.array(PhaseQueueBadgeSchema).readonly().optional().default([]),
   timeFormat: TimeFormatSchema.optional(),
   selector: PhaseSelectorConfigSchema.optional(),
 }).readonly()).readonly()

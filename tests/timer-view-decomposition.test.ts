@@ -107,7 +107,7 @@ class MockElement {
     return child
   }
 
-  createSpan(o?: { text?: string, cls?: string }): MockElement {
+  createSpan(o?: { text?: string, cls?: string, attr?: Record<string, string> }): MockElement {
     const child = new MockElement()
     child.tagName = 'SPAN'
     if (o?.cls) {
@@ -115,6 +115,11 @@ class MockElement {
     }
     if (o?.text) {
       child.setText(o.text)
+    }
+    if (o?.attr) {
+      for (const [k, v] of Object.entries(o.attr)) {
+        child.setAttribute(k, v)
+      }
     }
     this.children.push(child)
     this.childElementCount = this.children.length
@@ -346,6 +351,7 @@ describe('Timer view decomposition', () => {
     timeFormat: 'mm:ss',
     taskSourceId: TaskSourceIdSchemaParse('focus-queue'),
     actions: [],
+    badges: [],
     logTarget: { kind: 'activeItem' },
     notification: null,
     handlers: {
@@ -888,6 +894,73 @@ describe('Timer view decomposition', () => {
 
       const liveRegion = queueEl.children.find(c => c.hasClass('routine-queue-announcer'))
       expect(liveRegion?.getText()).toBe('Selected task: Task 2')
+    })
+
+    test('renders queue item property badges when extraProperties and phase badges are configured', () => {
+      const queueEl = new MockElement()
+      // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- mock App
+      const app = new MockApp() as unknown as AppType
+      const phase: Phase = {
+        ...createDummyPhase(),
+        badges: [
+          { property: 'stars', icon: 'star', suffix: '★', variant: 'accent', label: 'Star count' },
+          { property: 'estimate', prefix: '~', variant: 'muted' },
+        ],
+      }
+      const itemWithBadges: TaskQueueItem = {
+        id: TaskQueueItemIdSchemaParse('item-1'),
+        sourcePath: 'tasks/task-1.md',
+        displayName: 'Task with badges',
+        cycleStatus: 'pending',
+        timeSpent: Temporal.Duration.from({ minutes: 0 }),
+        lastCycledAt: null,
+        extraProperties: {
+          stars: 3,
+          estimate: '15m',
+        },
+      }
+      const itemWithoutBadges: TaskQueueItem = {
+        id: TaskQueueItemIdSchemaParse('item-2'),
+        sourcePath: 'tasks/task-2.md',
+        displayName: 'Plain task',
+        cycleStatus: 'pending',
+        timeSpent: Temporal.Duration.from({ minutes: 0 }),
+        lastCycledAt: null,
+      }
+
+      renderQueuePanelFn(asElement(queueEl), {
+        phase,
+        activeFilePath: null,
+        queueItems: [itemWithBadges, itemWithoutBadges],
+        app,
+        onSelectTask: () => {},
+      })
+
+      const ul = queueEl.children.find(c => c.tagName === 'UL')
+      const row1 = ul?.children[0]?.children.find(c => c.hasClass('routine-queue-item-row'))
+      const row2 = ul?.children[1]?.children.find(c => c.hasClass('routine-queue-item-row'))
+
+      const badgesContainer1 = row1?.children.find(c => c.hasClass('routine-queue-badges'))
+      expect(badgesContainer1).toBeDefined()
+      expect(badgesContainer1?.children.length).toBe(2)
+
+      const badge1 = badgesContainer1?.children[0]
+      expect(badge1?.hasClass('routine-queue-badge')).toBe(true)
+      expect(badge1?.hasClass('mod-accent')).toBe(true)
+      expect(badge1?.getAttribute('aria-label')).toBe('Star count')
+      expect(badge1?.getAttribute('title')).toBe('Star count')
+      const badge1Text = badge1?.children.find(c => c.hasClass('routine-queue-badge-text'))
+      expect(badge1Text?.getText()).toBe('3★')
+
+      const badge2 = badgesContainer1?.children[1]
+      expect(badge2?.hasClass('routine-queue-badge')).toBe(true)
+      expect(badge2?.hasClass('mod-muted')).toBe(true)
+      const badge2Text = badge2?.children.find(c => c.hasClass('routine-queue-badge-text'))
+      expect(badge2Text?.getText()).toBe('~15m')
+
+      // Plain task without extraProperties should NOT have routine-queue-badges container
+      const badgesContainer2 = row2?.children.find(c => c.hasClass('routine-queue-badges'))
+      expect(badgesContainer2).toBeUndefined()
     })
   })
 
