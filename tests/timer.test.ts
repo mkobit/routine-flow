@@ -18,6 +18,7 @@ import { PhaseGraphSchema, PhaseGraphIdSchema } from '../src/domain/phase/phase-
 import type { PhaseGraph } from '../src/domain/phase/phase-graph'
 import { PhaseSchema, PhaseIdSchema, type PhaseNode } from '../src/domain/phase/phase'
 import type { PhaseId } from '../src/domain/phase/phase'
+import { TaskQueueItemIdSchema } from '../src/domain/queue/task-source'
 import { PredicateNameSchema } from '../src/domain/hook/predicate'
 import type { PredicateRegistry } from '../src/domain/hook/predicate'
 
@@ -626,6 +627,133 @@ describe('engineReducer', () => {
       const state: EngineState = { ...initialEngineState(queueExhaustedGraph), status: 'running' }
       const next = engineReducer(state, { type: 'advance-phase', now }, queueExhaustedGraph)
       expect(next.currentPhaseId).toBe(setId)
+    })
+  })
+
+  describe('record-item-completion and itemsTouched tracking', () => {
+    test('completing an active item marks touch record as completed with timestamp', () => {
+      const started = engineReducer(initialEngineState(testGraph), { type: 'start', now }, testGraph)
+      const touched = engineReducer(started, {
+        type: 'record-item-touch',
+        item: {
+          id: TaskQueueItemIdSchema.parse('task-1'),
+          sourcePath: 'tasks/task-1.md',
+          displayName: 'Task 1',
+          status: 'viewed',
+          completedAt: null,
+        },
+      }, testGraph)
+
+      const completionTime = Temporal.Instant.from('2026-10-23T12:05:00Z')
+      const completed = engineReducer(touched, {
+        type: 'record-item-completion',
+        completedAt: completionTime,
+        now: completionTime,
+      }, testGraph)
+
+      const items = completed.session?.currentInstance?.itemsTouched
+      expect(items).toEqual([
+        {
+          id: TaskQueueItemIdSchema.parse('task-1'),
+          sourcePath: 'tasks/task-1.md',
+          displayName: 'Task 1',
+          status: 'completed',
+          completedAt: completionTime,
+        },
+      ])
+    })
+
+    test('viewed item without completion remains viewed when another item is completed', () => {
+      const started = engineReducer(initialEngineState(testGraph), { type: 'start', now }, testGraph)
+      const touch1 = engineReducer(started, {
+        type: 'record-item-touch',
+        item: {
+          id: TaskQueueItemIdSchema.parse('task-1'),
+          sourcePath: 'tasks/task-1.md',
+          displayName: 'Task 1',
+          status: 'viewed',
+          completedAt: null,
+        },
+      }, testGraph)
+      const touch2 = engineReducer(touch1, {
+        type: 'record-item-touch',
+        item: {
+          id: TaskQueueItemIdSchema.parse('task-2'),
+          sourcePath: 'tasks/task-2.md',
+          displayName: 'Task 2',
+          status: 'viewed',
+          completedAt: null,
+        },
+      }, testGraph)
+
+      const completionTime = Temporal.Instant.from('2026-10-23T12:05:00Z')
+      const completed = engineReducer(touch2, {
+        type: 'record-item-completion',
+        itemId: TaskQueueItemIdSchema.parse('task-2'),
+        completedAt: completionTime,
+        now: completionTime,
+      }, testGraph)
+
+      const items = completed.session?.currentInstance?.itemsTouched
+      expect(items?.[0]?.status).toBe('viewed')
+      expect(items?.[0]?.completedAt).toBeNull()
+      expect(items?.[1]?.status).toBe('completed')
+      expect(items?.[1]?.completedAt).toEqual(completionTime)
+    })
+
+    test('multiple completed items accumulate in itemsTouched across sequential check-offs', () => {
+      const started = engineReducer(initialEngineState(testGraph), { type: 'start', now }, testGraph)
+
+      const item1Touch = {
+        id: TaskQueueItemIdSchema.parse('chore-1'),
+        sourcePath: 'chores/chore-1.md',
+        displayName: 'Chore 1',
+        status: 'viewed' as const,
+        completedAt: null,
+      }
+      const item2Touch = {
+        id: TaskQueueItemIdSchema.parse('chore-2'),
+        sourcePath: 'chores/chore-2.md',
+        displayName: 'Chore 2',
+        status: 'viewed' as const,
+        completedAt: null,
+      }
+      const item3Touch = {
+        id: TaskQueueItemIdSchema.parse('chore-3'),
+        sourcePath: 'chores/chore-3.md',
+        displayName: 'Chore 3',
+        status: 'viewed' as const,
+        completedAt: null,
+      }
+
+      const t1 = Temporal.Instant.from('2026-10-23T12:01:00Z')
+      const t2 = Temporal.Instant.from('2026-10-23T12:02:00Z')
+      const t3 = Temporal.Instant.from('2026-10-23T12:03:00Z')
+
+      const state1 = engineReducer(started, { type: 'record-item-touch', item: item1Touch }, testGraph)
+      const state2 = engineReducer(state1, { type: 'record-item-completion', itemId: item1Touch.id, now: t1 }, testGraph)
+
+      const state3 = engineReducer(state2, { type: 'record-item-touch', item: item2Touch }, testGraph)
+      const state4 = engineReducer(state3, { type: 'record-item-completion', itemId: item2Touch.id, now: t2 }, testGraph)
+
+      const state5 = engineReducer(state4, { type: 'record-item-touch', item: item3Touch }, testGraph)
+      const state6 = engineReducer(state5, { type: 'record-item-completion', itemId: item3Touch.id, now: t3 }, testGraph)
+
+      const items = state6.session?.currentInstance?.itemsTouched
+      expect(items).toHaveLength(3)
+      expect(items?.every(item => item.status === 'completed')).toBe(true)
+      expect(items?.[0]?.completedAt).toEqual(t1)
+      expect(items?.[1]?.completedAt).toEqual(t2)
+      expect(items?.[2]?.completedAt).toEqual(t3)
+    })
+
+    test('record-item-completion returns unchanged state when session or currentInstance is null', () => {
+      const state = initialEngineState(testGraph)
+      const next = engineReducer(state, {
+        type: 'record-item-completion',
+        now,
+      }, testGraph)
+      expect(next).toBe(state)
     })
   })
 })

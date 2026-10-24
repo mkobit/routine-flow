@@ -32,6 +32,7 @@ function stampNow(action: EngineAction, now: Temporal.Instant): StampedEngineAct
     case 'finish-phase':
     case 'advance-phase':
     case 'stop':
+    case 'record-item-completion':
       return { ...action, now }
     default:
       return action
@@ -286,7 +287,13 @@ export class EngineStore {
     }
     this.applyState(engineReducer(this.state, {
       type: 'record-item-touch',
-      item: { id: item.id, sourcePath: item.sourcePath, displayName: item.displayName },
+      item: {
+        id: item.id,
+        sourcePath: item.sourcePath,
+        displayName: item.displayName,
+        status: 'viewed',
+        completedAt: null,
+      },
     }, this.graph, this.deps))
   }
 

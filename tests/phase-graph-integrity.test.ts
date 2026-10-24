@@ -288,4 +288,15 @@ describe('view headers and queue titles with selector phases', () => {
     })
     expect(formatPhaseHeader(selectorPhase, Temporal.Duration.from({ seconds: 30 }), 'running')).toBe('Wheel of tasks: 00:30 (running)')
   })
+
+  test('validates phase graph with completedItems log target', () => {
+    const blitzPhase = PhaseSchema.parse({
+      ...phaseDefaults,
+      id: 'blitz',
+      kind: FOCUS_PHASE_KIND,
+      logTarget: { kind: 'completedItems' },
+    })
+    const g = graph([blitzPhase], [{ from: 'blitz', to: 'blitz', guard: { kind: 'always' } }])
+    expect(checkPhaseGraphIntegrity(g)).toEqual([])
+  })
 })

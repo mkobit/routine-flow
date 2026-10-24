@@ -7,6 +7,7 @@ import type { PredicateRegistry } from '../domain/hook/predicate'
 import type { FileMutation } from '../domain/mutation/file-mutation'
 import { closePhaseInstance, openPhaseInstance, openSession } from '../domain/session/session'
 import type { ItemTouch, PhaseInstance, PhaseInstanceEndReason, PhaseInstanceHookFailure, PhaseInstanceId, Session } from '../domain/session/session'
+import type { TaskQueueItemId } from '../domain/queue/task-source'
 import { findPhaseById, resolveNextPhaseId } from './phase-graph-query'
 import type { EngineDeps } from './engine-deps'
 
@@ -23,6 +24,7 @@ export type EngineAction
     | { type: 'set-queue-exhausted', exhausted: boolean }
     | { type: 'set-tracker-frontmatter', trackerFrontmatter: Readonly<Record<string, unknown>> | undefined }
     | { type: 'record-item-touch', item: ItemTouch }
+    | { type: 'record-item-completion', itemId?: TaskQueueItemId, completedAt?: Temporal.Instant }
     | { type: 'record-hook-outcome', phaseInstanceId: PhaseInstanceId, event: HookEvent, outcome: HookInvocationOutcome }
 
 export type StampedEngineAction
@@ -37,6 +39,7 @@ export type StampedEngineAction
     | { type: 'set-queue-exhausted', exhausted: boolean }
     | { type: 'set-tracker-frontmatter', trackerFrontmatter: Readonly<Record<string, unknown>> | undefined }
     | { type: 'record-item-touch', item: ItemTouch }
+    | { type: 'record-item-completion', itemId?: TaskQueueItemId, completedAt?: Temporal.Instant, now: Temporal.Instant }
     | { type: 'record-hook-outcome', phaseInstanceId: PhaseInstanceId, event: HookEvent, outcome: HookInvocationOutcome }
 
 /**
@@ -107,6 +110,8 @@ export function engineReducer(
         : { ...state, trackerFrontmatter: action.trackerFrontmatter }
     case 'record-item-touch':
       return recordItemTouch(state, action.item)
+    case 'record-item-completion':
+      return recordItemCompletion(state, action)
     case 'record-hook-outcome':
       return recordHookOutcome(state, action.phaseInstanceId, action.event, action.outcome)
   }
@@ -285,6 +290,40 @@ function recordItemTouch(state: EngineState, item: ItemTouch): EngineState {
     session: {
       ...state.session,
       currentInstance: { ...instance, itemsTouched: [...instance.itemsTouched, item] },
+    },
+  }
+}
+
+function recordItemCompletion(
+  state: EngineState,
+  action: { readonly itemId?: TaskQueueItemId, readonly completedAt?: Temporal.Instant, readonly now: Temporal.Instant },
+): EngineState {
+  const instance = state.session?.currentInstance
+  if (state.session === null || instance === null || instance === undefined || instance.itemsTouched.length === 0) {
+    return state
+  }
+  const completedAt = action.completedAt ?? action.now
+  const targetIndex = action.itemId !== undefined
+    ? instance.itemsTouched.findLastIndex(touch => touch.id === action.itemId)
+    : instance.itemsTouched.length - 1
+  if (targetIndex < 0) {
+    return state
+  }
+  const itemsTouched = instance.itemsTouched.map((touch, index) => {
+    if (index === targetIndex) {
+      return {
+        ...touch,
+        status: 'completed' as const,
+        completedAt,
+      }
+    }
+    return touch
+  })
+  return {
+    ...state,
+    session: {
+      ...state.session,
+      currentInstance: { ...instance, itemsTouched },
     },
   }
 }

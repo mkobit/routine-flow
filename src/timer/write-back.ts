@@ -1,5 +1,6 @@
 import { Temporal } from 'temporal-polyfill'
 import type { PhaseNode } from '../domain/phase/phase'
+import type { PhaseInstance } from '../domain/session/session'
 import type { LogTargetResolverRegistry } from '../domain/log-target/log-target-resolver'
 import type { FrontmatterReader } from '../domain/mutation/frontmatter-reader'
 import { nextLogEntry } from '../domain/mutation/log-entry'
@@ -20,19 +21,38 @@ export interface WriteBackHookDeps {
   readonly getConfirmWriteBack?: () => boolean
 }
 
-function resolveTargetFilePath(
+export function resolveTargetFilePaths(
+  phase: PhaseNode,
+  instance: PhaseInstance | null | undefined,
+  activeFilePath: string | null,
+  registry: LogTargetResolverRegistry,
+): readonly string[] {
+  if (phase.logTarget === null) {
+    return []
+  }
+  if (phase.logTarget.kind === 'activeItem') {
+    return activeFilePath !== null ? [activeFilePath] : []
+  }
+  if (phase.logTarget.kind === 'completedItems') {
+    if (!instance) {
+      return []
+    }
+    const completed = instance.itemsTouched
+      .filter(touch => touch.status === 'completed')
+      .map(touch => touch.sourcePath)
+    return Array.from(new Set(completed))
+  }
+  const resolver = registry.resolve(phase.logTarget.name)
+  const path = resolver === undefined ? null : resolver(phase)
+  return path !== null ? [path] : []
+}
+
+export function resolveTargetFilePath(
   phase: PhaseNode,
   activeFilePath: string | null,
   registry: LogTargetResolverRegistry,
 ): string | null {
-  if (phase.logTarget === null) {
-    return null
-  }
-  if (phase.logTarget.kind === 'activeItem') {
-    return activeFilePath
-  }
-  const resolver = registry.resolve(phase.logTarget.name)
-  return resolver === undefined ? null : resolver(phase)
+  return resolveTargetFilePaths(phase, undefined, activeFilePath, registry)[0] ?? null
 }
 
 /**
@@ -40,39 +60,49 @@ function resolveTargetFilePath(
  */
 export function createWriteBackHook(deps: WriteBackHookDeps): Hook {
   return async (context) => {
-    const filePath = resolveTargetFilePath(context.phase, context.activeFilePath, deps.logTargetResolverRegistry)
-    if (filePath === null) {
+    const targetFilePaths = resolveTargetFilePaths(
+      context.phase,
+      context.instance,
+      context.activeFilePath,
+      deps.logTargetResolverRegistry,
+    )
+    if (targetFilePaths.length === 0) {
       return []
     }
     const property = deps.getWriteBackProperty()
-    const currentValue = deps.frontmatterReader.readValue(filePath, property)
-    const entry = nextLogEntry(currentValue, property, Temporal.Now.instant())
-
     const globalConfirm = deps.getConfirmWriteBack === undefined || deps.getConfirmWriteBack()
     const params = context.params ?? {}
     const phaseConfirm = params.prompt !== false && params.confirm !== false && params.skipPrompt !== true
     const shouldPrompt = globalConfirm && phaseConfirm
 
     if (!shouldPrompt) {
-      const mutation: FileMutation = FileMutationSchema.parse({
-        kind: 'frontmatter',
-        filePath,
-        property: entry.property,
-        value: entry.value,
+      return targetFilePaths.map((filePath) => {
+        const currentValue = deps.frontmatterReader.readValue(filePath, property)
+        const entry = nextLogEntry(currentValue, property, Temporal.Now.instant())
+        return FileMutationSchema.parse({
+          kind: 'frontmatter',
+          filePath,
+          property: entry.property,
+          value: entry.value,
+        })
       })
-      return [mutation]
     }
 
-    const promptResult = await deps.writeBackPrompt.prompt({ filePath, property: entry.property, value: entry.value })
-    if (promptResult.kind === 'cancelled') {
-      return []
-    }
-    const mutation: FileMutation = FileMutationSchema.parse({
-      kind: 'frontmatter',
-      filePath: promptResult.values.filePath,
-      property: promptResult.values.property,
-      value: promptResult.values.value,
-    })
-    return [mutation]
+    return targetFilePaths.reduce(async (accPromise, filePath) => {
+      const acc = await accPromise
+      const currentValue = deps.frontmatterReader.readValue(filePath, property)
+      const entry = nextLogEntry(currentValue, property, Temporal.Now.instant())
+      const promptResult = await deps.writeBackPrompt.prompt({ filePath, property: entry.property, value: entry.value })
+      if (promptResult.kind === 'cancelled') {
+        return acc
+      }
+      const mutation: FileMutation = FileMutationSchema.parse({
+        kind: 'frontmatter',
+        filePath: promptResult.values.filePath,
+        property: promptResult.values.property,
+        value: promptResult.values.value,
+      })
+      return [...acc, mutation]
+    }, Promise.resolve<readonly FileMutation[]>([]))
   }
 }
