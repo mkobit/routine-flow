@@ -9,9 +9,9 @@
 
 ## 2. Early phase termination on queue exhaustion (flow-xne.1)
 
-- [ ] 2.1 Update `StampedEngineAction` in `src/timer/reducer.ts` and `stampNow` in `src/timer/store.ts` to attach `now: Temporal.Instant` to `set-queue-exhausted`, and verify types compile via `bun run typecheck`.
-- [ ] 2.2 Implement early phase termination in `engineReducer` on queue exhaustion when an outgoing transition is guarded by `{ kind: 'queueExhausted' }`, preserving normal countdown when absent, and verify unit tests in `tests/timer.test.ts` pass.
-- [ ] 2.3 Wire queue change evaluation in `EngineStore.syncQueueExhausted`, and verify integration tests in `tests/store.test.ts` pass.
+- [x] 2.1 Update `StampedEngineAction` in `src/timer/reducer.ts` and `stampNow` in `src/timer/store.ts` to attach `now: Temporal.Instant` to `set-queue-exhausted`, and verify types compile via `bun run typecheck`.
+- [x] 2.2 Implement early phase termination in `engineReducer` on queue exhaustion when an outgoing transition is guarded by `{ kind: 'queueExhausted' }`, preserving normal countdown when absent, and verify unit tests in `tests/timer.test.ts` pass.
+- [x] 2.3 Wire queue change evaluation in `EngineStore.syncQueueExhausted`, and verify integration tests in `tests/store.test.ts` pass.
 
 ## 3. Queue panel rapid interactions and completion counter (flow-xne.3)
 

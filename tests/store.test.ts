@@ -223,6 +223,128 @@ describe('EngineStore queueExhausted sync', () => {
 
     expect(store.getState().currentPhaseId).toBe(PhaseIdSchema.parse('warmup'))
   })
+
+  test('syncQueueExhausted automatically advances running phase when queue becomes empty and outgoing transition is guarded by queueExhausted', async () => {
+    const { registry, setItems } = createFakeTaskSourceRegistry([buildQueueItem('task-1')])
+    const blitzGraph = PhaseGraphSchema.parse({
+      id: 'blitz-timed',
+      name: 'Blitz timed graph',
+      phases: [
+        PhaseSchema.parse({
+          ...phaseDefaults,
+          id: 'blitz',
+          label: 'Blitz',
+          kind: 'focus',
+          duration: Temporal.Duration.from({ minutes: 15 }),
+          taskSourceId: exercisesTaskSourceId,
+          logTarget: { kind: 'activeItem' },
+        }),
+        PhaseSchema.parse({
+          ...phaseDefaults,
+          id: 'wrapup',
+          label: 'Wrap up',
+          kind: 'break',
+          duration: Temporal.Duration.from({ minutes: 5 }),
+          logTarget: { kind: 'activeItem' },
+        }),
+      ],
+      transitions: [
+        { fromPhaseId: 'blitz', toPhaseId: 'wrapup', condition: { kind: 'queueExhausted' } },
+        { fromPhaseId: 'blitz', toPhaseId: 'wrapup', condition: { kind: 'always' } },
+      ],
+    })
+
+    const store = new EngineStore(blitzGraph, { taskSourceRegistry: registry })
+    await store.dispatch({ type: 'start' })
+    expect(store.getState().status).toBe('running')
+    expect(store.getState().currentPhaseId).toBe(PhaseIdSchema.parse('blitz'))
+
+    setItems([])
+    await store.syncQueueExhausted()
+
+    expect(store.getState().currentPhaseId).toBe(PhaseIdSchema.parse('wrapup'))
+    expect(store.getState().queueExhausted).toBe(true)
+    expect(store.getState().session?.history.at(-1)?.endReason).toBe('completed')
+  })
+
+  test('tick dispatches evaluate queue exhaustion and advance running phase if queue is drained', async () => {
+    const { registry, setItems } = createFakeTaskSourceRegistry([buildQueueItem('task-1')])
+    const blitzGraph = PhaseGraphSchema.parse({
+      id: 'blitz-timed-tick',
+      name: 'Blitz timed tick graph',
+      phases: [
+        PhaseSchema.parse({
+          ...phaseDefaults,
+          id: 'blitz',
+          label: 'Blitz',
+          kind: 'focus',
+          duration: Temporal.Duration.from({ minutes: 15 }),
+          taskSourceId: exercisesTaskSourceId,
+          logTarget: { kind: 'activeItem' },
+        }),
+        PhaseSchema.parse({
+          ...phaseDefaults,
+          id: 'wrapup',
+          label: 'Wrap up',
+          kind: 'break',
+          duration: Temporal.Duration.from({ minutes: 5 }),
+          logTarget: { kind: 'activeItem' },
+        }),
+      ],
+      transitions: [
+        { fromPhaseId: 'blitz', toPhaseId: 'wrapup', condition: { kind: 'queueExhausted' } },
+        { fromPhaseId: 'blitz', toPhaseId: 'wrapup', condition: { kind: 'always' } },
+      ],
+    })
+
+    const store = new EngineStore(blitzGraph, { taskSourceRegistry: registry })
+    await store.dispatch({ type: 'start' })
+
+    setItems([])
+    await store.dispatch({ type: 'tick' })
+
+    expect(store.getState().currentPhaseId).toBe(PhaseIdSchema.parse('wrapup'))
+    expect(store.getState().queueExhausted).toBe(true)
+  })
+
+  test('normal countdown is preserved when queue is not exhausted', async () => {
+    const { registry } = createFakeTaskSourceRegistry([buildQueueItem('task-1')])
+    const blitzGraph = PhaseGraphSchema.parse({
+      id: 'blitz-countdown',
+      name: 'Blitz countdown graph',
+      phases: [
+        PhaseSchema.parse({
+          ...phaseDefaults,
+          id: 'blitz',
+          label: 'Blitz',
+          kind: 'focus',
+          duration: Temporal.Duration.from({ seconds: 10 }),
+          taskSourceId: exercisesTaskSourceId,
+          logTarget: { kind: 'activeItem' },
+        }),
+        PhaseSchema.parse({
+          ...phaseDefaults,
+          id: 'wrapup',
+          label: 'Wrap up',
+          kind: 'break',
+          duration: Temporal.Duration.from({ seconds: 5 }),
+          logTarget: { kind: 'activeItem' },
+        }),
+      ],
+      transitions: [
+        { fromPhaseId: 'blitz', toPhaseId: 'wrapup', condition: { kind: 'queueExhausted' } },
+        { fromPhaseId: 'blitz', toPhaseId: 'wrapup', condition: { kind: 'always' } },
+      ],
+    })
+
+    const store = new EngineStore(blitzGraph, { taskSourceRegistry: registry })
+    await store.dispatch({ type: 'start' })
+    await store.dispatch({ type: 'tick' })
+
+    expect(store.getState().currentPhaseId).toBe(PhaseIdSchema.parse('blitz'))
+    expect(store.getState().remaining?.total({ unit: 'seconds' })).toBe(9)
+    expect(store.getState().status).toBe('running')
+  })
 })
 
 describe('EngineStore trackerFrontmatter sync', () => {
