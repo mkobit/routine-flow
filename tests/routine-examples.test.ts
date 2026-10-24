@@ -301,7 +301,7 @@ describe('routine examples validation', () => {
     expect(state.currentPhaseId).toBe(PhaseIdSchema.parse('task-sprint'))
 
     // When queue IS exhausted, complete-phase branches to wrapup
-    state = engineReducer(state, { type: 'set-queue-exhausted', exhausted: true }, graph)
+    state = engineReducer(state, { type: 'set-queue-exhausted', exhausted: true, now }, graph)
     state = engineReducer(state, { type: 'finish-phase', now }, graph)
     expect(state.currentPhaseId).toBe(PhaseIdSchema.parse('wrapup'))
   })

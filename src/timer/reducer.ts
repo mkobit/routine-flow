@@ -36,7 +36,7 @@ export type StampedEngineAction
     | { type: 'finish-phase', now: Temporal.Instant }
     | { type: 'advance-phase', now: Temporal.Instant }
     | { type: 'set-active-file', filePath: string | null }
-    | { type: 'set-queue-exhausted', exhausted: boolean }
+    | { type: 'set-queue-exhausted', exhausted: boolean, now: Temporal.Instant }
     | { type: 'set-tracker-frontmatter', trackerFrontmatter: Readonly<Record<string, unknown>> | undefined }
     | { type: 'record-item-touch', item: ItemTouch }
     | { type: 'record-item-completion', itemId?: TaskQueueItemId, completedAt?: Temporal.Instant, now: Temporal.Instant }
@@ -100,10 +100,24 @@ export function engineReducer(
       return action.filePath === state.activeFilePath
         ? state
         : { ...state, activeFilePath: action.filePath }
-    case 'set-queue-exhausted':
-      return action.exhausted === state.queueExhausted
+    case 'set-queue-exhausted': {
+      const updatedState = action.exhausted === state.queueExhausted
         ? state
         : { ...state, queueExhausted: action.exhausted }
+      if (action.exhausted && state.status === 'running') {
+        const candidates = graph.transitions.filter(
+          transition => transition.from === state.currentPhaseId || transition.fromPhaseId === state.currentPhaseId,
+        )
+        const hasQueueExhaustedEdge = candidates.some((transition) => {
+          const guard = transition.guard ?? transition.condition
+          return guard?.kind === 'queueExhausted'
+        })
+        if (hasQueueExhaustedEdge) {
+          return completePhase(updatedState, graph, predicateRegistry, action.now)
+        }
+      }
+      return updatedState
+    }
     case 'set-tracker-frontmatter':
       return action.trackerFrontmatter === state.trackerFrontmatter
         ? state
@@ -139,7 +153,7 @@ export function deriveHookEvents(
     return []
   }
 
-  if (action.type === 'tick' || action.type === 'finish-phase') {
+  if (action.type === 'tick' || action.type === 'finish-phase' || action.type === 'set-queue-exhausted') {
     if (nextState.status === 'completed' && prevState.status !== 'completed') {
       return [{ event: 'onComplete', phase: prevPhase, phaseInstanceId: requireCurrentInstanceId(nextState, prevPhase) }]
     }

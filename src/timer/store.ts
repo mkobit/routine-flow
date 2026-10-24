@@ -3,7 +3,7 @@ import { deriveHookEvents, engineReducer, initialEngineState } from './reducer'
 import type { EngineAction, StampedEngineAction } from './reducer'
 import type { EngineState } from '../domain/session/engine-state'
 import type { PhaseGraph } from '../domain/phase/phase-graph'
-import type { PhaseNode } from '../domain/phase/phase'
+import type { PhaseNode, PhaseId } from '../domain/phase/phase'
 import { closePhaseInstance } from '../domain/session/session'
 import type { PhaseInstance, PhaseInstanceId, Session } from '../domain/session/session'
 import type { HookEvent, HookInvocationOutcome } from '../domain/hook/hook'
@@ -33,6 +33,7 @@ function stampNow(action: EngineAction, now: Temporal.Instant): StampedEngineAct
     case 'advance-phase':
     case 'stop':
     case 'record-item-completion':
+    case 'set-queue-exhausted':
       return { ...action, now }
     default:
       return action
@@ -120,12 +121,54 @@ export class EngineStore {
     return applyMutations(port, [{ kind: 'queueReorder', itemId, position }])
   }
 
-  private async runDispatch(action: EngineAction): Promise<readonly HookEventApplication[]> {
-    this.syncQueueExhausted()
-    this.syncTrackerFrontmatter(action)
+  public async syncQueueExhausted(): Promise<readonly HookEventApplication[]> {
+    const { taskSourceRegistry } = this.deps
+    if (taskSourceRegistry === undefined) {
+      return []
+    }
+    const phase = findPhaseById(this.graph, this.state.currentPhaseId)
+    const source = phase !== undefined && phase.taskSourceId !== null ? taskSourceRegistry.resolve(phase.taskSourceId) : undefined
+    const exhausted = source !== undefined && source.getQueue().length === 0
+    return this.dispatch({ type: 'set-queue-exhausted', exhausted })
+  }
 
+  private hasQueueExhaustedTransition(phaseId: PhaseId): boolean {
+    const candidates = this.graph.transitions.filter(
+      transition => transition.from === phaseId || transition.fromPhaseId === phaseId,
+    )
+    return candidates.some((transition) => {
+      const guard = transition.guard ?? transition.condition
+      return guard?.kind === 'queueExhausted'
+    })
+  }
+
+  private async runDispatch(action: EngineAction): Promise<readonly HookEventApplication[]> {
+    this.syncTrackerFrontmatter(action)
     const now = Temporal.Now.instant()
-    const stamped = stampNow(action, now)
+
+    let effectiveAction = action
+    if (action.type !== 'set-queue-exhausted' && this.deps.taskSourceRegistry !== undefined) {
+      const phase = findPhaseById(this.graph, this.state.currentPhaseId)
+      const source = phase !== undefined && phase.taskSourceId !== null ? this.deps.taskSourceRegistry.resolve(phase.taskSourceId) : undefined
+      const exhausted = source !== undefined && source.getQueue().length === 0
+
+      if (exhausted && this.state.status === 'running' && this.hasQueueExhaustedTransition(this.state.currentPhaseId)) {
+        effectiveAction = { type: 'set-queue-exhausted', exhausted: true }
+      }
+      else if (exhausted !== this.state.queueExhausted) {
+        this.applyState(engineReducer(this.state, { type: 'set-queue-exhausted', exhausted, now }, this.graph, this.deps))
+      }
+    }
+
+    const stamped = stampNow(effectiveAction, now)
+    return this.applyAction(effectiveAction, stamped, now)
+  }
+
+  private async applyAction(
+    action: EngineAction,
+    stamped: StampedEngineAction,
+    now: Temporal.Instant,
+  ): Promise<readonly HookEventApplication[]> {
     const prevState = this.state
     const nextState = engineReducer(prevState, stamped, this.graph, this.deps)
     this.applyState(nextState)
@@ -197,17 +240,6 @@ export class EngineStore {
         listener(this.state)
       }
     }
-  }
-
-  private syncQueueExhausted(): void {
-    const { taskSourceRegistry } = this.deps
-    if (taskSourceRegistry === undefined) {
-      return
-    }
-    const phase = findPhaseById(this.graph, this.state.currentPhaseId)
-    const source = phase !== undefined && phase.taskSourceId !== null ? taskSourceRegistry.resolve(phase.taskSourceId) : undefined
-    const exhausted = source !== undefined && source.getQueue().length === 0
-    this.applyState(engineReducer(this.state, { type: 'set-queue-exhausted', exhausted }, this.graph, this.deps))
   }
 
   private syncTrackerFrontmatter(action?: EngineAction): void {

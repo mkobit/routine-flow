@@ -112,14 +112,14 @@ describe('engineReducer', () => {
 
   test('set-queue-exhausted updates queueExhausted without touching status', () => {
     const state: EngineState = { ...initialEngineState(testGraph), status: 'running' }
-    const next = engineReducer(state, { type: 'set-queue-exhausted', exhausted: true }, testGraph)
+    const next = engineReducer(state, { type: 'set-queue-exhausted', exhausted: true, now }, testGraph)
     expect(next.queueExhausted).toBe(true)
     expect(next.status).toBe('running')
   })
 
   test('set-queue-exhausted is a no-op when the value is unchanged', () => {
     const state: EngineState = initialEngineState(testGraph)
-    const next = engineReducer(state, { type: 'set-queue-exhausted', exhausted: false }, testGraph)
+    const next = engineReducer(state, { type: 'set-queue-exhausted', exhausted: false, now }, testGraph)
     expect(next).toBe(state)
   })
 
@@ -627,6 +627,115 @@ describe('engineReducer', () => {
       const state: EngineState = { ...initialEngineState(queueExhaustedGraph), status: 'running' }
       const next = engineReducer(state, { type: 'advance-phase', now }, queueExhaustedGraph)
       expect(next.currentPhaseId).toBe(setId)
+    })
+  })
+
+  describe('early phase termination on queue exhaustion (flow-xne.1)', () => {
+    const blitzGraph: PhaseGraph = PhaseGraphSchema.parse({
+      id: 'chore-blitz',
+      name: 'Chore blitz graph',
+      phases: [
+        PhaseSchema.parse({
+          ...phaseDefaults,
+          id: 'blitz',
+          label: 'Blitz',
+          kind: 'focus',
+          duration: Temporal.Duration.from({ minutes: 15 }),
+          logTarget: { kind: 'activeItem' },
+        }),
+        PhaseSchema.parse({
+          ...phaseDefaults,
+          id: 'wrapup',
+          label: 'Wrap up',
+          kind: 'break',
+          duration: Temporal.Duration.from({ minutes: 5 }),
+          logTarget: { kind: 'activeItem' },
+        }),
+      ],
+      transitions: [
+        { fromPhaseId: 'blitz', toPhaseId: 'wrapup', condition: { kind: 'queueExhausted' } },
+        { fromPhaseId: 'blitz', toPhaseId: 'wrapup', condition: { kind: 'always' } },
+        { fromPhaseId: 'wrapup', toPhaseId: 'blitz', condition: { kind: 'always' } },
+      ],
+    })
+
+    test('advances running phase immediately to target phase when queue becomes exhausted', () => {
+      const started = engineReducer(initialEngineState(blitzGraph), { type: 'start', now }, blitzGraph)
+      expect(started.status).toBe('running')
+      expect(started.currentPhaseId).toBe(PhaseIdSchema.parse('blitz'))
+
+      const exhausted = engineReducer(started, { type: 'set-queue-exhausted', exhausted: true, now }, blitzGraph)
+      expect(exhausted.currentPhaseId).toBe(PhaseIdSchema.parse('wrapup'))
+      expect(exhausted.queueExhausted).toBe(true)
+      expect(exhausted.status).toBe('stopped')
+      expect(exhausted.remaining?.total({ unit: 'seconds' })).toBe(300)
+      expect(exhausted.session?.history.at(-1)?.endReason).toBe('completed')
+    })
+
+    test('preserves running status and countdown when exhausted is false', () => {
+      const started = engineReducer(initialEngineState(blitzGraph), { type: 'start', now }, blitzGraph)
+      const next = engineReducer(started, { type: 'set-queue-exhausted', exhausted: false, now }, blitzGraph)
+      expect(next.currentPhaseId).toBe(PhaseIdSchema.parse('blitz'))
+      expect(next.status).toBe('running')
+      expect(next.queueExhausted).toBe(false)
+    })
+
+    test('does not advance phase when status is not running (e.g. paused or stopped)', () => {
+      const stopped = initialEngineState(blitzGraph)
+      const afterStopped = engineReducer(stopped, { type: 'set-queue-exhausted', exhausted: true, now }, blitzGraph)
+      expect(afterStopped.currentPhaseId).toBe(PhaseIdSchema.parse('blitz'))
+      expect(afterStopped.status).toBe('stopped')
+      expect(afterStopped.queueExhausted).toBe(true)
+
+      const paused: EngineState = { ...stopped, status: 'paused' }
+      const afterPaused = engineReducer(paused, { type: 'set-queue-exhausted', exhausted: true, now }, blitzGraph)
+      expect(afterPaused.currentPhaseId).toBe(PhaseIdSchema.parse('blitz'))
+      expect(afterPaused.status).toBe('paused')
+      expect(afterPaused.queueExhausted).toBe(true)
+    })
+
+    test('halts at completed status when phase onCompletion is waitForManual', () => {
+      const manualGraph: PhaseGraph = PhaseGraphSchema.parse({
+        id: 'manual-blitz',
+        name: 'Manual blitz graph',
+        phases: [
+          PhaseSchema.parse({
+            ...phaseDefaults,
+            completionPolicy: { kind: 'manualClear' },
+            id: 'blitz',
+            label: 'Blitz',
+            kind: 'focus',
+            duration: Temporal.Duration.from({ minutes: 15 }),
+            logTarget: { kind: 'activeItem' },
+          }),
+          PhaseSchema.parse({
+            ...phaseDefaults,
+            id: 'wrapup',
+            label: 'Wrap up',
+            kind: 'break',
+            duration: Temporal.Duration.from({ minutes: 5 }),
+            logTarget: { kind: 'activeItem' },
+          }),
+        ],
+        transitions: [
+          { fromPhaseId: 'blitz', toPhaseId: 'wrapup', condition: { kind: 'queueExhausted' } },
+        ],
+      })
+      const started = engineReducer(initialEngineState(manualGraph), { type: 'start', now }, manualGraph)
+      const exhausted = engineReducer(started, { type: 'set-queue-exhausted', exhausted: true, now }, manualGraph)
+      expect(exhausted.status).toBe('completed')
+      expect(exhausted.currentPhaseId).toBe(PhaseIdSchema.parse('blitz'))
+    })
+
+    test('derives onComplete, onExit, and onEnter hook events on early phase termination', () => {
+      const started = engineReducer(initialEngineState(blitzGraph), { type: 'start', now }, blitzGraph)
+      const exhausted = engineReducer(started, { type: 'set-queue-exhausted', exhausted: true, now }, blitzGraph)
+
+      const events = deriveHookEvents(started, exhausted, { type: 'set-queue-exhausted', exhausted: true }, blitzGraph)
+      expect(events.map(e => e.event)).toEqual(['onComplete', 'onExit', 'onEnter'])
+      expect(events[0]?.phase.id).toBe(PhaseIdSchema.parse('blitz'))
+      expect(events[1]?.phase.id).toBe(PhaseIdSchema.parse('blitz'))
+      expect(events[2]?.phase.id).toBe(PhaseIdSchema.parse('wrapup'))
     })
   })
 
