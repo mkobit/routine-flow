@@ -5,11 +5,13 @@ import type { Phase } from '../src/domain/phase/phase'
 import { LogTargetResolverNameSchema } from '../src/domain/phase/phase'
 import { PhaseGraphIdSchema } from '../src/domain/phase/phase-graph'
 import { PhaseInstanceIdSchema, SessionIdSchema } from '../src/domain/session/session'
+import type { ItemTouch } from '../src/domain/session/session'
+import { TaskQueueItemIdSchema } from '../src/domain/queue/task-source'
 import type { LogTargetResolverRegistry, LogTargetResolver } from '../src/domain/log-target/log-target-resolver'
 import type { FrontmatterReader } from '../src/domain/mutation/frontmatter-reader'
 import type { WriteBackFormValues, WriteBackPromptPort, WriteBackPromptResult } from '../src/domain/mutation/write-back-prompt'
 import type { HookContext } from '../src/domain/hook/hook'
-import { createWriteBackHook } from '../src/timer/write-back'
+import { createWriteBackHook, resolveTargetFilePaths } from '../src/timer/write-back'
 import type { WriteBackHookDeps } from '../src/timer/write-back'
 
 const phaseDefaults = {
@@ -37,6 +39,14 @@ const callbackPhase: Phase = PhaseSchema.parse({
   kind: 'break',
   label: 'Short break',
   logTarget: { kind: 'callback', name: 'dailyNote' },
+})
+
+const completedItemsPhase: Phase = PhaseSchema.parse({
+  ...phaseDefaults,
+  id: 'blitz',
+  kind: 'focus',
+  label: 'Chore blitz',
+  logTarget: { kind: 'completedItems' },
 })
 
 function createFakeReader(value: unknown): FrontmatterReader {
@@ -69,7 +79,7 @@ function createDeps(overrides: Partial<WriteBackHookDeps> = {}): WriteBackHookDe
 }
 
 /** Builds a throwaway HookContext for a single write-back hook invocation — instance/session content doesn't affect the hook's behavior. */
-function buildContext(phase: Phase, activeFilePath: string | null): HookContext {
+function buildContext(phase: Phase, activeFilePath: string | null, itemsTouched: readonly ItemTouch[] = []): HookContext {
   const now = Temporal.Now.instant()
   return {
     phase,
@@ -85,7 +95,7 @@ function buildContext(phase: Phase, activeFilePath: string | null): HookContext 
       startedAt: now,
       endedAt: now,
       endReason: 'completed',
-      itemsTouched: [],
+      itemsTouched,
       mutationsApplied: [],
       hookFailures: [],
     },
@@ -289,5 +299,226 @@ describe('createWriteBackHook', () => {
     expect(mutations).toEqual([
       { kind: 'frontmatter', filePath: 'focus-sandwich/task-1.md', property: 'sessions', value: 3 },
     ])
+  })
+
+  test('completed items target generates batch mutations across finished tasks', async () => {
+    const reader = createFakeReader(0)
+    const prompt = createFakePrompt()
+    const hook = createWriteBackHook(createDeps({
+      frontmatterReader: reader,
+      writeBackPrompt: prompt,
+      getConfirmWriteBack: () => false,
+    }))
+
+    const itemsTouched: readonly ItemTouch[] = [
+      {
+        id: TaskQueueItemIdSchema.parse('chore-1'),
+        sourcePath: 'chores/chore-1.md',
+        displayName: 'Chore 1',
+        status: 'completed',
+        completedAt: Temporal.Instant.from('2026-10-23T12:01:00Z'),
+      },
+      {
+        id: TaskQueueItemIdSchema.parse('chore-2'),
+        sourcePath: 'chores/chore-2.md',
+        displayName: 'Chore 2',
+        status: 'completed',
+        completedAt: Temporal.Instant.from('2026-10-23T12:02:00Z'),
+      },
+      {
+        id: TaskQueueItemIdSchema.parse('chore-3'),
+        sourcePath: 'chores/chore-3.md',
+        displayName: 'Chore 3',
+        status: 'viewed',
+        completedAt: null,
+      },
+    ]
+
+    const context = buildContext(completedItemsPhase, 'chores/chore-3.md', itemsTouched)
+    const mutations = await hook(context)
+
+    expect(prompt.prompt).not.toHaveBeenCalled()
+    expect(mutations).toEqual([
+      { kind: 'frontmatter', filePath: 'chores/chore-1.md', property: 'sessions', value: 1 },
+      { kind: 'frontmatter', filePath: 'chores/chore-2.md', property: 'sessions', value: 1 },
+    ])
+  })
+
+  test('batch write-back succeeds when activeFilePath is null upon queue depletion', async () => {
+    const reader = createFakeReader(2)
+    const hook = createWriteBackHook(createDeps({
+      frontmatterReader: reader,
+      getConfirmWriteBack: () => false,
+    }))
+
+    const itemsTouched: readonly ItemTouch[] = [
+      {
+        id: TaskQueueItemIdSchema.parse('chore-1'),
+        sourcePath: 'chores/chore-1.md',
+        displayName: 'Chore 1',
+        status: 'completed',
+        completedAt: Temporal.Instant.from('2026-10-23T12:01:00Z'),
+      },
+      {
+        id: TaskQueueItemIdSchema.parse('chore-2'),
+        sourcePath: 'chores/chore-2.md',
+        displayName: 'Chore 2',
+        status: 'completed',
+        completedAt: Temporal.Instant.from('2026-10-23T12:02:00Z'),
+      },
+    ]
+
+    const context = buildContext(completedItemsPhase, null, itemsTouched)
+    const mutations = await hook(context)
+
+    expect(mutations).toEqual([
+      { kind: 'frontmatter', filePath: 'chores/chore-1.md', property: 'sessions', value: 3 },
+      { kind: 'frontmatter', filePath: 'chores/chore-2.md', property: 'sessions', value: 3 },
+    ])
+  })
+
+  test('zero completed items produces empty mutation list without reading frontmatter or prompting', async () => {
+    const reader = createFakeReader(0)
+    const prompt = createFakePrompt()
+    const hook = createWriteBackHook(createDeps({
+      frontmatterReader: reader,
+      writeBackPrompt: prompt,
+    }))
+
+    const itemsTouched: readonly ItemTouch[] = [
+      {
+        id: TaskQueueItemIdSchema.parse('chore-1'),
+        sourcePath: 'chores/chore-1.md',
+        displayName: 'Chore 1',
+        status: 'viewed',
+        completedAt: null,
+      },
+    ]
+
+    const context = buildContext(completedItemsPhase, null, itemsTouched)
+    const mutations = await hook(context)
+
+    expect(mutations).toEqual([])
+    expect(reader.readValue).not.toHaveBeenCalled()
+    expect(prompt.prompt).not.toHaveBeenCalled()
+  })
+
+  test('prompts each completed item sequentially and skips cancelled items', async () => {
+    const reader = createFakeReader(1)
+    const prompt = createFakePrompt((defaults) => {
+      if (defaults.filePath === 'chores/chore-1.md') {
+        return { kind: 'submitted', values: { ...defaults, value: 10 } }
+      }
+      return { kind: 'cancelled' }
+    })
+    const hook = createWriteBackHook(createDeps({
+      frontmatterReader: reader,
+      writeBackPrompt: prompt,
+      getConfirmWriteBack: () => true,
+    }))
+
+    const itemsTouched: readonly ItemTouch[] = [
+      {
+        id: TaskQueueItemIdSchema.parse('chore-1'),
+        sourcePath: 'chores/chore-1.md',
+        displayName: 'Chore 1',
+        status: 'completed',
+        completedAt: Temporal.Instant.from('2026-10-23T12:01:00Z'),
+      },
+      {
+        id: TaskQueueItemIdSchema.parse('chore-2'),
+        sourcePath: 'chores/chore-2.md',
+        displayName: 'Chore 2',
+        status: 'completed',
+        completedAt: Temporal.Instant.from('2026-10-23T12:02:00Z'),
+      },
+    ]
+
+    const context = buildContext(completedItemsPhase, null, itemsTouched)
+    const mutations = await hook(context)
+
+    expect(prompt.prompt).toHaveBeenCalledTimes(2)
+    expect(mutations).toEqual([
+      { kind: 'frontmatter', filePath: 'chores/chore-1.md', property: 'sessions', value: 10 },
+    ])
+  })
+})
+
+describe('resolveTargetFilePaths', () => {
+  test('returns empty array when logTarget is null', () => {
+    const nullTargetPhase = PhaseSchema.parse({ ...phaseDefaults, id: 'rest', kind: 'break', logTarget: null })
+    const paths = resolveTargetFilePaths(nullTargetPhase, null, 'active.md', createFakeRegistry())
+    expect(paths).toEqual([])
+  })
+
+  test('returns activeFilePath when logTarget is activeItem', () => {
+    const paths = resolveTargetFilePaths(activeItemPhase, null, 'task.md', createFakeRegistry())
+    expect(paths).toEqual(['task.md'])
+  })
+
+  test('returns empty array when activeItem has null activeFilePath', () => {
+    const paths = resolveTargetFilePaths(activeItemPhase, null, null, createFakeRegistry())
+    expect(paths).toEqual([])
+  })
+
+  test('returns deduplicated list of completed items for completedItems logTarget', () => {
+    const now = Temporal.Now.instant()
+    const instance = {
+      id: PhaseInstanceIdSchema.parse(crypto.randomUUID()),
+      phaseId: completedItemsPhase.id,
+      phaseDisplayName: completedItemsPhase.label,
+      phaseKind: completedItemsPhase.kind,
+      plannedDuration: completedItemsPhase.duration,
+      actualDuration: Temporal.Duration.from({ seconds: 0 }),
+      startedAt: now,
+      endedAt: now,
+      endReason: 'completed' as const,
+      itemsTouched: [
+        {
+          id: TaskQueueItemIdSchema.parse('t-1'),
+          sourcePath: 'tasks/task-1.md',
+          displayName: 'Task 1',
+          status: 'completed' as const,
+          completedAt: now,
+        },
+        {
+          id: TaskQueueItemIdSchema.parse('t-2'),
+          sourcePath: 'tasks/task-2.md',
+          displayName: 'Task 2',
+          status: 'viewed' as const,
+          completedAt: null,
+        },
+        {
+          id: TaskQueueItemIdSchema.parse('t-1-repeat'),
+          sourcePath: 'tasks/task-1.md',
+          displayName: 'Task 1',
+          status: 'completed' as const,
+          completedAt: now,
+        },
+      ],
+      mutationsApplied: [],
+      hookFailures: [],
+    }
+
+    const paths = resolveTargetFilePaths(completedItemsPhase, instance, null, createFakeRegistry())
+    expect(paths).toEqual(['tasks/task-1.md'])
+  })
+
+  test('returns empty array for completedItems when instance is missing or has no completed items', () => {
+    expect(resolveTargetFilePaths(completedItemsPhase, null, null, createFakeRegistry())).toEqual([])
+  })
+
+  test('returns resolved callback path when callback resolver exists and returns string', () => {
+    const registry = createFakeRegistry({
+      [LogTargetResolverNameSchema.parse('dailyNote')]: () => 'daily/note.md',
+    })
+    expect(resolveTargetFilePaths(callbackPhase, null, null, registry)).toEqual(['daily/note.md'])
+  })
+
+  test('returns empty array when callback resolver returns null', () => {
+    const registry = createFakeRegistry({
+      [LogTargetResolverNameSchema.parse('dailyNote')]: () => null,
+    })
+    expect(resolveTargetFilePaths(callbackPhase, null, null, registry)).toEqual([])
   })
 })

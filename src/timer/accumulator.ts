@@ -36,6 +36,9 @@ function resolveLogTargetFilePath(
   if (phase.logTarget.kind === 'activeItem') {
     return nonEmptyString(activeFilePath)
   }
+  if (phase.logTarget.kind === 'completedItems') {
+    return null
+  }
   if (registry !== undefined) {
     const resolver = registry.resolve(phase.logTarget.name)
     return resolver === undefined ? null : nonEmptyString(resolver(phase))

@@ -23,10 +23,14 @@ export type PhaseInstanceEndReason = 'completed' | 'skipped' | 'abandoned'
  * TaskQueueItemId from a live, mutable Bases-query-backed queue isn't guaranteed re-resolvable
  * later (the note can be renamed, moved, or drop out of the query).
  */
+export type ItemTouchStatus = 'viewed' | 'completed'
+
 export interface ItemTouch {
   readonly id: TaskQueueItemId
   readonly sourcePath: string
   readonly displayName: string
+  readonly status: ItemTouchStatus
+  readonly completedAt: Temporal.Instant | null
 }
 
 /**

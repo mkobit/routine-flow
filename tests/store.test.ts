@@ -284,7 +284,7 @@ describe('EngineStore item-touch snapshotting', () => {
     await store.dispatch({ type: 'set-active-file', filePath: 'rep-1.md' })
 
     expect(store.getState().session?.currentInstance?.itemsTouched).toEqual([
-      { id: item.id, sourcePath: item.sourcePath, displayName: item.displayName },
+      { id: item.id, sourcePath: item.sourcePath, displayName: item.displayName, status: 'viewed', completedAt: null },
     ])
   })
 
@@ -300,7 +300,7 @@ describe('EngineStore item-touch snapshotting', () => {
     await store.dispatch({ type: 'tick' }) // any later dispatch re-runs syncItemTouch against the mutated item
 
     expect(store.getState().session?.currentInstance?.itemsTouched).toEqual([
-      { id: item.id, sourcePath: item.sourcePath, displayName: item.displayName },
+      { id: item.id, sourcePath: item.sourcePath, displayName: item.displayName, status: 'viewed', completedAt: null },
     ])
   })
 })

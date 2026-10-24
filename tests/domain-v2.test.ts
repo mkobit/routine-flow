@@ -45,6 +45,12 @@ describe('PhaseLogTargetSchema', () => {
     expect(result.success).toBe(true)
   })
 
+  test('parses a completedItems log target with no additional parameters', () => {
+    const result = PhaseSchema.safeParse({ ...minimalPhase, logTarget: { kind: 'completedItems' } })
+    expect(result.success).toBe(true)
+    expect(result.success && result.data.logTarget).toEqual({ kind: 'completedItems' })
+  })
+
   test('parses a callback log target carrying a resolver name', () => {
     const result = PhaseSchema.safeParse({ ...minimalPhase, logTarget: { kind: 'callback', name: 'dailyNote' } })
     expect(result.success).toBe(true)

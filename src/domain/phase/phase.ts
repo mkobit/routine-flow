@@ -44,6 +44,7 @@ export type LogTargetResolverName = z.infer<typeof LogTargetResolverNameSchema>
  */
 export const PhaseLogTargetSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('activeItem') }).readonly(),
+  z.object({ kind: z.literal('completedItems') }).readonly(),
   z.object({ kind: z.literal('callback'), name: LogTargetResolverNameSchema }).readonly(),
 ]).readonly()
 export type PhaseLogTarget = z.infer<typeof PhaseLogTargetSchema>

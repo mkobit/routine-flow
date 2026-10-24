@@ -2,10 +2,10 @@
 
 ## 1. Domain model and multi-item completion tracking (flow-xne.2)
 
-- [ ] 1.1 Update `ItemTouch` in `src/domain/session/session.ts` to include `status: 'viewed' | 'completed'` and `completedAt: Temporal.Instant | null`, and verify unit tests in `tests/session.test.ts` pass.
-- [ ] 1.2 Add pure action `record-item-completion` to `src/timer/reducer.ts` to update `itemsTouched` immutably, and verify unit tests in `tests/timer.test.ts` pass.
-- [ ] 1.3 Update `PhaseLogTargetSchema` in `src/domain/phase/phase.ts` to support `{ kind: 'completedItems' }`, and verify schema validation tests in `tests/phase-graph-integrity.test.ts` pass.
-- [ ] 1.4 Implement batch log target resolution and mutation derivation in `src/timer/write-back.ts`, and verify unit tests in `tests/write-back.test.ts` pass.
+- [x] 1.1 Update `ItemTouch` in `src/domain/session/session.ts` to include `status: 'viewed' | 'completed'` and `completedAt: Temporal.Instant | null`, and verify unit tests in `tests/session.test.ts` pass.
+- [x] 1.2 Add pure action `record-item-completion` to `src/timer/reducer.ts` to update `itemsTouched` immutably, and verify unit tests in `tests/timer.test.ts` pass.
+- [x] 1.3 Update `PhaseLogTargetSchema` in `src/domain/phase/phase.ts` to support `{ kind: 'completedItems' }`, and verify schema validation tests in `tests/phase-graph-integrity.test.ts` pass.
+- [x] 1.4 Implement batch log target resolution and mutation derivation in `src/timer/write-back.ts`, and verify unit tests in `tests/write-back.test.ts` pass.
 
 ## 2. Early phase termination on queue exhaustion (flow-xne.1)
 
