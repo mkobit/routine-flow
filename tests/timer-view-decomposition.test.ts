@@ -39,7 +39,23 @@ class MockElement {
     return this.className.split(' ').filter(Boolean).includes(cls)
   }
 
+  getElementsByClassName(cls: string): MockElement[] {
+    return this.children.filter(c => c.hasClass(cls))
+  }
+
+  parentElement: MockElement | null = null
+
+  remove(): void {
+    if (this.parentElement) {
+      this.parentElement.children = this.parentElement.children.filter(c => c !== this)
+      this.parentElement.childElementCount = this.parentElement.children.length
+    }
+  }
+
   empty(): void {
+    for (const c of this.children) {
+      c.parentElement = null
+    }
     this.children = []
     this.childElementCount = 0
   }
@@ -86,6 +102,7 @@ class MockElement {
         child.setAttribute(k, v)
       }
     }
+    child.parentElement = this
     this.children.push(child)
     this.childElementCount = this.children.length
     return child
@@ -102,6 +119,7 @@ class MockElement {
         child.setAttribute(k, v)
       }
     }
+    child.parentElement = this
     this.children.push(child)
     this.childElementCount = this.children.length
     return child
@@ -121,6 +139,7 @@ class MockElement {
         child.setAttribute(k, v)
       }
     }
+    child.parentElement = this
     this.children.push(child)
     this.childElementCount = this.children.length
     return child
@@ -132,6 +151,7 @@ class MockElement {
     if (o?.cls) {
       child.addClass(o.cls)
     }
+    child.parentElement = this
     this.children.push(child)
     this.childElementCount = this.children.length
     return child
@@ -961,6 +981,260 @@ describe('Timer view decomposition', () => {
       // Plain task without extraProperties should NOT have routine-queue-badges container
       const badgesContainer2 = row2?.children.find(c => c.hasClass('routine-queue-badges'))
       expect(badgesContainer2).toBeUndefined()
+    })
+
+    test('renders dynamic completed chore counter badge in queue panel header', () => {
+      const queueEl = new MockElement()
+      // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- mock App
+      const app = new MockApp() as unknown as AppType
+      const item: TaskQueueItem = {
+        id: TaskQueueItemIdSchemaParse('item-1'),
+        sourcePath: 'tasks/task-1.md',
+        displayName: 'Task 1',
+        cycleStatus: 'pending',
+        timeSpent: Temporal.Duration.from({ minutes: 0 }),
+        lastCycledAt: null,
+      }
+
+      // 0 chores completed
+      renderQueuePanelFn(asElement(queueEl), {
+        phase: createDummyPhase(),
+        activeFilePath: 'tasks/task-1.md',
+        queueItems: [item],
+        completedCount: 0,
+        app,
+        onSelectTask: () => {},
+      })
+
+      const header = queueEl.children.find(c => c.hasClass('routine-queue-header'))
+      const badge0 = header?.children.find(c => c.hasClass('routine-queue-completed-badge'))
+      expect(badge0).toBeDefined()
+      expect(badge0?.getText()).toBe('0 chores completed')
+
+      // 1 chore completed (singular)
+      renderQueuePanelFn(asElement(queueEl), {
+        phase: createDummyPhase(),
+        activeFilePath: 'tasks/task-1.md',
+        queueItems: [item],
+        completedCount: 1,
+        app,
+        onSelectTask: () => {},
+      })
+      const header1 = queueEl.children.find(c => c.hasClass('routine-queue-header'))
+      const badge1 = header1?.children.find(c => c.hasClass('routine-queue-completed-badge'))
+      expect(badge1?.getText()).toBe('1 chore completed')
+
+      // 3 chores completed (plural)
+      renderQueuePanelFn(asElement(queueEl), {
+        phase: createDummyPhase(),
+        activeFilePath: 'tasks/task-1.md',
+        queueItems: [item],
+        completedCount: 3,
+        app,
+        onSelectTask: () => {},
+      })
+      const header3 = queueEl.children.find(c => c.hasClass('routine-queue-header'))
+      const badge3 = header3?.children.find(c => c.hasClass('routine-queue-completed-badge'))
+      expect(badge3?.getText()).toBe('3 chores completed')
+    })
+
+    test('clicking markDone immediately increments counter and advances active task selection to next candidate', async () => {
+      const queueEl = new MockElement()
+      // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- mock App
+      const app = new MockApp() as unknown as AppType
+      const blitzPhase: Phase = {
+        ...createDummyPhase(),
+        actions: [
+          {
+            id: 'done',
+            label: 'Done',
+            style: 'primary',
+            payload: { kind: 'markDone' },
+          },
+        ],
+      }
+      const item1: TaskQueueItem = {
+        id: TaskQueueItemIdSchemaParse('item-1'),
+        sourcePath: 'tasks/task-1.md',
+        displayName: 'Task 1',
+        cycleStatus: 'pending',
+        timeSpent: Temporal.Duration.from({ minutes: 0 }),
+        lastCycledAt: null,
+      }
+      const item2: TaskQueueItem = {
+        id: TaskQueueItemIdSchemaParse('item-2'),
+        sourcePath: 'tasks/task-2.md',
+        displayName: 'Task 2',
+        cycleStatus: 'pending',
+        timeSpent: Temporal.Duration.from({ minutes: 0 }),
+        lastCycledAt: null,
+      }
+
+      let selectedPath = ''
+      let executedAction: unknown = null
+      let executedPath = ''
+      let dispatchedAction: unknown = null
+
+      renderQueuePanelFn(asElement(queueEl), {
+        phase: blitzPhase,
+        activeFilePath: 'tasks/task-1.md',
+        queueItems: [item1, item2],
+        completedCount: 0,
+        app,
+        actionExecutor: {
+          executeAction: async (action, targetPath) => {
+            executedAction = action
+            executedPath = targetPath ?? ''
+            return { success: true }
+          },
+          dispatch: async (action) => {
+            dispatchedAction = action
+            return []
+          },
+        },
+        onSelectTask: (path) => {
+          selectedPath = path
+        },
+      })
+
+      const header = queueEl.children.find(c => c.hasClass('routine-queue-header'))
+      const counterBadge = header?.children.find(c => c.hasClass('routine-queue-completed-badge'))
+      expect(counterBadge?.getText()).toBe('0 chores completed')
+
+      const ul = queueEl.children.find(c => c.tagName === 'UL')
+      const li1 = ul?.children[0]
+      const li2 = ul?.children[1]
+      expect(li1?.hasClass('is-active-task')).toBe(true)
+      expect(li2?.hasClass('is-active-task')).toBe(false)
+
+      const actionsEl = li1?.children.find(c => c.hasClass('routine-queue-actions'))
+      const doneBtn = actionsEl?.children.find(c => c.getText() === 'Done')
+      expect(doneBtn).toBeDefined()
+
+      // Click Done on item 1
+      doneBtn?.click()
+
+      // 1. Dispatches record-item-completion
+      expect(dispatchedAction).toEqual({ type: 'record-item-completion', itemId: TaskQueueItemIdSchemaParse('item-1') })
+
+      // 2. Counter updates immediately
+      expect(counterBadge?.getText()).toBe('1 chore completed')
+
+      // 3. Selection advances immediately to next candidate
+      expect(li1?.hasClass('is-active-task')).toBe(false)
+      expect(li2?.hasClass('is-active-task')).toBe(true)
+      expect(selectedPath).toBe('tasks/task-2.md')
+
+      // 4. Next candidate has action controls ready
+      const actionsEl2 = li2?.children.find(c => c.hasClass('routine-queue-actions'))
+      expect(actionsEl2).toBeDefined()
+      const doneBtn2 = actionsEl2?.children.find(c => c.getText() === 'Done')
+      expect(doneBtn2).toBeDefined()
+
+      // 5. File mutation executed asynchronously
+      expect(executedAction).toEqual(blitzPhase.actions[0])
+      expect(executedPath).toBe('tasks/task-1.md')
+    })
+
+    test('rapid sequential markDone check-offs advance across tasks without lag', async () => {
+      const queueEl = new MockElement()
+      // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- mock App
+      const app = new MockApp() as unknown as AppType
+      const blitzPhase: Phase = {
+        ...createDummyPhase(),
+        actions: [
+          {
+            id: 'done',
+            label: 'Done',
+            style: 'primary',
+            payload: { kind: 'markDone' },
+          },
+        ],
+      }
+      const item1: TaskQueueItem = {
+        id: TaskQueueItemIdSchemaParse('item-1'),
+        sourcePath: 'tasks/task-1.md',
+        displayName: 'Task 1',
+        cycleStatus: 'pending',
+        timeSpent: Temporal.Duration.from({ minutes: 0 }),
+        lastCycledAt: null,
+      }
+      const item2: TaskQueueItem = {
+        id: TaskQueueItemIdSchemaParse('item-2'),
+        sourcePath: 'tasks/task-2.md',
+        displayName: 'Task 2',
+        cycleStatus: 'pending',
+        timeSpent: Temporal.Duration.from({ minutes: 0 }),
+        lastCycledAt: null,
+      }
+      const item3: TaskQueueItem = {
+        id: TaskQueueItemIdSchemaParse('item-3'),
+        sourcePath: 'tasks/task-3.md',
+        displayName: 'Task 3',
+        cycleStatus: 'pending',
+        timeSpent: Temporal.Duration.from({ minutes: 0 }),
+        lastCycledAt: null,
+      }
+
+      let executedPaths: readonly string[] = []
+      let dispatchedCompletions: readonly string[] = []
+      let selectedPaths: readonly string[] = []
+
+      renderQueuePanelFn(asElement(queueEl), {
+        phase: blitzPhase,
+        activeFilePath: 'tasks/task-1.md',
+        queueItems: [item1, item2, item3],
+        completedCount: 0,
+        app,
+        actionExecutor: {
+          executeAction: async (_action, targetPath) => {
+            if (targetPath) {
+              executedPaths = [...executedPaths, targetPath]
+            }
+            return { success: true }
+          },
+          dispatch: async (action) => {
+            if (typeof action === 'object' && action !== null && 'itemId' in action) {
+              dispatchedCompletions = [...dispatchedCompletions, String(action.itemId)]
+            }
+            return []
+          },
+        },
+        onSelectTask: (path) => {
+          selectedPaths = [...selectedPaths, path]
+        },
+      })
+
+      const header = queueEl.children.find(c => c.hasClass('routine-queue-header'))
+      const counterBadge = header?.children.find(c => c.hasClass('routine-queue-completed-badge'))
+      const ul = queueEl.children.find(c => c.tagName === 'UL')
+
+      // Click Done on item 1
+      const doneBtn1 = ul?.children[0]?.children.find(c => c.hasClass('routine-queue-actions'))?.children.find(c => c.getText() === 'Done')
+      doneBtn1?.click()
+
+      expect(counterBadge?.getText()).toBe('1 chore completed')
+      expect(ul?.children[1]?.hasClass('is-active-task')).toBe(true)
+
+      // Click Done on item 2 immediately
+      const doneBtn2 = ul?.children[1]?.children.find(c => c.hasClass('routine-queue-actions'))?.children.find(c => c.getText() === 'Done')
+      expect(doneBtn2).toBeDefined()
+      doneBtn2?.click()
+
+      expect(counterBadge?.getText()).toBe('2 chores completed')
+      expect(ul?.children[2]?.hasClass('is-active-task')).toBe(true)
+
+      // Click Done on item 3 immediately
+      const doneBtn3 = ul?.children[2]?.children.find(c => c.hasClass('routine-queue-actions'))?.children.find(c => c.getText() === 'Done')
+      expect(doneBtn3).toBeDefined()
+      doneBtn3?.click()
+
+      expect(counterBadge?.getText()).toBe('3 chores completed')
+      expect(ul?.children.some(li => li.hasClass('is-active-task'))).toBe(false)
+
+      expect(dispatchedCompletions).toEqual(['item-1', 'item-2', 'item-3'])
+      expect(executedPaths).toEqual(['tasks/task-1.md', 'tasks/task-2.md', 'tasks/task-3.md'])
+      expect(selectedPaths).toEqual(['tasks/task-2.md', 'tasks/task-3.md'])
     })
   })
 

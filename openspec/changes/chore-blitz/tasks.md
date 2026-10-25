@@ -15,9 +15,9 @@
 
 ## 3. Queue panel rapid interactions and completion counter (flow-xne.3)
 
-- [ ] 3.1 Add dynamic completed chore counter to queue panel header in `src/views/timer/queue-panel.ts`, and verify rendered counter matches completed items in tests.
-- [ ] 3.2 Implement immediate active task selection advancement upon `markDone` execution in `src/views/timer/queue-panel.ts`, and verify sequential rapid check-offs in tests.
-- [ ] 3.3 Add styling for completed chore counter badge in `styles.css`, and verify appearance in vault.
+- [x] 3.1 Add dynamic completed chore counter to queue panel header in `src/views/timer/queue-panel.ts`, and verify rendered counter matches completed items in tests.
+- [x] 3.2 Implement immediate active task selection advancement upon `markDone` execution in `src/views/timer/queue-panel.ts`, and verify sequential rapid check-offs in tests.
+- [x] 3.3 Add styling for completed chore counter badge in `styles.css`, and verify appearance in vault.
 
 ## 4. Visual exhaustion transition and early exit feedback (flow-xne.4)
 

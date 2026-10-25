@@ -5,6 +5,7 @@ import type { Phase } from '../../domain/phase/phase'
 import type { TaskQueueItem, TaskQueueItemId } from '../../domain/queue/task-source'
 import type { QueueItemAction } from '../../domain/action/queue-item-action'
 import type { ApplyMutationsResult } from '../../domain/mutation/apply-mutations'
+import type { EngineAction } from '../../timer/reducer'
 import { FOCUS_PHASE_KIND, SELECTOR_PHASE_KIND } from '../../timer/phase-graph-query'
 import { createDecelerationSchedule, selectRandomQueueItem } from '../../domain/queue/random-task-selector'
 import { projectQueueItemBadges } from '../../domain/queue/queue-badge'
@@ -13,6 +14,7 @@ import { renderStateIcon } from './state-icon'
 export interface QueueActionExecutor {
   readonly executeAction: (action: QueueItemAction, targetPath?: string) => Promise<ApplyMutationsResult | null>
   readonly reorderQueueItem?: (itemId: TaskQueueItemId, position: 'front' | 'back') => Promise<ApplyMutationsResult | null>
+  readonly dispatch?: (action: EngineAction) => Promise<unknown>
 }
 
 export interface QueuePanelOptions {
@@ -23,6 +25,7 @@ export interface QueuePanelOptions {
   readonly actionExecutor?: QueueActionExecutor
   readonly onSelectTask: (filePath: string) => void
   readonly onOpenFile?: (filePath: string) => void
+  readonly completedCount?: number
   readonly rng?: () => number
   readonly scheduleTotalSteps?: number
   readonly prefersReducedMotion?: boolean
@@ -74,6 +77,15 @@ export function renderQueuePanel(queueEl: HTMLElement, options: QueuePanelOption
   const headerEl = queueEl.createDiv({ cls: 'routine-queue-header' })
   headerEl.createEl('h3', { text: queueTitle })
 
+  let counterEl: HTMLElement | null = null
+  let localCompletedCount = options.completedCount ?? 0
+  if (options.completedCount !== undefined) {
+    counterEl = headerEl.createSpan({
+      cls: 'routine-queue-completed-badge',
+      text: `${localCompletedCount} ${localCompletedCount === 1 ? 'chore' : 'chores'} completed`,
+    })
+  }
+
   const liveRegion = queueEl.createDiv({
     cls: 'routine-queue-announcer sr-only',
     attr: {
@@ -110,6 +122,69 @@ export function renderQueuePanel(queueEl: HTMLElement, options: QueuePanelOption
   }
 
   const ul = queueEl.createEl('ul')
+  let completedPaths: readonly string[] = []
+  let currentActivePath = options.activeFilePath
+
+  const renderItemActions = (li: HTMLElement, item: TaskQueueItem): HTMLElement | null => {
+    if (options.phase.actions.length === 0) {
+      return null
+    }
+    const actionsEl = li.createDiv({ cls: 'routine-queue-actions' })
+
+    for (const action of options.phase.actions) {
+      const actionBtn = actionsEl.createEl('button', {
+        cls: `routine-action-btn${action.style ? ` mod-${action.style === 'primary' ? 'cta' : action.style === 'destructive' ? 'warning' : action.style}` : ''}`,
+        text: action.label,
+      })
+      actionBtn.addEventListener('click', (e) => {
+        e.stopPropagation()
+
+        if (action.payload.kind === 'markDone') {
+          void options.actionExecutor?.dispatch?.({ type: 'record-item-completion', itemId: item.id })
+
+          localCompletedCount++
+          if (counterEl) {
+            counterEl.setText(`${localCompletedCount} ${localCompletedCount === 1 ? 'chore' : 'chores'} completed`)
+          }
+
+          completedPaths = [...completedPaths, item.sourcePath]
+          li.removeClass('is-active-task')
+          actionsEl.remove()
+
+          const nextEntry = itemEls.find((entry) => {
+            return !completedPaths.includes(entry.item.sourcePath) && entry.item.sourcePath !== item.sourcePath
+          })
+          if (nextEntry) {
+            currentActivePath = nextEntry.item.sourcePath
+            nextEntry.li.addClass('is-active-task')
+            renderItemActions(nextEntry.li, nextEntry.item)
+            options.onSelectTask(nextEntry.item.sourcePath)
+          }
+          else {
+            currentActivePath = null
+          }
+        }
+
+        if (options.actionExecutor) {
+          void (async () => {
+            try {
+              const result = await options.actionExecutor?.executeAction(action, item.sourcePath)
+              if (result !== null && result !== undefined && !result.success) {
+                const causeMsg = result.cause instanceof Error ? result.cause.message : String(result.cause)
+                new Notice(`Routine Flow: action failed (${action.label}) — ${causeMsg}`)
+              }
+            }
+            catch (cause: unknown) {
+              const causeMsg = cause instanceof Error ? cause.message : String(cause)
+              new Notice(`Routine Flow: action failed (${action.label}) — ${causeMsg}`)
+            }
+          })()
+        }
+      })
+    }
+    return actionsEl
+  }
+
   const itemEls = options.queueItems.map((item) => {
     const li = ul.createEl('li')
     const itemRow = li.createDiv({ cls: 'routine-queue-item-row' })
@@ -157,33 +232,7 @@ export function renderQueuePanel(queueEl: HTMLElement, options: QueuePanelOption
         li.addClass('is-roulette-winner')
         liveRegion.setText(`Selected task: ${item.displayName}`)
       }
-      if (options.phase.actions.length > 0) {
-        const actionsEl = li.createDiv({ cls: 'routine-queue-actions' })
-        for (const action of options.phase.actions) {
-          const actionBtn = actionsEl.createEl('button', {
-            cls: `routine-action-btn${action.style ? ` mod-${action.style === 'primary' ? 'cta' : action.style === 'destructive' ? 'warning' : action.style}` : ''}`,
-            text: action.label,
-          })
-          actionBtn.addEventListener('click', (e) => {
-            e.stopPropagation()
-            if (options.actionExecutor) {
-              void (async () => {
-                try {
-                  const result = await options.actionExecutor?.executeAction(action, item.sourcePath)
-                  if (result !== null && result !== undefined && !result.success) {
-                    const causeMsg = result.cause instanceof Error ? result.cause.message : String(result.cause)
-                    new Notice(`Routine Flow: action failed (${action.label}) — ${causeMsg}`)
-                  }
-                }
-                catch (cause: unknown) {
-                  const causeMsg = cause instanceof Error ? cause.message : String(cause)
-                  new Notice(`Routine Flow: action failed (${action.label}) — ${causeMsg}`)
-                }
-              })()
-            }
-          })
-        }
-      }
+      renderItemActions(li, item)
     }
 
     taskBtn.addEventListener('click', () => {
@@ -194,6 +243,21 @@ export function renderQueuePanel(queueEl: HTMLElement, options: QueuePanelOption
         triggerWinnerSelection(item, li)
         return
       }
+      if (currentActivePath === item.sourcePath) {
+        return
+      }
+      for (const entry of itemEls) {
+        if (entry.item.sourcePath === currentActivePath) {
+          entry.li.removeClass('is-active-task')
+          const actionsList = entry.li.getElementsByClassName('routine-queue-actions')
+          for (const act of Array.from(actionsList)) {
+            act.remove()
+          }
+        }
+      }
+      currentActivePath = item.sourcePath
+      li.addClass('is-active-task')
+      renderItemActions(li, item)
       options.onSelectTask(item.sourcePath)
     })
 
