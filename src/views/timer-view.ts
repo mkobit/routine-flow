@@ -262,12 +262,17 @@ export class RoutineTimerView extends BasesView {
 
     const isSelector = phase.kind === SELECTOR_PHASE_KIND
 
+    const completedCount = state.session?.currentInstance?.itemsTouched.filter((touch) => {
+      return touch.status === 'completed'
+    }).length ?? 0
+
     renderQueuePanel(queueEl, {
       phase,
       activeFilePath: state.activeFilePath,
       queueItems,
       app: this.plugin.app,
       actionExecutor: this.plugin.store,
+      completedCount,
       onSelectTask: (filePath) => {
         if (isSelector) {
           void handleSelectorWinner(this.plugin.store, phase, filePath, msg => new Notice(msg))

@@ -436,6 +436,21 @@
   color: var(--text-normal);
 }
 
+.routine-queue-completed-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--size-2-1);
+  font-size: var(--font-ui-smaller);
+  line-height: var(--line-height-tight);
+  padding: var(--size-2-1) var(--size-4-2);
+  border-radius: var(--radius-full);
+  background-color: var(--background-secondary);
+  color: var(--text-muted);
+  font-weight: var(--font-medium);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
 .routine-queue-header-toolbar {
   display: flex;
   align-items: center;
