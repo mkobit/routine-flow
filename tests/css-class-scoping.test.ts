@@ -454,6 +454,10 @@ describe('CSS class scoping & theme customization', () => {
     expect(content).toContain('--routine-flow-tick-count:')
     expect(content).toContain('--routine-flow-tick-mark-fraction:')
     expect(content).toContain('.routine-queue-completed-badge')
+    expect(content).toContain('.routine-timer-panel.routine-blitz-exhausted')
+    expect(content).toContain('.routine-blitz-celebration')
+    expect(content).toContain('.routine-countdown-dial.is-exhausted')
+    expect(content).toContain('.routine-queue-empty.is-queue-exhausted')
 
     // Must define fallback for paused accent
     expect(content).toContain('var(--color-orange, var(--text-warning))')

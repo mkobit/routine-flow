@@ -96,8 +96,15 @@ export function renderQueuePanel(queueEl: HTMLElement, options: QueuePanelOption
 
   if (options.queueItems.length === 0) {
     const emptyEl = queueEl.createDiv({ cls: 'routine-queue-empty' })
-    renderStateIcon(emptyEl, ['inbox', 'list-x'])
-    emptyEl.createEl('p', { text: 'No notes match — check this routine\'s queue filter.' })
+    if (options.completedCount && options.completedCount > 0) {
+      emptyEl.addClass('is-queue-exhausted')
+      renderStateIcon(emptyEl, ['check-check', 'check'])
+      emptyEl.createEl('p', { text: 'All chores completed early — queue exhausted.' })
+    }
+    else {
+      renderStateIcon(emptyEl, ['inbox', 'list-x'])
+      emptyEl.createEl('p', { text: 'No notes match — check this routine\'s queue filter.' })
+    }
     return
   }
 
@@ -162,6 +169,12 @@ export function renderQueuePanel(queueEl: HTMLElement, options: QueuePanelOption
           }
           else {
             currentActivePath = null
+            const celebrationNotice = queueEl.createDiv({ cls: 'routine-blitz-celebration' })
+            renderStateIcon(celebrationNotice, ['check-check', 'check'])
+            celebrationNotice.createSpan({
+              cls: 'routine-blitz-celebration-text',
+              text: 'All chores completed early!',
+            })
           }
         }
 

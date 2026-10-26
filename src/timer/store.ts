@@ -13,7 +13,7 @@ import { deriveActionMutations } from '../domain/action/derive-action-mutations'
 import type { QueueItemAction } from '../domain/action/queue-item-action'
 import type { TaskQueueItemId } from '../domain/queue/task-source'
 import type { EngineDeps } from './engine-deps'
-import { findPhaseById } from './phase-graph-query'
+import { findPhaseById, hasQueueExhaustedTransition } from './phase-graph-query'
 import { executeHandlers } from './handler-executor'
 import type { HandlerContext } from './handler-executor'
 
@@ -133,13 +133,7 @@ export class EngineStore {
   }
 
   private hasQueueExhaustedTransition(phaseId: PhaseId): boolean {
-    const candidates = this.graph.transitions.filter(
-      transition => transition.from === phaseId || transition.fromPhaseId === phaseId,
-    )
-    return candidates.some((transition) => {
-      const guard = transition.guard ?? transition.condition
-      return guard?.kind === 'queueExhausted'
-    })
+    return hasQueueExhaustedTransition(this.graph, phaseId)
   }
 
   private async runDispatch(action: EngineAction): Promise<readonly HookEventApplication[]> {
@@ -170,11 +164,20 @@ export class EngineStore {
     now: Temporal.Instant,
   ): Promise<readonly HookEventApplication[]> {
     const prevState = this.state
+    const isEarlyExhaustionExit = stamped.type === 'set-queue-exhausted'
+      && stamped.exhausted
+      && prevState.status === 'running'
+      && this.hasQueueExhaustedTransition(prevState.currentPhaseId)
+
     const nextState = engineReducer(prevState, stamped, this.graph, this.deps)
     this.applyState(nextState)
     this.syncItemTouch()
 
     const { hookRegistry, port, notificationPort, frontmatterReader } = this.deps
+
+    if (notificationPort !== undefined && isEarlyExhaustionExit) {
+      notificationPort.notifyInApp('Routine Flow: Blitz completed early — all tasks finished')
+    }
 
     if (notificationPort !== undefined && prevState.currentPhaseId !== nextState.currentPhaseId && nextState.status !== 'ended') {
       const newPhase = findPhaseById(this.graph, nextState.currentPhaseId)

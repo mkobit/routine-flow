@@ -305,6 +305,7 @@ let renderProgressMeterFn: (dial: HTMLElement, options: {
   isInert: boolean
   duration: TemporalType.Duration | null
   remaining: TemporalType.Duration | null
+  isExhausted?: boolean
 }) => void
 let renderConfigBarFn: (parent: HTMLElement, options: { isConfigOpen: boolean, onToggle: () => void }) => HTMLElement
 let renderConfigPanelFn: (parent: HTMLElement, options: {
@@ -456,6 +457,21 @@ describe('Timer view decomposition', () => {
       expect(dial.style.getPropertyValue('--routine-flow-progress')).toBe('')
       expect(dial.children.some(c => c.hasClass('routine-progress-ring'))).toBe(false)
     })
+
+    test('renders celebratory and exhaustion state with 100% progress when isExhausted is true', () => {
+      const dial = new MockElement()
+      renderProgressMeterFn(asElement(dial), {
+        style: 'radial',
+        isInert: false,
+        duration: Temporal.Duration.from({ minutes: 25 }),
+        remaining: Temporal.Duration.from({ minutes: 12, seconds: 30 }),
+        isExhausted: true,
+      })
+
+      expect(dial.hasClass('is-exhausted')).toBe(true)
+      expect(dial.hasClass('is-celebrating')).toBe(true)
+      expect(dial.style.getPropertyValue('--routine-flow-progress')).toBe('1')
+    })
   })
 
   describe('config-panel', () => {
@@ -499,6 +515,26 @@ describe('Timer view decomposition', () => {
       })
 
       expect(queueEl.children.some(c => c.hasClass('routine-queue-empty'))).toBe(true)
+    })
+
+    test('renders celebratory queue-exhausted empty state when queue items is empty and completedCount > 0', () => {
+      const queueEl = new MockElement()
+      // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- mock App
+      const app = new MockApp() as unknown as AppType
+      renderQueuePanelFn(asElement(queueEl), {
+        phase: createDummyPhase(),
+        activeFilePath: null,
+        queueItems: [],
+        completedCount: 4,
+        app,
+        onSelectTask: () => {},
+      })
+
+      const emptyEl = queueEl.children.find(c => c.hasClass('routine-queue-empty'))
+      expect(emptyEl).toBeDefined()
+      expect(emptyEl?.hasClass('is-queue-exhausted')).toBe(true)
+      expect(emptyEl?.children.some(c => c.getText().includes('All chores completed early — queue exhausted.'))).toBe(true)
+      expect(emptyEl?.children.some(c => c.hasClass('routine-state-icon'))).toBe(true)
     })
 
     test('renders items and handles item list', () => {
@@ -1231,6 +1267,11 @@ describe('Timer view decomposition', () => {
 
       expect(counterBadge?.getText()).toBe('3 chores completed')
       expect(ul?.children.some(li => li.hasClass('is-active-task'))).toBe(false)
+
+      const celebrationNotice = queueEl.children.find(c => c.hasClass('routine-blitz-celebration'))
+      expect(celebrationNotice).toBeDefined()
+      const textEl = celebrationNotice?.children.find(c => c.hasClass('routine-blitz-celebration-text'))
+      expect(textEl?.getText()).toBe('All chores completed early!')
 
       expect(dispatchedCompletions).toEqual(['item-1', 'item-2', 'item-3'])
       expect(executedPaths).toEqual(['tasks/task-1.md', 'tasks/task-2.md', 'tasks/task-3.md'])

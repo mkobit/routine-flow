@@ -21,8 +21,8 @@
 
 ## 4. Visual exhaustion transition and early exit feedback (flow-xne.4)
 
-- [ ] 4.1 Emit in-app Notice toast on early exit due to queue exhaustion in `src/timer/store.ts`, and verify notification port receives alert in unit tests.
-- [ ] 4.2 Render visual celebratory and exhaustion indicators in timer view and progress dial in `src/views/timer-view.ts`, and verify visual transition state.
+- [x] 4.1 Emit in-app Notice toast on early exit due to queue exhaustion in `src/timer/store.ts`, and verify notification port receives alert in unit tests.
+- [x] 4.2 Render visual celebratory and exhaustion indicators in timer view and progress dial in `src/views/timer-view.ts`, and verify visual transition state.
 
 ## 5. Example routine, vault generator, and documentation (flow-xne.5)
 

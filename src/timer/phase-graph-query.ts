@@ -26,6 +26,19 @@ export function findPhaseById(graph: PhaseGraph, id: PhaseId): PhaseNode | undef
 }
 
 /**
+ * Determines whether the specified phase has an outgoing transition guarded by queueExhausted.
+ */
+export function hasQueueExhaustedTransition(graph: PhaseGraph, phaseId: PhaseId): boolean {
+  const candidates = graph.transitions.filter(
+    transition => transition.from === phaseId || transition.fromPhaseId === phaseId,
+  )
+  return candidates.some((transition) => {
+    const guard = transition.guard ?? transition.condition
+    return guard?.kind === 'queueExhausted'
+  })
+}
+
+/**
  * Resolves the next phase that will be entered after the current phase in `state`
  * completes or advances.
  */
