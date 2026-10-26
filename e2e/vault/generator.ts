@@ -3,6 +3,7 @@ import * as path from 'node:path'
 import { generateAudioChimeNotificationsNotes } from './generators/audio-chime-notifications'
 import { generateBreakDurationVariantsNotes } from './generators/break-duration-variants'
 import { generateBugTriageBlitzNotes } from './generators/bug-triage-blitz'
+import { generateChoreBlitzNotes } from './generators/chore-blitz'
 import { generateChoreListNotes } from './generators/chore-list'
 import { generateDeskMicroMovementNotes } from './generators/desk-micro-movement'
 import { generateDogWalkNotes } from './generators/dog-walk'
@@ -32,6 +33,7 @@ export { routineFileNote, routineReadme, indexedPath, slugify } from './routine-
 export * from './generators/audio-chime-notifications'
 export * from './generators/break-duration-variants'
 export * from './generators/bug-triage-blitz'
+export * from './generators/chore-blitz'
 export * from './generators/chore-list'
 export * from './generators/desk-micro-movement'
 export * from './generators/dog-walk'
@@ -66,6 +68,7 @@ const ROUTINE_SEED_OFFSETS = {
   focusSandwich: 9,
   leitnerBox: 10,
   randomSelector: 11,
+  choreBlitz: 12,
 } as const
 
 export const GENERATED_VAULT_FOLDERS = [
@@ -91,6 +94,7 @@ export const GENERATED_VAULT_FOLDERS = [
   'audio-chime-notifications',
   'focus-sandwich',
   'random-selector',
+  'chore-blitz',
 ] as const
 
 export function generateVault(seed: number = resolveVaultSeed()): readonly NoteDefinition[] {
@@ -118,6 +122,7 @@ export function generateVault(seed: number = resolveVaultSeed()): readonly NoteD
     ...generateFocusSandwichNotes(seed + ROUTINE_SEED_OFFSETS.focusSandwich),
     ...generateLeitnerBoxNotes(seed + ROUTINE_SEED_OFFSETS.leitnerBox),
     ...generateRandomSelectorNotes(seed + ROUTINE_SEED_OFFSETS.randomSelector),
+    ...generateChoreBlitzNotes(seed + ROUTINE_SEED_OFFSETS.choreBlitz),
   ]
 }
 

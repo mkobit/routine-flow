@@ -26,9 +26,9 @@
 
 ## 5. Example routine, vault generator, and documentation (flow-xne.5)
 
-- [ ] 5.1 Author `chore-blitz-routine.md` and seed chore notes in `routine-flow-example-vault/`, and verify routine file parses cleanly.
-- [ ] 5.2 Implement fast-check generator in `e2e/vault/generators/chore-blitz.ts`, and verify generator produces valid test vault files.
-- [ ] 5.3 Author Docusaurus guide in `docs/docs/examples/chore-blitz.md` with Mermaid routine diagram and JSON configuration, and verify `bun run docs:build` passes cleanly.
+- [x] 5.1 Author `chore-blitz-routine.md` and seed chore notes in `routine-flow-example-vault/`, and verify routine file parses cleanly.
+- [x] 5.2 Implement fast-check generator in `e2e/vault/generators/chore-blitz.ts`, and verify generator produces valid test vault files.
+- [x] 5.3 Author Docusaurus guide in `docs/docs/examples/chore-blitz.md` with Mermaid routine diagram and JSON configuration, and verify `bun run docs:build` passes cleanly.
 
 ## 6. End-to-end integration and verification suite (flow-xne.6)
 

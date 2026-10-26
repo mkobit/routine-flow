@@ -9,6 +9,7 @@ import {
   GENERATED_VAULT_FOLDERS,
   generateLeitnerBoxNotes,
   generateRandomSelectorNotes,
+  generateChoreBlitzNotes,
   generateVault,
   rebuildGeneratedVault,
   resolveVaultSeed,
@@ -122,6 +123,60 @@ describe('example vault validation', () => {
       expect(task.frontmatter.due).toBeInstanceOf(Temporal.PlainDate)
       if (task.frontmatter.due instanceof Temporal.PlainDate) {
         expect(Temporal.PlainDate.compare(task.frontmatter.due, ANCHOR_DATE)).toBeGreaterThanOrEqual(0)
+      }
+    }
+  })
+
+  test('chore blitz generation is deterministic across seeds and matches Bases query schema', () => {
+    const seeds = [101, 202, 303, 404] as const
+    const routines = seeds.map(generateChoreBlitzNotes)
+
+    for (const [index, seed] of seeds.entries()) {
+      expect(routines[index]).toEqual(generateChoreBlitzNotes(seed))
+    }
+    expect(new Set(routines.map(deck => deck.map(getNoteContent).join('\n'))).size).toBeGreaterThan(1)
+
+    for (const note of routines[0] ?? []) {
+      expect(NoteDefinitionSchema.safeParse(note).success).toBe(true)
+      expect(() => serializeFrontmatter(note.frontmatter)).not.toThrow()
+      expect(getNoteContent(note)).not.toContain('undefined')
+    }
+
+    const defaultNotes = generateChoreBlitzNotes(DEFAULT_VAULT_SEED)
+    const readmeNote = defaultNotes.find(note => note.relativePath.base === 'README.md')
+    expect(readmeNote).toBeDefined()
+
+    const routineNote = defaultNotes.find(note => note.relativePath.base === 'chore-blitz-routine.md')
+    expect(routineNote).toBeDefined()
+    if (routineNote !== undefined) {
+      const parseResult = parseRoutineFile(getNoteContent(routineNote))
+      expect(parseResult.success).toBe(true)
+      if (parseResult.success) {
+        expect(String(parseResult.graph.id)).toBe('chore-blitz')
+        expect(parseResult.graph.phases).toHaveLength(3)
+        const blitzPhase = parseResult.graph.phases.find(phase => phase.id === 'blitz')
+        expect(blitzPhase).toBeDefined()
+        expect(blitzPhase?.logTarget).toEqual({ kind: 'completedItems' })
+        expect(blitzPhase?.actions).toHaveLength(1)
+        expect(blitzPhase?.actions[0]?.payload.kind).toBe('markDone')
+
+        const exhaustedTransition = parseResult.graph.transitions.find(
+          t => t.from === 'blitz' && t.to === 'wrap-up' && t.guard.kind === 'queueExhausted',
+        )
+        expect(exhaustedTransition).toBeDefined()
+      }
+    }
+
+    const choreNotes = defaultNotes.filter(
+      note => note.relativePath.dir === 'chore-blitz' && note.relativePath.base !== 'README.md' && !note.relativePath.base.endsWith('-routine.md'),
+    )
+    expect(choreNotes.length).toBeGreaterThan(0)
+    for (const chore of choreNotes) {
+      expect(chore.frontmatter.type).toBe('chore')
+      expect(typeof chore.frontmatter.priority).toBe('number')
+      expect(chore.frontmatter.due).toBeInstanceOf(Temporal.PlainDate)
+      if (chore.frontmatter.due instanceof Temporal.PlainDate) {
+        expect(Temporal.PlainDate.compare(chore.frontmatter.due, ANCHOR_DATE)).toBeGreaterThanOrEqual(0)
       }
     }
   })
