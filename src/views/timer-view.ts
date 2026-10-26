@@ -52,6 +52,7 @@ export class RoutineTimerView extends BasesView {
 
   onDataUpdated() {
     this.applyAutoAdvance()
+    void this.plugin.store.syncQueueExhausted()
     this.render(this.plugin.store.getState())
   }
 
@@ -131,10 +132,24 @@ export class RoutineTimerView extends BasesView {
     // Timer Panel
     const timerPanel = this.containerEl.createDiv({ cls: 'routine-timer-panel' })
     timerPanel.addClass(`is-${state.status}`)
+    if (state.queueExhausted) {
+      timerPanel.addClass('is-queue-exhausted')
+      timerPanel.addClass('routine-blitz-exhausted')
+      timerPanel.addClass('rf-blitz-exhausted')
+    }
 
     this.renderConfigBar(timerPanel)
     if (this.isConfigOpen) {
       this.renderConfigPanel(timerPanel)
+    }
+
+    if (state.queueExhausted) {
+      const celebrationEl = timerPanel.createDiv({ cls: 'routine-blitz-celebration' })
+      renderStateIcon(celebrationEl, ['check-check', 'check'])
+      celebrationEl.createSpan({
+        cls: 'routine-blitz-celebration-text',
+        text: 'All chores completed early!',
+      })
     }
 
     // Stopwatch header: a single <h2> (what e2e queries) whose child spans read as a watch face --
@@ -149,11 +164,16 @@ export class RoutineTimerView extends BasesView {
     })
     if (countdownTime !== null) {
       const dial = header.createSpan({ cls: 'routine-countdown-dial' })
+      if (state.queueExhausted) {
+        dial.addClass('is-exhausted')
+        dial.addClass('is-celebrating')
+      }
       renderProgressMeter(dial, {
         style: this.plugin.settings.progressMeterStyle,
         isInert,
         duration: phase.duration,
         remaining: state.remaining,
+        isExhausted: state.queueExhausted,
       })
       dial.createSpan({ cls: 'routine-countdown-time', text: countdownTime })
     }

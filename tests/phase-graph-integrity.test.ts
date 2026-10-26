@@ -1,9 +1,9 @@
 import { test, expect, describe } from 'bun:test'
 import { Temporal } from 'temporal-polyfill'
-import { PhaseSchema, PhaseNodeSchema, SELECTOR_PHASE_KIND, FOCUS_PHASE_KIND, BREAK_PHASE_KIND } from '../src/domain/phase/phase'
+import { PhaseSchema, PhaseNodeSchema, PhaseIdSchema, SELECTOR_PHASE_KIND, FOCUS_PHASE_KIND, BREAK_PHASE_KIND } from '../src/domain/phase/phase'
 import { PhaseGraphIdSchema, PhaseGraphSchema, checkPhaseGraphIntegrity } from '../src/domain/phase/phase-graph'
 import type { PhaseGraph } from '../src/domain/phase/phase-graph'
-import { resolveNextPhaseId, findNextPhase } from '../src/timer/phase-graph-query'
+import { resolveNextPhaseId, findNextPhase, hasQueueExhaustedTransition } from '../src/timer/phase-graph-query'
 import { formatPhaseHeader } from '../src/timer/format'
 import type { EngineState } from '../src/domain/session/engine-state'
 
@@ -298,5 +298,17 @@ describe('view headers and queue titles with selector phases', () => {
     })
     const g = graph([blitzPhase], [{ from: 'blitz', to: 'blitz', guard: { kind: 'always' } }])
     expect(checkPhaseGraphIntegrity(g)).toEqual([])
+  })
+
+  test('hasQueueExhaustedTransition returns true when outgoing transition has queueExhausted guard', () => {
+    const g = graph(
+      [phase('blitz'), phase('wrapup')],
+      [
+        { from: 'blitz', to: 'wrapup', guard: { kind: 'queueExhausted' } },
+        { from: 'wrapup', to: 'blitz', guard: { kind: 'always' } },
+      ],
+    )
+    expect(hasQueueExhaustedTransition(g, PhaseIdSchema.parse('blitz'))).toBe(true)
+    expect(hasQueueExhaustedTransition(g, PhaseIdSchema.parse('wrapup'))).toBe(false)
   })
 })

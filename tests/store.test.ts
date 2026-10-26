@@ -823,6 +823,101 @@ describe('EngineStore notifications', () => {
     expect(systemNotifications).toEqual([{ title: 'Routine Flow', body: 'Break phase started' }])
   })
 
+  test('emits in-app Notice toast on early exit due to queue exhaustion via syncQueueExhausted', async () => {
+    let inAppMessages: readonly string[] = []
+    const notificationPort = {
+      notifyInApp: (msg: string) => {
+        inAppMessages = [...inAppMessages, msg]
+      },
+      notifySystem: () => {},
+    }
+    const { registry, setItems } = createFakeTaskSourceRegistry([buildQueueItem('task-1')])
+    const blitzGraph = PhaseGraphSchema.parse({
+      id: 'blitz-timed-notification',
+      name: 'Blitz timed notification graph',
+      phases: [
+        PhaseSchema.parse({
+          ...phaseDefaults,
+          id: 'blitz',
+          label: 'Blitz',
+          kind: 'focus',
+          duration: Temporal.Duration.from({ minutes: 15 }),
+          taskSourceId: exercisesTaskSourceId,
+          logTarget: { kind: 'activeItem' },
+        }),
+        PhaseSchema.parse({
+          ...phaseDefaults,
+          id: 'wrapup',
+          label: 'Wrap up',
+          kind: 'break',
+          duration: Temporal.Duration.from({ minutes: 5 }),
+          logTarget: { kind: 'activeItem' },
+        }),
+      ],
+      transitions: [
+        { fromPhaseId: 'blitz', toPhaseId: 'wrapup', condition: { kind: 'queueExhausted' } },
+        { fromPhaseId: 'blitz', toPhaseId: 'wrapup', condition: { kind: 'always' } },
+      ],
+    })
+
+    const store = new EngineStore(blitzGraph, { taskSourceRegistry: registry, notificationPort })
+    await store.dispatch({ type: 'start' })
+    expect(inAppMessages).toEqual([])
+
+    setItems([])
+    await store.syncQueueExhausted()
+
+    expect(inAppMessages).toEqual([
+      'Routine Flow: Blitz completed early — all tasks finished',
+      'Routine Flow: Wrap up phase started',
+    ])
+  })
+
+  test('emits in-app Notice toast on early exit triggered during runDispatch when queue becomes empty', async () => {
+    let inAppMessages: readonly string[] = []
+    const notificationPort = {
+      notifyInApp: (msg: string) => {
+        inAppMessages = [...inAppMessages, msg]
+      },
+      notifySystem: () => {},
+    }
+    const { registry, setItems } = createFakeTaskSourceRegistry([buildQueueItem('task-1')])
+    const blitzGraph = PhaseGraphSchema.parse({
+      id: 'blitz-timed-notification-tick',
+      name: 'Blitz timed notification graph',
+      phases: [
+        PhaseSchema.parse({
+          ...phaseDefaults,
+          id: 'blitz',
+          label: 'Blitz',
+          kind: 'focus',
+          duration: Temporal.Duration.from({ minutes: 15 }),
+          taskSourceId: exercisesTaskSourceId,
+          logTarget: { kind: 'activeItem' },
+        }),
+        PhaseSchema.parse({
+          ...phaseDefaults,
+          id: 'wrapup',
+          label: 'Wrap up',
+          kind: 'break',
+          duration: Temporal.Duration.from({ minutes: 5 }),
+          logTarget: { kind: 'activeItem' },
+        }),
+      ],
+      transitions: [
+        { fromPhaseId: 'blitz', toPhaseId: 'wrapup', condition: { kind: 'queueExhausted' } },
+        { fromPhaseId: 'blitz', toPhaseId: 'wrapup', condition: { kind: 'always' } },
+      ],
+    })
+
+    const store = new EngineStore(blitzGraph, { taskSourceRegistry: registry, notificationPort })
+    await store.dispatch({ type: 'start' })
+    setItems([])
+    await store.dispatch({ type: 'tick' })
+
+    expect(inAppMessages).toContain('Routine Flow: Blitz completed early — all tasks finished')
+  })
+
   test('focus sandwich routine lifecycle records activeItem write-back mutations in session history', async () => {
     const writeBackMutation: FileMutation = {
       kind: 'frontmatter',

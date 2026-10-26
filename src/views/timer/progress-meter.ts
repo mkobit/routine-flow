@@ -8,6 +8,7 @@ export interface ProgressMeterOptions {
   readonly isInert: boolean
   readonly duration: Temporal.Duration | null
   readonly remaining: Temporal.Duration | null
+  readonly isExhausted?: boolean
 }
 
 /**
@@ -23,11 +24,16 @@ export function renderProgressMeter(dial: HTMLElement, options: ProgressMeterOpt
     dial.addClass(styleClass)
   }
 
+  if (options.isExhausted) {
+    dial.addClass('is-exhausted')
+    dial.addClass('is-celebrating')
+  }
+
   // Radial progress ring, sized to the dial so it frames just the mm:ss digits. Rendered for
   // this view's own timed phase; skipped for the inert state (the countdown isn't this view's
   // own). A stopped phase still shows the ring at 0 as a "ready" backdrop.
   if (!options.isInert && options.duration !== null && options.remaining !== null) {
-    const fraction = computeProgressFraction(options.duration, options.remaining)
+    const fraction = options.isExhausted ? 1 : computeProgressFraction(options.duration, options.remaining)
     // --routine-flow-progress is continuously-varying per-tick runtime data, not a discrete
     // visual state a snippet should override, so setting it inline is allowed (DESIGN.md). The
     // ring's appearance (stroke/color/width) stays entirely in styles.css, driven off this value
