@@ -74,6 +74,9 @@ views:
   - type: routine-timer
     name: Random task selector
     routineFile: random-selector/random-selector-routine.md
+  - type: routine-timer
+    name: Chore blitz
+    routineFile: chore-blitz/chore-blitz-routine.md
   - type: table
     name: Leitner due cards
     filters:

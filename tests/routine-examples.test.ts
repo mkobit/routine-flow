@@ -4,7 +4,7 @@ import { parseRoutineFile } from '../src/domain/routine/routine-file'
 import { engineReducer, initialEngineState } from '../src/timer/reducer'
 import { PhaseIdSchema } from '../src/domain/phase/phase'
 import { TaskSourceIdSchema } from '../src/domain/queue/task-source'
-import { generateLeitnerBoxNotes } from '../e2e/vault/generator'
+import { generateChoreBlitzNotes, generateLeitnerBoxNotes } from '../e2e/vault/generator'
 import { serializeFrontmatter } from '../e2e/vault/serializer'
 
 function wrapInRoutineNote(graphJson: object): string {
@@ -737,5 +737,54 @@ describe('routine examples validation', () => {
       focusId,
       breakId,
     ])
+  })
+
+  test('chore blitz routine transitions to breather on timer lapse or wrap-up on queue exhaustion', () => {
+    const routineNote = generateChoreBlitzNotes(123)
+      .find(note => note.relativePath.base === 'chore-blitz-routine.md')
+    expect(routineNote).toBeDefined()
+    if (routineNote === undefined) {
+      return
+    }
+
+    const parseResult = parseRoutineFile(`${serializeFrontmatter(routineNote.frontmatter)}\n${routineNote.body ?? ''}`)
+    expect(parseResult.success).toBe(true)
+    if (!parseResult.success) {
+      return
+    }
+
+    const graph = parseResult.graph
+    const blitzId = PhaseIdSchema.parse('blitz')
+    const breatherId = PhaseIdSchema.parse('breather')
+    const wrapUpId = PhaseIdSchema.parse('wrap-up')
+
+    const blitzPhase = graph.phases.find(p => p.id === 'blitz')
+    expect(blitzPhase?.taskSourceId).toBe(TaskSourceIdSchema.parse('chore-queue'))
+    expect(blitzPhase?.logTarget).toEqual({ kind: 'completedItems' })
+
+    const now = Temporal.Instant.from('2026-01-01T10:00:00Z')
+
+    // Scenario 1: Normal countdown expiry advances blitz -> breather -> blitz
+    let state = engineReducer(initialEngineState(graph), { type: 'start', now }, graph)
+    expect(state.currentPhaseId).toBe(blitzId)
+    expect(state.status).toBe('running')
+
+    const blitzExpire = now.add({ minutes: 15 })
+    state = engineReducer(state, { type: 'finish-phase', now: blitzExpire }, graph)
+    expect(state.currentPhaseId).toBe(breatherId)
+
+    const breatherExpire = blitzExpire.add({ minutes: 3 })
+    state = engineReducer(state, { type: 'finish-phase', now: breatherExpire }, graph)
+    expect(state.currentPhaseId).toBe(blitzId)
+
+    // Scenario 2: Early phase termination on queue exhaustion advances blitz -> wrap-up
+    state = engineReducer(state, { type: 'start', now: breatherExpire }, graph)
+    expect(state.status).toBe('running')
+
+    const earlyAdvanceTime = breatherExpire.add({ minutes: 4 })
+    state = engineReducer(state, { type: 'set-queue-exhausted', exhausted: true, now: earlyAdvanceTime }, graph)
+    expect(state.currentPhaseId).toBe(wrapUpId)
+    expect(state.queueExhausted).toBe(true)
+    expect(state.session?.history.at(-1)?.endReason).toBe('completed')
   })
 })
