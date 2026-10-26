@@ -127,7 +127,10 @@ export class EngineStore {
       return []
     }
     const phase = findPhaseById(this.graph, this.state.currentPhaseId)
-    const source = phase !== undefined && phase.taskSourceId !== null ? taskSourceRegistry.resolve(phase.taskSourceId) : undefined
+    if (phase === undefined || phase.taskSourceId === null) {
+      return []
+    }
+    const source = taskSourceRegistry.resolve(phase.taskSourceId)
     const exhausted = source !== undefined && source.getQueue().length === 0
     return this.dispatch({ type: 'set-queue-exhausted', exhausted })
   }
@@ -143,14 +146,16 @@ export class EngineStore {
     let effectiveAction = action
     if (action.type !== 'set-queue-exhausted' && this.deps.taskSourceRegistry !== undefined) {
       const phase = findPhaseById(this.graph, this.state.currentPhaseId)
-      const source = phase !== undefined && phase.taskSourceId !== null ? this.deps.taskSourceRegistry.resolve(phase.taskSourceId) : undefined
-      const exhausted = source !== undefined && source.getQueue().length === 0
+      if (phase !== undefined && phase.taskSourceId !== null) {
+        const source = this.deps.taskSourceRegistry.resolve(phase.taskSourceId)
+        const exhausted = source !== undefined && source.getQueue().length === 0
 
-      if (exhausted && this.state.status === 'running' && this.hasQueueExhaustedTransition(this.state.currentPhaseId)) {
-        effectiveAction = { type: 'set-queue-exhausted', exhausted: true }
-      }
-      else if (exhausted !== this.state.queueExhausted) {
-        this.applyState(engineReducer(this.state, { type: 'set-queue-exhausted', exhausted, now }, this.graph, this.deps))
+        if (exhausted && this.state.status === 'running' && this.hasQueueExhaustedTransition(this.state.currentPhaseId)) {
+          effectiveAction = { type: 'set-queue-exhausted', exhausted: true }
+        }
+        else if (exhausted !== this.state.queueExhausted) {
+          this.applyState(engineReducer(this.state, { type: 'set-queue-exhausted', exhausted, now }, this.graph, this.deps))
+        }
       }
     }
 

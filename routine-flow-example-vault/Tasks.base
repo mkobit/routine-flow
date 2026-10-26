@@ -77,6 +77,11 @@ views:
   - type: routine-timer
     name: Chore blitz
     routineFile: chore-blitz/chore-blitz-routine.md
+    focusProperty: note.type
+    focusValue: chore
+    filters:
+      and:
+        - note.routine-status != "done"
   - type: table
     name: Leitner due cards
     filters:
