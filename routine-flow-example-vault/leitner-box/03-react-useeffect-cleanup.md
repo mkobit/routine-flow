@@ -1,7 +1,8 @@
 ---
+type: "flashcard"
 box: 3
-routine-status: pending
-routine-due: 2026-09-25T12:00:00Z
+routine-status: "deferred"
+routine-due: 2026-01-02
 ---
 
 # React useEffect cleanup

@@ -123,7 +123,7 @@ export class RoutineSidePanelView extends ItemView {
 
     const queueTitle = phase.kind === SELECTOR_PHASE_KIND
       ? 'Selection queue'
-      : phase.kind === FOCUS_PHASE_KIND
+      : phase.kind === FOCUS_PHASE_KIND || phase.kind === 'review'
         ? 'Work queue'
         : 'Break queue'
     const queueItems = this.plugin.taskSourceRegistry.resolve(phase.taskSourceId)?.getQueue() ?? []

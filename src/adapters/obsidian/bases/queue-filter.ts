@@ -39,7 +39,7 @@ export function filterQueueCandidates(
   candidates: readonly QueueFilterCandidate[],
   now?: Temporal.Instant | (() => Temporal.Instant),
 ): BaseQueryEntry[] {
-  const isFocus = phase.kind === FOCUS_PHASE_KIND || phase.kind === SELECTOR_PHASE_KIND
+  const isFocus = phase.kind === FOCUS_PHASE_KIND || phase.kind === SELECTOR_PHASE_KIND || phase.kind === 'review'
   const targetValFallback = isFocus ? 'work' : 'break'
 
   const propId: BasesPropertyId

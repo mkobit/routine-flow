@@ -6,10 +6,14 @@ properties:
     displayName: Due date
   note.routine-status:
     displayName: Routine status
+  note.type:
+    displayName: Type
 views:
   - type: routine-timer
     name: Leitner box review
     routineFile: leitner-box/leitner-box-routine.md
+    focusProperty: note.type
+    focusValue: flashcard
     filters:
       and:
         - note.routine-due <= today

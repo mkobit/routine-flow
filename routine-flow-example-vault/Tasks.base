@@ -82,6 +82,11 @@ views:
     filters:
       and:
         - note.routine-status != "done"
+  - type: routine-timer
+    name: Leitner box review
+    routineFile: leitner-box/leitner-box-routine.md
+    focusProperty: note.type
+    focusValue: flashcard
   - type: table
     name: Leitner due cards
     filters:
