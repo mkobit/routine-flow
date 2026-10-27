@@ -32,5 +32,5 @@
 
 ## 6. End-to-end integration and verification suite (flow-xne.6)
 
-- [ ] 6.1 Create Playwright E2E specification in `e2e/chore-blitz.e2e.ts` verifying rapid check-offs, dynamic counter updates, and early phase advancement, and verify headless execution passes under `bun run test:e2e:headless`.
-- [ ] 6.2 Execute full quality gates (`bun run typecheck`, `bun run lint`, `bun test`, `bun run docs:build`, and `bun x openspec validate chore-blitz`) to confirm complete verification.
+- [x] 6.1 Create Playwright E2E specification in `e2e/chore-blitz.e2e.ts` verifying rapid check-offs, dynamic counter updates, and early phase advancement, and verify headless execution passes under `bun run test:e2e:headless`.
+- [x] 6.2 Execute full quality gates (`bun run typecheck`, `bun run lint`, `bun test`, `bun run docs:build`, and `bun x openspec validate chore-blitz`) to confirm complete verification.

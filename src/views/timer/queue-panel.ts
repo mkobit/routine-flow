@@ -26,6 +26,7 @@ export interface QueuePanelOptions {
   readonly onSelectTask: (filePath: string) => void
   readonly onOpenFile?: (filePath: string) => void
   readonly completedCount?: number
+  readonly completedPaths?: readonly string[]
   readonly rng?: () => number
   readonly scheduleTotalSteps?: number
   readonly prefersReducedMotion?: boolean
@@ -129,7 +130,7 @@ export function renderQueuePanel(queueEl: HTMLElement, options: QueuePanelOption
   }
 
   const ul = queueEl.createEl('ul')
-  let completedPaths: readonly string[] = []
+  let completedPaths: readonly string[] = options.completedPaths ?? []
   let currentActivePath = options.activeFilePath
 
   const renderItemActions = (li: HTMLElement, item: TaskQueueItem): HTMLElement | null => {
@@ -175,6 +176,7 @@ export function renderQueuePanel(queueEl: HTMLElement, options: QueuePanelOption
               cls: 'routine-blitz-celebration-text',
               text: 'All chores completed early!',
             })
+            void options.actionExecutor?.dispatch?.({ type: 'set-queue-exhausted', exhausted: true })
           }
         }
 
@@ -239,7 +241,10 @@ export function renderQueuePanel(queueEl: HTMLElement, options: QueuePanelOption
       }
     })
 
-    if (options.activeFilePath === item.sourcePath) {
+    if (completedPaths.includes(item.sourcePath)) {
+      li.addClass('is-completed-task')
+    }
+    else if (options.activeFilePath === item.sourcePath) {
       li.addClass('is-active-task')
       if (isSelectorPhase) {
         li.addClass('is-roulette-winner')

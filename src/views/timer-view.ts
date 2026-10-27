@@ -52,6 +52,13 @@ export class RoutineTimerView extends BasesView {
 
   onDataUpdated() {
     this.applyAutoAdvance()
+    if (this.routineResolution.kind === 'default' || this.routineResolution.kind === 'loaded') {
+      const viewGraph = this.routineResolution.graph
+      const graph = this.plugin.store.getGraph()
+      if (graph.id === viewGraph.id) {
+        this.registerTaskSources(viewGraph)
+      }
+    }
     void this.plugin.store.syncQueueExhausted()
     this.render(this.plugin.store.getState())
   }
@@ -282,9 +289,11 @@ export class RoutineTimerView extends BasesView {
 
     const isSelector = phase.kind === SELECTOR_PHASE_KIND
 
-    const completedCount = state.session?.currentInstance?.itemsTouched.filter((touch) => {
+    const completedItems = state.session?.currentInstance?.itemsTouched.filter((touch) => {
       return touch.status === 'completed'
-    }).length ?? 0
+    }) ?? []
+    const completedCount = completedItems.length
+    const completedPaths = completedItems.map(touch => touch.sourcePath)
 
     renderQueuePanel(queueEl, {
       phase,
@@ -293,6 +302,7 @@ export class RoutineTimerView extends BasesView {
       app: this.plugin.app,
       actionExecutor: this.plugin.store,
       completedCount,
+      completedPaths,
       onSelectTask: (filePath) => {
         if (isSelector) {
           void handleSelectorWinner(this.plugin.store, phase, filePath, msg => new Notice(msg))
