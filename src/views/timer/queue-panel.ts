@@ -71,7 +71,7 @@ export function renderQueuePanel(queueEl: HTMLElement, options: QueuePanelOption
   queueEl.empty()
   const queueTitle = options.phase.kind === SELECTOR_PHASE_KIND
     ? 'Selection queue'
-    : options.phase.kind === FOCUS_PHASE_KIND
+    : options.phase.kind === FOCUS_PHASE_KIND || options.phase.kind === 'review'
       ? 'Work queue'
       : 'Break queue'
 
@@ -177,6 +177,24 @@ export function renderQueuePanel(queueEl: HTMLElement, options: QueuePanelOption
               text: 'All chores completed early!',
             })
             void options.actionExecutor?.dispatch?.({ type: 'set-queue-exhausted', exhausted: true })
+          }
+        }
+        else if (action.payload.kind === 'deferDuration') {
+          completedPaths = [...completedPaths, item.sourcePath]
+          li.removeClass('is-active-task')
+          actionsEl.remove()
+
+          const nextEntry = itemEls.find((entry) => {
+            return !completedPaths.includes(entry.item.sourcePath) && entry.item.sourcePath !== item.sourcePath
+          })
+          if (nextEntry) {
+            currentActivePath = nextEntry.item.sourcePath
+            nextEntry.li.addClass('is-active-task')
+            renderItemActions(nextEntry.li, nextEntry.item)
+            options.onSelectTask(nextEntry.item.sourcePath)
+          }
+          else {
+            currentActivePath = null
           }
         }
 

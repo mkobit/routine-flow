@@ -1,7 +1,8 @@
 ---
+type: "flashcard"
 box: 4
-routine-status: deferred
-routine-due: 2026-10-03T12:00:00Z
+routine-status: "deferred"
+routine-due: 2026-01-04
 ---
 
 # Photosynthesis equation

@@ -1,7 +1,8 @@
 ---
+type: "flashcard"
 box: 1
-routine-status: pending
-routine-due: 2026-09-26T12:00:00Z
+routine-status: "pending"
+routine-due: 2025-12-31
 ---
 
 # Binary search complexity

@@ -942,6 +942,10 @@ Spaced repetition flashcard review using Leitner box scheduling with Again, Hard
       "duration": null,
       "onCompletion": "waitForManual",
       "taskSourceId": "review-queue",
+      "queryFilter": {
+        "property": "note.type",
+        "value": "flashcard"
+      },
       "logTarget": {
         "kind": "activeItem"
       },

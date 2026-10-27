@@ -65,7 +65,11 @@ export class RoutineTimerView extends BasesView {
 
   private applyAutoAdvance(): void {
     const state = this.plugin.store.getState()
-    const allPaths = (this.data?.data ?? []).map(entry => entry.file.path)
+    const phase = findPhaseById(this.plugin.store.getGraph(), state.currentPhaseId)
+    const queuePaths = phase?.taskSourceId
+      ? this.plugin.taskSourceRegistry.resolve(phase.taskSourceId)?.getQueue().map(i => i.sourcePath)
+      : undefined
+    const allPaths = queuePaths ?? (this.data?.data ?? []).map(entry => entry.file.path)
     const resolved = resolveActiveFilePath(state.activeFilePath, allPaths)
     if (resolved !== state.activeFilePath) {
       void this.plugin.store.dispatch({ type: 'set-active-file', filePath: resolved })

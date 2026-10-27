@@ -1,7 +1,8 @@
 ---
+type: "flashcard"
 box: 5
-routine-status: deferred
-routine-due: 2026-10-15T12:00:00Z
+routine-status: "deferred"
+routine-due: 2026-01-08
 ---
 
 # Spanish word for bridge

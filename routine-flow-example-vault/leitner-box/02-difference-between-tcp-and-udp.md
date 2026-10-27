@@ -1,7 +1,8 @@
 ---
+type: "flashcard"
 box: 2
-routine-status: pending
-routine-due: 2026-09-26T12:00:00Z
+routine-status: "pending"
+routine-due: 2026-01-01
 ---
 
 # Difference between TCP and UDP

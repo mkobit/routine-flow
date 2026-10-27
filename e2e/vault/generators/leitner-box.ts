@@ -69,6 +69,7 @@ export function generateLeitnerBoxNotes(seed: number): readonly NoteDefinition[]
             kind: 'review',
             duration: null,
             taskSourceId: 'review-queue',
+            queryFilter: { property: 'note.type', value: 'flashcard' },
             completionPolicy: { kind: 'manualClear' },
             notification: null,
             logTarget: { kind: 'activeItem' },
@@ -94,7 +95,8 @@ export function generateLeitnerBoxNotes(seed: number): readonly NoteDefinition[]
     ...cards.map(({ card, box, dueOffsetDays }, index) => createNote(
       indexedPath('leitner-box', index, card.title),
       {
-        box,
+        'type': 'flashcard',
+        'box': box,
         'routine-status': dueOffsetDays > 0 ? 'deferred' : 'pending',
         'routine-due': ANCHOR_DATE.add({ days: dueOffsetDays }),
       },

@@ -13,13 +13,25 @@ Hand-authored routine definition for Leitner box spaced repetition reviews.
   "phases": [
     {
       "id": "review",
-      "name": "Card review",
+      "label": "Card review",
+      "kind": "review",
       "duration": null,
-      "onCompletion": "waitForManual",
       "taskSourceId": "review-queue",
+      "queryFilter": {
+        "property": "note.type",
+        "value": "flashcard"
+      },
+      "completionPolicy": {
+        "kind": "manualClear"
+      },
+      "notification": null,
       "logTarget": {
         "kind": "activeItem"
       },
+      "onEnter": null,
+      "onComplete": null,
+      "onSkip": null,
+      "onExit": null,
       "actions": [
         {
           "id": "grade-again",
@@ -63,15 +75,14 @@ Hand-authored routine definition for Leitner box spaced repetition reviews.
             "box": 4
           }
         }
-      ],
-      "handlers": {}
+      ]
     }
   ],
   "transitions": [
     {
-      "from": "review",
-      "to": "review",
-      "guard": {
+      "fromPhaseId": "review",
+      "toPhaseId": "review",
+      "condition": {
         "kind": "always"
       }
     }
