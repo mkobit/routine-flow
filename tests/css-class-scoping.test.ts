@@ -509,6 +509,26 @@ describe('CSS class scoping & theme customization', () => {
     expect(content).toContain('.routine-countdown-dial.is-exhausted')
     expect(content).toContain('.routine-queue-empty.is-queue-exhausted')
 
+    // Stage progress bar and checklist guidance styles (flow-1t1.3)
+    expect(content).toContain('.routine-stage-progress')
+    expect(content).toContain('.routine-stage-progress-bar')
+    expect(content).toContain('.routine-stage-progress-indicator')
+    expect(content).toContain('.routine-stage-stepper')
+    expect(content).toContain('.routine-stage-step')
+    expect(content).toContain('.routine-stage-step.is-completed')
+    expect(content).toContain('.routine-stage-step.is-active')
+    expect(content).toContain('.routine-stage-step.is-upcoming')
+    expect(content).toContain('.routine-stage-step-indicator')
+    expect(content).toContain('.routine-stage-step-label')
+    expect(content).toContain('.routine-guidance-checklist')
+    expect(content).toContain('.routine-guidance-title')
+    expect(content).toContain('.routine-guidance-list')
+    expect(content).toContain('.routine-guidance-item')
+    expect(content).toContain('.routine-guidance-item.is-checked')
+    expect(content).toContain('.routine-guidance-label')
+    expect(content).toContain('.routine-guidance-checkbox')
+    expect(content).toContain('.routine-guidance-text')
+
     // Must define fallback for paused accent
     expect(content).toContain('var(--color-orange, var(--text-warning))')
 
