@@ -7,9 +7,9 @@
 
 ## 2. Stage progress and checklist guidance UI components (flow-1t1.3)
 
-- [ ] 2.1 Implement `renderStageProgress` and `renderGuidanceChecklist` in `src/views/timer/stage-progress-panel.ts`, and verify DOM rendering tests in `tests/timer-view-decomposition.test.ts` pass.
-- [ ] 2.2 Wire stage stepper and guidance checklist into `RoutineTimerView` in `src/views/timer-view.ts`, and verify view integration tests pass.
-- [ ] 2.3 Wire stage stepper and guidance checklist into `RoutineSidePanelView` in `src/views/side-panel-view.ts`, and verify view integration tests pass.
+- [x] 2.1 Implement `renderStageProgress` and `renderGuidanceChecklist` in `src/views/timer/stage-progress-panel.ts`, and verify DOM rendering tests in `tests/timer-view-decomposition.test.ts` pass.
+- [x] 2.2 Wire stage stepper and guidance checklist into `RoutineTimerView` in `src/views/timer-view.ts`, and verify view integration tests pass.
+- [x] 2.3 Wire stage stepper and guidance checklist into `RoutineSidePanelView` in `src/views/side-panel-view.ts`, and verify view integration tests pass.
 
 ## 3. Visual styling and quality verification (flow-1t1.3)
 
