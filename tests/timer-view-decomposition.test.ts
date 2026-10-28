@@ -1,10 +1,13 @@
 import { beforeAll, describe, expect, test, mock } from 'bun:test'
-import type { App as AppType, BasesOptions, TFile as TFileType } from 'obsidian'
+import type { App as AppType, BasesOptions, TFile as TFileType, WorkspaceLeaf, QueryController } from 'obsidian'
 import type { Temporal as TemporalType } from 'temporal-polyfill'
+import type RoutineFlowPlugin from '../src/main'
 import type { Phase, PhaseId, PhaseKind } from '../src/domain/phase/phase'
 import type { TaskQueueItem, TaskQueueItemId, TaskSourceId } from '../src/domain/queue/task-source'
 import type { QueuePanelOptions } from '../src/views/timer/queue-panel'
-import type { handleSelectorWinner } from '../src/views/timer-view'
+import type { handleSelectorWinner, RoutineTimerView } from '../src/views/timer-view'
+import type { RoutineSidePanelView } from '../src/views/side-panel-view'
+import type { renderStageProgress, renderGuidanceChecklist } from '../src/views/timer/stage-progress-panel'
 
 class MockElement {
   className = ''
@@ -108,11 +111,14 @@ class MockElement {
     return child
   }
 
-  createDiv(o?: { cls?: string, attr?: Record<string, string> }): MockElement {
+  createDiv(o?: { text?: string, cls?: string, attr?: Record<string, string> }): MockElement {
     const child = new MockElement()
     child.tagName = 'DIV'
     if (o?.cls) {
       child.addClass(o.cls)
+    }
+    if (o?.text) {
+      child.setText(o.text)
     }
     if (o?.attr) {
       for (const [k, v] of Object.entries(o.attr)) {
@@ -157,6 +163,8 @@ class MockElement {
     return child
   }
 
+  checked = false
+
   addEventListener(event: string, handler: (e: unknown) => void): void {
     const list = this.listeners[event] ?? []
     list.push(handler)
@@ -164,7 +172,10 @@ class MockElement {
   }
 
   click(): void {
-    const handlers = this.listeners.click ?? []
+    if (this.tagName === 'INPUT' && (this.attrs.type === 'checkbox' || this.getAttribute('type') === 'checkbox')) {
+      this.checked = !this.checked
+    }
+    const handlers = [...(this.listeners.click ?? []), ...(this.listeners.change ?? [])]
     for (const h of handlers) {
       h({
         stopPropagation: () => {},
@@ -298,7 +309,8 @@ void mock.module('obsidian', () => {
 
 let Temporal: typeof TemporalType
 let getViewOptionsFn: (app: AppType) => BasesOptions[]
-let RoutineTimerViewClass: { getViewOptions: (app: AppType) => BasesOptions[] }
+let RoutineTimerViewClass: typeof RoutineTimerView
+let RoutineSidePanelViewClass: typeof RoutineSidePanelView
 let renderStateIconFn: (parent: HTMLElement, names: readonly string[]) => HTMLElement
 let renderProgressMeterFn: (dial: HTMLElement, options: {
   style: 'radial' | 'fill-bar' | 'battery-drain' | 'tick-marks'
@@ -316,6 +328,8 @@ let renderConfigPanelFn: (parent: HTMLElement, options: {
   onFilterConfigChange: () => void
 }) => HTMLElement
 let renderQueuePanelFn: (queueEl: HTMLElement, options: QueuePanelOptions) => void
+let renderStageProgressFn: typeof renderStageProgress
+let renderGuidanceChecklistFn: typeof renderGuidanceChecklist
 let handleSelectorWinnerFn: typeof handleSelectorWinner
 let FOCUS_PHASE_KIND_VAL: PhaseKind
 let BREAK_PHASE_KIND_VAL: PhaseKind
@@ -336,6 +350,9 @@ describe('Timer view decomposition', () => {
     RoutineTimerViewClass = timerViewMod.RoutineTimerView
     handleSelectorWinnerFn = timerViewMod.handleSelectorWinner
 
+    const sidePanelMod = await import('../src/views/side-panel-view')
+    RoutineSidePanelViewClass = sidePanelMod.RoutineSidePanelView
+
     const stateIconMod = await import('../src/views/timer/state-icon')
     renderStateIconFn = stateIconMod.renderStateIcon
 
@@ -348,6 +365,10 @@ describe('Timer view decomposition', () => {
 
     const queuePanelMod = await import('../src/views/timer/queue-panel')
     renderQueuePanelFn = queuePanelMod.renderQueuePanel
+
+    const stageProgressMod = await import('../src/views/timer/stage-progress-panel')
+    renderStageProgressFn = stageProgressMod.renderStageProgress
+    renderGuidanceChecklistFn = stageProgressMod.renderGuidanceChecklist
 
     const phaseGraphMod = await import('../src/timer/phase-graph-query')
     FOCUS_PHASE_KIND_VAL = phaseGraphMod.FOCUS_PHASE_KIND
@@ -1344,6 +1365,368 @@ describe('Timer view decomposition', () => {
         { type: 'set-active-file', filePath: 'tasks/task-2.md' },
         { type: 'finish-phase' },
       ])
+    })
+  })
+
+  describe('stage-progress-panel', () => {
+    test('renderStageProgress creates progress bar and stepper items with status classes', () => {
+      const container = new MockElement()
+      const progress = {
+        stages: [
+          { phaseId: PhaseIdSchemaParse('p1'), label: 'Inbox', status: 'completed' as const, isCurrent: false },
+          { phaseId: PhaseIdSchemaParse('p2'), label: 'Review', status: 'active' as const, isCurrent: true },
+          { phaseId: PhaseIdSchemaParse('p3'), label: 'Wrap-up', status: 'upcoming' as const, isCurrent: false },
+        ],
+        completedCount: 1,
+        totalCount: 3,
+        progressFraction: 1 / 3,
+      }
+
+      const panel = renderStageProgressFn(asElement(container), progress)
+      expect(panel).toBeDefined()
+      // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- mock element access
+      const mockPanel = panel as unknown as MockElement
+      expect(mockPanel.hasClass('routine-stage-progress')).toBe(true)
+
+      const progressBar = mockPanel.children.find(c => c.hasClass('routine-stage-progress-bar'))
+      expect(progressBar).toBeDefined()
+      expect(progressBar?.style.getPropertyValue('--routine-stage-progress')).toBe(String(1 / 3))
+
+      const indicator = progressBar?.children.find(c => c.hasClass('routine-stage-progress-indicator'))
+      expect(indicator).toBeDefined()
+      expect(indicator?.style.getPropertyValue('width')).toBe('33%')
+
+      const stepper = mockPanel.children.find(c => c.hasClass('routine-stage-stepper'))
+      expect(stepper).toBeDefined()
+      expect(stepper?.children.length).toBe(3)
+
+      const [step1, step2, step3] = stepper?.children ?? []
+      expect(step1?.hasClass('is-completed')).toBe(true)
+      expect(step1?.children.find(c => c.hasClass('routine-stage-step-label'))?.getText()).toBe('Inbox')
+
+      expect(step2?.hasClass('is-active')).toBe(true)
+      expect(step2?.hasClass('is-current')).toBe(true)
+      expect(step2?.children.find(c => c.hasClass('routine-stage-step-label'))?.getText()).toBe('Review')
+
+      expect(step3?.hasClass('is-upcoming')).toBe(true)
+      expect(step3?.children.find(c => c.hasClass('routine-stage-step-label'))?.getText()).toBe('Wrap-up')
+    })
+
+    test('renderGuidanceChecklist renders toggleable checkboxes and triggers callback', () => {
+      const container = new MockElement()
+      const items = ['Empty inbox', 'Review flagged items', 'Plan tomorrow']
+      const checkedSet = new Set(['Review flagged items'])
+      let toggledEvents: readonly { readonly item: string, readonly checked: boolean }[] = []
+
+      const panel = renderGuidanceChecklistFn(asElement(container), items, {
+        checkedItems: checkedSet,
+        onToggle: (item, checked) => {
+          toggledEvents = [...toggledEvents, { item, checked }]
+        },
+      })
+
+      // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- mock element access
+      const mockPanel = panel as unknown as MockElement
+      expect(mockPanel.hasClass('routine-guidance-checklist')).toBe(true)
+
+      const title = mockPanel.children.find(c => c.hasClass('routine-guidance-title'))
+      expect(title?.getText()).toBe('Guidance')
+
+      const list = mockPanel.children.find(c => c.hasClass('routine-guidance-list'))
+      expect(list).toBeDefined()
+      expect(list?.children.length).toBe(3)
+
+      const [item1, item2, item3] = list?.children ?? []
+      expect(item1?.hasClass('is-checked')).toBe(false)
+      expect(item2?.hasClass('is-checked')).toBe(true)
+      expect(item3?.hasClass('is-checked')).toBe(false)
+
+      const label1 = item1?.children.find(c => c.hasClass('routine-guidance-label'))
+      const checkbox1 = label1?.children.find(c => c.hasClass('routine-guidance-checkbox'))
+      expect(checkbox1).toBeDefined()
+
+      // Toggle item1 on
+      checkbox1?.click()
+      expect(item1?.hasClass('is-checked')).toBe(true)
+      expect(toggledEvents).toEqual([{ item: 'Empty inbox', checked: true }])
+
+      // Toggle item1 off
+      checkbox1?.click()
+      expect(item1?.hasClass('is-checked')).toBe(false)
+      expect(toggledEvents).toEqual([
+        { item: 'Empty inbox', checked: true },
+        { item: 'Empty inbox', checked: false },
+      ])
+    })
+  })
+
+  describe('view integration with stage progress and checklist guidance', () => {
+    function findDescendant(root: MockElement, cls: string): MockElement | undefined {
+      if (root.hasClass(cls)) {
+        return root
+      }
+      for (const child of root.children) {
+        const found = findDescendant(child, cls)
+        if (found) {
+          return found
+        }
+      }
+      return undefined
+    }
+
+    function findAllDescendants(root: MockElement, cls: string): readonly MockElement[] {
+      const selfList = root.hasClass(cls) ? [root] : []
+      const childLists = root.children.flatMap(child => findAllDescendants(child, cls))
+      return [...selfList, ...childLists]
+    }
+
+    test('RoutineSidePanelView renders stage progress and interactive guidance checklist', async () => {
+      const { EngineStore: StoreClass } = await import('../src/timer/store')
+      const { PhaseGraphSchema: GraphSchema } = await import('../src/domain/phase/phase-graph')
+      const { PhaseSchema: PhaseSchemaClass } = await import('../src/domain/phase/phase')
+
+      const phaseDefaults = {
+        logTarget: { kind: 'activeItem' as const },
+        taskSourceId: null,
+        completionPolicy: null,
+        notification: null,
+        onEnter: null,
+        onComplete: null,
+        onSkip: null,
+        onExit: null,
+      }
+
+      const p1 = PhaseSchemaClass.parse({
+        ...phaseDefaults,
+        id: PhaseIdSchemaParse('phase-1'),
+        label: 'Step 1: Inbox',
+        kind: FOCUS_PHASE_KIND_VAL,
+        duration: Temporal.Duration.from({ minutes: 10 }),
+        guidance: ['Review new items', 'Flag urgent items'],
+      })
+      const p2 = PhaseSchemaClass.parse({
+        ...phaseDefaults,
+        id: PhaseIdSchemaParse('phase-2'),
+        label: 'Step 2: Processing',
+        kind: FOCUS_PHASE_KIND_VAL,
+        duration: Temporal.Duration.from({ minutes: 15 }),
+      })
+
+      const graph = GraphSchema.parse({
+        id: 'review-routine',
+        name: 'Weekly Review',
+        phases: [p1, p2],
+        transitions: [
+          { fromPhaseId: p1.id, toPhaseId: p2.id, condition: { kind: 'always' } },
+        ],
+      })
+
+      const store = new StoreClass(graph)
+      const mockPlugin = {
+        app: new MockApp(),
+        store,
+        settings: { clockSpeedMultiplier: 1 },
+        ticker: { restart: () => {} },
+        formulaPredicateRegistry: { get: () => undefined },
+        saveSettings: async () => {},
+      }
+      const leaf = { containerEl: new MockElement() }
+
+      // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- mock view creation
+      const sidePanel = new RoutineSidePanelViewClass(leaf as unknown as WorkspaceLeaf, mockPlugin as unknown as RoutineFlowPlugin)
+      await sidePanel.onOpen()
+
+      // When stopped, prompt indicates starting a routine
+      // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- mock element access
+      const contentEl = sidePanel.contentEl as unknown as MockElement
+
+      // Start routine -> phase-1 active
+      await store.dispatch({ type: 'start' })
+
+      const stageProgress = findDescendant(contentEl, 'routine-stage-progress')
+      expect(stageProgress).toBeDefined()
+      const steps = findAllDescendants(stageProgress!, 'routine-stage-step')
+      expect(steps.length).toBe(2)
+      expect(steps[0]?.hasClass('is-active')).toBe(true)
+      expect(steps[1]?.hasClass('is-upcoming')).toBe(true)
+
+      const checklist = findDescendant(contentEl, 'routine-guidance-checklist')
+      expect(checklist).toBeDefined()
+      const items = findAllDescendants(checklist!, 'routine-guidance-item')
+      expect(items.length).toBe(2)
+      expect(items[0]?.hasClass('is-checked')).toBe(false)
+
+      // Interactive check item 0
+      const item0 = items[0]
+      expect(item0).toBeDefined()
+      const checkbox0 = findDescendant(item0!, 'routine-guidance-checkbox')
+      checkbox0?.click()
+      expect(items[0]?.hasClass('is-checked')).toBe(true)
+
+      // Advance to phase-2 -> guidance cleared, stage progress shows step 1 completed and step 2 active
+      await store.dispatch({ type: 'advance-phase' })
+      await store.dispatch({ type: 'start' })
+      const stageProgressP2 = findDescendant(contentEl, 'routine-stage-progress')
+      const stepsP2 = findAllDescendants(stageProgressP2!, 'routine-stage-step')
+      expect(stepsP2[0]?.hasClass('is-completed')).toBe(true)
+      expect(stepsP2[1]?.hasClass('is-active')).toBe(true)
+
+      // Phase 2 has no guidance
+      const checklistP2 = findDescendant(contentEl, 'routine-guidance-checklist')
+      expect(checklistP2).toBeUndefined()
+    })
+
+    test('RoutineTimerView renders stage progress and checklist in timer panel', async () => {
+      const { EngineStore: StoreClass } = await import('../src/timer/store')
+      const { PhaseGraphSchema: GraphSchema } = await import('../src/domain/phase/phase-graph')
+      const { PhaseSchema: PhaseSchemaClass } = await import('../src/domain/phase/phase')
+
+      const phaseDefaults = {
+        logTarget: { kind: 'activeItem' as const },
+        taskSourceId: null,
+        completionPolicy: null,
+        notification: null,
+        onEnter: null,
+        onComplete: null,
+        onSkip: null,
+        onExit: null,
+      }
+
+      const p1 = PhaseSchemaClass.parse({
+        ...phaseDefaults,
+        id: PhaseIdSchemaParse('phase-1'),
+        label: 'Step 1: Review',
+        kind: FOCUS_PHASE_KIND_VAL,
+        duration: Temporal.Duration.from({ minutes: 10 }),
+        guidance: ['Review daily notes', 'Check action items'],
+      })
+      const p2 = PhaseSchemaClass.parse({
+        ...phaseDefaults,
+        id: PhaseIdSchemaParse('phase-2'),
+        label: 'Step 2: Wrap-up',
+        kind: FOCUS_PHASE_KIND_VAL,
+        duration: Temporal.Duration.from({ minutes: 5 }),
+      })
+
+      const graph = GraphSchema.parse({
+        id: 'review-timer-routine',
+        name: 'Daily Review',
+        phases: [p1, p2],
+        transitions: [
+          { fromPhaseId: p1.id, toPhaseId: p2.id, condition: { kind: 'always' } },
+        ],
+      })
+
+      const store = new StoreClass(graph)
+      const mockPlugin = {
+        app: new MockApp(),
+        store,
+        settings: { progressMeterStyle: 'radial' as const },
+        taskSourceRegistry: { resolve: () => undefined },
+        formulaPredicateRegistry: { get: () => undefined },
+        activateView: async () => {},
+      }
+
+      const containerEl = new MockElement()
+      const controller = {}
+
+      // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- mock view creation
+      const timerView = new RoutineTimerViewClass(controller as unknown as QueryController, asElement(containerEl), mockPlugin as unknown as RoutineFlowPlugin)
+      timerView.onload()
+
+      const timerPanel = findDescendant(containerEl, 'routine-timer-panel')
+      expect(timerPanel).toBeDefined()
+
+      const stageProgress = findDescendant(timerPanel!, 'routine-stage-progress')
+      expect(stageProgress).toBeDefined()
+      const steps = findAllDescendants(stageProgress!, 'routine-stage-step')
+      expect(steps.length).toBe(2)
+      expect(steps[0]?.hasClass('is-active')).toBe(true)
+      expect(steps[1]?.hasClass('is-upcoming')).toBe(true)
+
+      const checklist = findDescendant(timerPanel!, 'routine-guidance-checklist')
+      expect(checklist).toBeDefined()
+      const items = findAllDescendants(checklist!, 'routine-guidance-item')
+      expect(items.length).toBe(2)
+
+      // Interactive check item 1
+      const item1 = items[1]
+      expect(item1).toBeDefined()
+      const checkbox1 = findDescendant(item1!, 'routine-guidance-checkbox')
+      checkbox1?.click()
+      expect(items[1]?.hasClass('is-checked')).toBe(true)
+
+      // Simulate a timer tick (state remaining changes) -> re-render preserves checked item
+      await store.dispatch({ type: 'start' })
+      const timerPanelAfterTick = findDescendant(containerEl, 'routine-timer-panel')
+      const checklistAfterTick = findDescendant(timerPanelAfterTick!, 'routine-guidance-checklist')
+      const itemsAfterTick = findAllDescendants(checklistAfterTick!, 'routine-guidance-item')
+      expect(itemsAfterTick[1]?.hasClass('is-checked')).toBe(true)
+    })
+
+    test('single-phase routine without guidance omits stage progress and checklist in views', async () => {
+      const { EngineStore: StoreClass } = await import('../src/timer/store')
+      const { PhaseGraphSchema: GraphSchema } = await import('../src/domain/phase/phase-graph')
+      const { PhaseSchema: PhaseSchemaClass } = await import('../src/domain/phase/phase')
+
+      const phaseDefaults = {
+        logTarget: { kind: 'activeItem' as const },
+        taskSourceId: null,
+        completionPolicy: null,
+        notification: null,
+        onEnter: null,
+        onComplete: null,
+        onSkip: null,
+        onExit: null,
+      }
+
+      const p1 = PhaseSchemaClass.parse({
+        ...phaseDefaults,
+        id: PhaseIdSchemaParse('single-phase'),
+        label: 'Only Phase',
+        kind: FOCUS_PHASE_KIND_VAL,
+        duration: Temporal.Duration.from({ minutes: 25 }),
+      })
+
+      const graph = GraphSchema.parse({
+        id: 'single-phase-routine',
+        name: 'Single Phase Routine',
+        phases: [p1],
+        transitions: [],
+      })
+
+      const store = new StoreClass(graph)
+      const mockPlugin = {
+        app: new MockApp(),
+        store,
+        settings: { clockSpeedMultiplier: 1, progressMeterStyle: 'radial' as const },
+        ticker: { restart: () => {} },
+        taskSourceRegistry: { resolve: () => undefined },
+        formulaPredicateRegistry: { get: () => undefined },
+        activateView: async () => {},
+        saveSettings: async () => {},
+      }
+
+      // Check RoutineSidePanelView
+      const leaf = { containerEl: new MockElement() }
+      // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- mock view
+      const sidePanel = new RoutineSidePanelViewClass(leaf as unknown as WorkspaceLeaf, mockPlugin as unknown as RoutineFlowPlugin)
+      await sidePanel.onOpen()
+      await store.dispatch({ type: 'start' })
+      // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- mock element
+      const sidePanelContent = sidePanel.contentEl as unknown as MockElement
+      expect(findDescendant(sidePanelContent, 'routine-stage-progress')).toBeUndefined()
+      expect(findDescendant(sidePanelContent, 'routine-guidance-checklist')).toBeUndefined()
+
+      // Check RoutineTimerView
+      const containerEl = new MockElement()
+      const controller = {}
+      // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- mock view
+      const timerView = new RoutineTimerViewClass(controller as unknown as QueryController, asElement(containerEl), mockPlugin as unknown as RoutineFlowPlugin)
+      timerView.onload()
+      const timerPanel = findDescendant(containerEl, 'routine-timer-panel')
+      expect(findDescendant(timerPanel!, 'routine-stage-progress')).toBeUndefined()
+      expect(findDescendant(timerPanel!, 'routine-guidance-checklist')).toBeUndefined()
     })
   })
 })

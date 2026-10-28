@@ -6,8 +6,19 @@ class MockElement {
   className = ''
   children: MockElement[] = []
   dataset: Record<string, string> = {}
-  style: Record<string, string> = {}
+  private readonly styleProps: Record<string, string> = {}
+  readonly style = {
+    setProperty: (prop: string, val: string): void => {
+      this.styleProps[prop] = val
+    },
+    getPropertyValue: (prop: string): string => this.styleProps[prop] ?? '',
+  }
+
   childElementCount = 0
+  tagName = ''
+  checked = false
+  private readonly attrs: Record<string, string> = {}
+  private readonly listeners: Record<string, ((e: unknown) => void)[]> = {}
 
   addClass(cls: string): void {
     const current = this.className.split(' ').filter(Boolean)
@@ -31,28 +42,49 @@ class MockElement {
     this.childElementCount = 0
   }
 
-  createEl(tag: string, o?: { text?: string, cls?: string }): MockElement {
+  setAttribute(name: string, val: string): void {
+    this.attrs[name] = val
+  }
+
+  getAttribute(name: string): string | null {
+    return this.attrs[name] ?? null
+  }
+
+  createEl(tag: string, o?: { text?: string, cls?: string, attr?: Record<string, string> }): MockElement {
     const child = new MockElement()
+    child.tagName = tag.toUpperCase()
     if (o?.cls) {
       child.addClass(o.cls)
+    }
+    if (o?.attr) {
+      for (const [k, v] of Object.entries(o.attr)) {
+        child.setAttribute(k, v)
+      }
     }
     this.children.push(child)
     this.childElementCount = this.children.length
     return child
   }
 
-  createDiv(o?: { cls?: string }): MockElement {
+  createDiv(o?: { text?: string, cls?: string, attr?: Record<string, string> }): MockElement {
     const child = new MockElement()
+    child.tagName = 'DIV'
     if (o?.cls) {
       child.addClass(o.cls)
+    }
+    if (o?.attr) {
+      for (const [k, v] of Object.entries(o.attr)) {
+        child.setAttribute(k, v)
+      }
     }
     this.children.push(child)
     this.childElementCount = this.children.length
     return child
   }
 
-  createSpan(o?: { text?: string, cls?: string }): MockElement {
+  createSpan(o?: { text?: string, cls?: string, attr?: Record<string, string> }): MockElement {
     const child = new MockElement()
+    child.tagName = 'SPAN'
     if (o?.cls) {
       child.addClass(o.cls)
     }
@@ -63,6 +95,7 @@ class MockElement {
 
   createSvg(tag: string, o?: { cls?: string }): MockElement {
     const child = new MockElement()
+    child.tagName = tag.toUpperCase()
     if (o?.cls) {
       child.addClass(o.cls)
     }
@@ -79,7 +112,24 @@ class MockElement {
 
   focus(): void {}
 
-  addEventListener(): void {}
+  addEventListener(event: string, handler: (e: unknown) => void): void {
+    const list = this.listeners[event] ?? []
+    list.push(handler)
+    this.listeners[event] = list
+  }
+
+  click(): void {
+    if (this.tagName === 'INPUT' && (this.attrs.type === 'checkbox' || this.getAttribute('type') === 'checkbox')) {
+      this.checked = !this.checked
+    }
+    const handlers = [...(this.listeners.click ?? []), ...(this.listeners.change ?? [])]
+    for (const h of handlers) {
+      h({
+        stopPropagation: () => {},
+        preventDefault: () => {},
+      })
+    }
+  }
 }
 
 class MockModal {

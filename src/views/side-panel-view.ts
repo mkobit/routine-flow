@@ -2,9 +2,12 @@ import { ItemView, Notice, setIcon } from 'obsidian'
 import type { WorkspaceLeaf } from 'obsidian'
 import type RoutineFlowPlugin from '../main'
 import type { EngineState } from '../domain/session/engine-state'
+import type { PhaseId } from '../domain/phase/phase'
+import { deriveStageProgress } from '../domain/phase/stage-progress'
 import { findNextPhase, findPhaseById, FOCUS_PHASE_KIND, SELECTOR_PHASE_KIND } from '../timer/phase-graph-query'
 import { formatPhaseHeader } from '../timer/format'
 import { ResetConfirmModal } from './reset-confirm-modal'
+import { renderStageProgress, renderGuidanceChecklist } from './timer/stage-progress-panel'
 
 export const SIDE_PANEL_VIEW_TYPE = 'routine-side-panel'
 
@@ -16,6 +19,8 @@ export const SIDE_PANEL_VIEW_TYPE = 'routine-side-panel'
  */
 export class RoutineSidePanelView extends ItemView {
   private unsubscribe: (() => void) | null = null
+  private checkedGuidanceItems = new Set<string>()
+  private lastGuidancePhaseId: PhaseId | null = null
 
   constructor(leaf: WorkspaceLeaf, private readonly plugin: RoutineFlowPlugin) {
     super(leaf)
@@ -59,6 +64,11 @@ export class RoutineSidePanelView extends ItemView {
       return
     }
 
+    if (state.currentPhaseId !== this.lastGuidancePhaseId) {
+      this.lastGuidancePhaseId = state.currentPhaseId
+      this.checkedGuidanceItems.clear()
+    }
+
     this.contentEl.addClass(`is-${state.status}`)
 
     this.contentEl.createEl('h2', { text: formatPhaseHeader(phase, state.remaining, state.status) })
@@ -67,6 +77,25 @@ export class RoutineSidePanelView extends ItemView {
     if (nextPhase !== undefined) {
       const nextPhaseEl = this.contentEl.createDiv({ cls: 'routine-next-phase' })
       nextPhaseEl.createSpan({ text: `Next: ${nextPhase.label}` })
+    }
+
+    const stageProgress = deriveStageProgress(graph, state)
+    if (stageProgress.totalCount > 1) {
+      renderStageProgress(this.contentEl, stageProgress)
+    }
+
+    if (phase.guidance && phase.guidance.length > 0) {
+      renderGuidanceChecklist(this.contentEl, phase.guidance, {
+        checkedItems: this.checkedGuidanceItems,
+        onToggle: (item, checked) => {
+          if (checked) {
+            this.checkedGuidanceItems.add(item)
+          }
+          else {
+            this.checkedGuidanceItems.delete(item)
+          }
+        },
+      })
     }
 
     const controls = this.contentEl.createDiv({ cls: 'routine-controls' })
@@ -196,6 +225,7 @@ export class RoutineSidePanelView extends ItemView {
     if (result !== 'confirmed') {
       return
     }
+    this.checkedGuidanceItems.clear()
     void this.plugin.store.dispatch({ type: 'stop' })
   }
 }

@@ -3,7 +3,8 @@ import type { QueryController, BasesPropertyId, BasesEntry } from 'obsidian'
 import type RoutineFlowPlugin from '../main'
 import type { EngineState } from '../domain/session/engine-state'
 import type { PhaseGraph } from '../domain/phase/phase-graph'
-import type { Phase } from '../domain/phase/phase'
+import type { Phase, PhaseId } from '../domain/phase/phase'
+import { deriveStageProgress } from '../domain/phase/stage-progress'
 import { findNextPhase, findPhaseById, DEFAULT_PHASE_GRAPH, SELECTOR_PHASE_KIND } from '../timer/phase-graph-query'
 import { handleSelectorWinner } from '../timer/selector-winner'
 import { formatCountdown } from '../timer/format'
@@ -19,6 +20,7 @@ import { renderProgressMeter } from './timer/progress-meter'
 import { renderConfigBar, renderConfigPanel } from './timer/config-panel'
 import { renderQueuePanel } from './timer/queue-panel'
 import { getViewOptions } from './timer/view-options'
+import { renderStageProgress, renderGuidanceChecklist } from './timer/stage-progress-panel'
 
 export class RoutineTimerView extends BasesView {
   readonly type = 'routine-timer'
@@ -29,6 +31,8 @@ export class RoutineTimerView extends BasesView {
   private routineResolution: RoutineResolution = { kind: 'default', graph: DEFAULT_PHASE_GRAPH }
   private isConfigOpen = false
   private queueEl: HTMLElement | null = null
+  private checkedGuidanceItems = new Set<string>()
+  private lastGuidancePhaseId: PhaseId | null = null
 
   constructor(controller: QueryController, containerEl: HTMLElement, plugin: RoutineFlowPlugin) {
     super(controller)
@@ -77,6 +81,11 @@ export class RoutineTimerView extends BasesView {
   }
 
   private render(state: EngineState) {
+    if (state.currentPhaseId !== this.lastGuidancePhaseId) {
+      this.lastGuidancePhaseId = state.currentPhaseId
+      this.checkedGuidanceItems.clear()
+    }
+
     this.containerEl.empty()
     this.containerEl.className = 'routine-timer-view'
 
@@ -200,6 +209,25 @@ export class RoutineTimerView extends BasesView {
       const inertEl = timerPanel.createEl('p', { cls: 'routine-inert' })
       renderStateIcon(inertEl, ['info'])
       inertEl.createSpan({ text: `"${graph.name}" is currently active instead of this view's routine ("${viewGraph.name}").` })
+    }
+
+    const stageProgress = deriveStageProgress(graph, state)
+    if (stageProgress.totalCount > 1) {
+      renderStageProgress(timerPanel, stageProgress)
+    }
+
+    if (phase.guidance && phase.guidance.length > 0) {
+      renderGuidanceChecklist(timerPanel, phase.guidance, {
+        checkedItems: this.checkedGuidanceItems,
+        onToggle: (item, checked) => {
+          if (checked) {
+            this.checkedGuidanceItems.add(item)
+          }
+          else {
+            this.checkedGuidanceItems.delete(item)
+          }
+        },
+      })
     }
 
     // Controls
@@ -393,6 +421,7 @@ export class RoutineTimerView extends BasesView {
     if (result !== 'confirmed') {
       return
     }
+    this.checkedGuidanceItems.clear()
     void this.plugin.store.dispatch({ type: 'stop' })
   }
 
