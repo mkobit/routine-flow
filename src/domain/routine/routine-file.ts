@@ -127,7 +127,9 @@ function convertPhase(phase: unknown): Result<unknown, RoutineParseError> {
   return !isRecord(phase)
     ? { success: true, value: phase }
     : mergePhaseFields(
-        phase,
+        phase.guidance !== undefined || phase.checklist !== undefined
+          ? { ...phase, guidance: phase.guidance ?? phase.checklist }
+          : phase,
         convertDurationField(phase.duration),
         convertCompletionPolicy(phase.completionPolicy),
         convertActions(phase.actions),
