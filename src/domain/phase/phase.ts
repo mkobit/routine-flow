@@ -169,6 +169,8 @@ export const PhaseNodeSchema = z.preprocess((val) => {
   const handlers = raw ? extractHandlers(raw) : undefined
   const selector = raw ? extractSelector(raw) : undefined
   const duration = raw ? extractDuration(raw) : undefined
+  const rawGuidance = raw ? (raw.guidance ?? raw.checklist) : undefined
+  const guidance = rawGuidance === null ? undefined : rawGuidance
 
   return raw
     ? {
@@ -180,6 +182,7 @@ export const PhaseNodeSchema = z.preprocess((val) => {
         handlers,
         selector,
         duration,
+        ...(guidance !== undefined ? { guidance } : {}),
       }
     : val
 }, z.object({
@@ -203,6 +206,7 @@ export const PhaseNodeSchema = z.preprocess((val) => {
   badges: z.array(PhaseQueueBadgeSchema).readonly().optional().default([]),
   timeFormat: TimeFormatSchema.optional(),
   selector: PhaseSelectorConfigSchema.optional(),
+  guidance: z.array(z.string().min(1)).readonly().optional(),
 }).readonly()).readonly()
 
 export type PhaseNode = z.infer<typeof PhaseNodeSchema>
