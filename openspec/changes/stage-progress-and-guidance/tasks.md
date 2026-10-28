@@ -13,5 +13,5 @@
 
 ## 3. Visual styling and quality verification (flow-1t1.3)
 
-- [ ] 3.1 Add stage progress bar, stepper indicators, and checklist styles in `styles.css` using `DESIGN.md` CSS variables and state classes (`.is-active`, `.is-completed`, `.is-upcoming`, `.is-checked`), and verify styling in tests.
-- [ ] 3.2 Run quality gates (`bun run typecheck`, `bun run lint`, `bun test`, `bun run build`, and `bun x openspec validate stage-progress-and-guidance`) and verify all pass.
+- [x] 3.1 Add stage progress bar, stepper indicators, and checklist styles in `styles.css` using `DESIGN.md` CSS variables and state classes (`.is-active`, `.is-completed`, `.is-upcoming`, `.is-checked`), and verify styling in tests.
+- [x] 3.2 Run quality gates (`bun run typecheck`, `bun run lint`, `bun test`, `bun run build`, and `bun x openspec validate stage-progress-and-guidance`) and verify all pass.
