@@ -7,7 +7,7 @@ locked = true
 http_retries = 5
 
 [tasks.validate-sbx]
-description = "Validate Docker Sandbox environment files"
-run = "bun run check:sbx-env"
+description = "Validate Docker Sandbox kit"
+run = "sbx kit validate .sbx/kit"
 
 
