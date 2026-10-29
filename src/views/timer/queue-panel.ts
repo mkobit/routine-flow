@@ -97,7 +97,13 @@ export function renderQueuePanel(queueEl: HTMLElement, options: QueuePanelOption
 
   if (options.queueItems.length === 0) {
     const emptyEl = queueEl.createDiv({ cls: 'routine-queue-empty' })
-    if (options.completedCount && options.completedCount > 0) {
+    if (options.phase.kind === 'review') {
+      emptyEl.addClass('is-queue-exhausted')
+      emptyEl.addClass('is-inbox-zero')
+      renderStateIcon(emptyEl, ['check-check', 'check'])
+      emptyEl.createEl('p', { text: 'Inbox zero reached — nothing to review.' })
+    }
+    else if (options.completedCount && options.completedCount > 0) {
       emptyEl.addClass('is-queue-exhausted')
       renderStateIcon(emptyEl, ['check-check', 'check'])
       emptyEl.createEl('p', { text: 'All chores completed early — queue exhausted.' })
@@ -105,6 +111,16 @@ export function renderQueuePanel(queueEl: HTMLElement, options: QueuePanelOption
     else {
       renderStateIcon(emptyEl, ['inbox', 'list-x'])
       emptyEl.createEl('p', { text: 'No notes match — check this routine\'s queue filter.' })
+    }
+
+    if (options.actionExecutor?.dispatch !== undefined) {
+      const advanceBtn = emptyEl.createEl('button', {
+        cls: 'routine-action-btn mod-cta routine-queue-advance-btn',
+        text: 'Advance stage',
+      })
+      advanceBtn.addEventListener('click', () => {
+        void options.actionExecutor?.dispatch?.({ type: 'advance-phase' })
+      })
     }
     return
   }

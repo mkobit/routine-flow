@@ -773,6 +773,7 @@
 .routine-queue-empty {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: var(--size-4-2);
   padding: var(--size-4-3);
   color: var(--text-muted);
@@ -789,6 +790,10 @@
 
 .routine-queue-empty p {
   margin: 0;
+}
+
+.routine-queue-empty .routine-queue-advance-btn {
+  margin-left: auto;
 }
 
 /* ---- Blitz queue exhaustion and celebration ------------------------------------------------- */
