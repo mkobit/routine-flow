@@ -238,6 +238,23 @@ export class EngineStore {
         }
       }
     }
+
+    const phaseChanged = prevState.currentPhaseId !== this.state.currentPhaseId
+    if (this.deps.taskSourceRegistry !== undefined && (phaseChanged || action.type === 'start')) {
+      const activePhase = findPhaseById(this.graph, this.state.currentPhaseId)
+      if (activePhase !== undefined && activePhase.taskSourceId !== null) {
+        const source = this.deps.taskSourceRegistry.resolve(activePhase.taskSourceId)
+        const exhausted = source !== undefined && source.getQueue().length === 0
+        if (exhausted !== this.state.queueExhausted) {
+          this.applyState({ ...this.state, queueExhausted: exhausted })
+        }
+        if (exhausted && this.state.status === 'running' && this.hasQueueExhaustedTransition(this.state.currentPhaseId)) {
+          const autoAdvanceApps = await this.runDispatch({ type: 'set-queue-exhausted', exhausted: true })
+          applications = [...applications, ...autoAdvanceApps]
+        }
+      }
+    }
+
     return applications
   }
 
