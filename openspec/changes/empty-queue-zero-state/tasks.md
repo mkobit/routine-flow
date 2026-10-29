@@ -7,11 +7,11 @@
 
 ## 2. Queue panel zero-state and advance action UI (flow-1t1.4)
 
-- [ ] 2.1 Update `renderQueuePanel` in `src/views/timer/queue-panel.ts` to display celebratory Inbox zero messaging and icon for review phases.
-- [ ] 2.2 Add explicit Skip/Advance button in `src/views/timer/queue-panel.ts` to advance or bypass empty review stages when queue length is zero.
-- [ ] 2.3 Add unit tests in `tests/timer-view-decomposition.test.ts` verifying empty review zero-state rendering and advance button click dispatch.
+- [x] 2.1 Update `renderQueuePanel` in `src/views/timer/queue-panel.ts` to display celebratory Inbox zero messaging and icon for review phases.
+- [x] 2.2 Add explicit Skip/Advance button in `src/views/timer/queue-panel.ts` to advance or bypass empty review stages when queue length is zero.
+- [x] 2.3 Add unit tests in `tests/timer-view-decomposition.test.ts` verifying empty review zero-state rendering and advance button click dispatch.
 
 ## 3. Visual styling and quality verification (flow-1t1.4)
 
-- [ ] 3.1 Add CSS styling in `styles.css` for empty queue celebratory state, icon container, and advance action button using `DESIGN.md` CSS variables.
-- [ ] 3.2 Run quality gates (`bun run typecheck`, `bun run lint`, `bun test`, `bun run build`, and `bun x openspec validate empty-queue-zero-state`) in sandbox and verify all pass.
+- [x] 3.1 Add CSS styling in `styles.css` for empty queue celebratory state, icon container, and advance action button using `DESIGN.md` CSS variables.
+- [x] 3.2 Run quality gates (`bun run typecheck`, `bun run lint`, `bun test`, `bun run build`, and `bun x openspec validate empty-queue-zero-state`) in sandbox and verify all pass.

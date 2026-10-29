@@ -334,6 +334,7 @@ let handleSelectorWinnerFn: typeof handleSelectorWinner
 let FOCUS_PHASE_KIND_VAL: PhaseKind
 let BREAK_PHASE_KIND_VAL: PhaseKind
 let SELECTOR_PHASE_KIND_VAL: PhaseKind
+let PhaseKindSchemaParse: (val: string) => PhaseKind
 let PhaseIdSchemaParse: (val: string) => PhaseId
 let TaskSourceIdSchemaParse: (val: string) => TaskSourceId
 let TaskQueueItemIdSchemaParse: (val: string) => TaskQueueItemId
@@ -377,6 +378,7 @@ describe('Timer view decomposition', () => {
 
     const phaseMod = await import('../src/domain/phase/phase')
     PhaseIdSchemaParse = val => phaseMod.PhaseIdSchema.parse(val)
+    PhaseKindSchemaParse = val => phaseMod.PhaseKindSchema.parse(val)
 
     const queueMod = await import('../src/domain/queue/task-source')
     TaskSourceIdSchemaParse = val => queueMod.TaskSourceIdSchema.parse(val)
@@ -556,6 +558,57 @@ describe('Timer view decomposition', () => {
       expect(emptyEl?.hasClass('is-queue-exhausted')).toBe(true)
       expect(emptyEl?.children.some(c => c.getText().includes('All chores completed early — queue exhausted.'))).toBe(true)
       expect(emptyEl?.children.some(c => c.hasClass('routine-state-icon'))).toBe(true)
+    })
+
+    test('renders celebratory Inbox zero empty state for review phase when queue is empty', () => {
+      const queueEl = new MockElement()
+      // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- mock App
+      const app = new MockApp() as unknown as AppType
+      renderQueuePanelFn(asElement(queueEl), {
+        phase: { ...createDummyPhase(), kind: PhaseKindSchemaParse('review') },
+        activeFilePath: null,
+        queueItems: [],
+        app,
+        onSelectTask: () => {},
+      })
+
+      const emptyEl = queueEl.children.find(c => c.hasClass('routine-queue-empty'))
+      expect(emptyEl).toBeDefined()
+      expect(emptyEl?.hasClass('is-queue-exhausted')).toBe(true)
+      expect(emptyEl?.hasClass('is-inbox-zero')).toBe(true)
+      expect(emptyEl?.children.some(c => c.getText().includes('Inbox zero reached — nothing to review.'))).toBe(true)
+      expect(emptyEl?.children.some(c => c.hasClass('routine-state-icon'))).toBe(true)
+    })
+
+    test('renders Advance stage button on empty queue when actionExecutor dispatch is supplied', () => {
+      const queueEl = new MockElement()
+      // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- mock App
+      const app = new MockApp() as unknown as AppType
+      let dispatchedActions: readonly unknown[] = []
+      const actionExecutor = {
+        executeAction: async () => null,
+        dispatch: async (action: unknown) => {
+          dispatchedActions = [...dispatchedActions, action]
+          return undefined
+        },
+      }
+
+      renderQueuePanelFn(asElement(queueEl), {
+        phase: { ...createDummyPhase(), kind: PhaseKindSchemaParse('review') },
+        activeFilePath: null,
+        queueItems: [],
+        actionExecutor,
+        app,
+        onSelectTask: () => {},
+      })
+
+      const emptyEl = queueEl.children.find(c => c.hasClass('routine-queue-empty'))
+      const advanceBtn = emptyEl?.children.find(c => c.hasClass('routine-queue-advance-btn'))
+      expect(advanceBtn).toBeDefined()
+      expect(advanceBtn?.getText()).toBe('Advance stage')
+
+      advanceBtn?.click()
+      expect(dispatchedActions).toEqual([{ type: 'advance-phase' }])
     })
 
     test('renders items and handles item list', () => {
