@@ -345,6 +345,100 @@ describe('EngineStore queueExhausted sync', () => {
     expect(store.getState().remaining?.total({ unit: 'seconds' })).toBe(9)
     expect(store.getState().status).toBe('running')
   })
+
+  test('starting a phase whose queue is already empty immediately advances along queueExhausted transition', async () => {
+    const { registry } = createFakeTaskSourceRegistry([])
+    const blitzGraph = PhaseGraphSchema.parse({
+      id: 'blitz-empty-start',
+      name: 'Blitz empty start graph',
+      phases: [
+        PhaseSchema.parse({
+          ...phaseDefaults,
+          id: 'blitz',
+          label: 'Blitz',
+          kind: 'focus',
+          duration: Temporal.Duration.from({ minutes: 15 }),
+          taskSourceId: exercisesTaskSourceId,
+          logTarget: { kind: 'activeItem' },
+        }),
+        PhaseSchema.parse({
+          ...phaseDefaults,
+          id: 'wrapup',
+          label: 'Wrap up',
+          kind: 'break',
+          duration: Temporal.Duration.from({ minutes: 5 }),
+          logTarget: { kind: 'activeItem' },
+        }),
+      ],
+      transitions: [
+        { fromPhaseId: 'blitz', toPhaseId: 'wrapup', condition: { kind: 'queueExhausted' } },
+        { fromPhaseId: 'blitz', toPhaseId: 'wrapup', condition: { kind: 'always' } },
+      ],
+    })
+
+    const store = new EngineStore(blitzGraph, { taskSourceRegistry: registry })
+    expect(store.getState().currentPhaseId).toBe(PhaseIdSchema.parse('blitz'))
+
+    await store.dispatch({ type: 'start' })
+
+    expect(store.getState().currentPhaseId).toBe(PhaseIdSchema.parse('wrapup'))
+    expect(store.getState().queueExhausted).toBe(true)
+  })
+
+  test('advancing into a phase whose queue is already empty sets queueExhausted true without advancing when stopped', async () => {
+    const { registry } = createFakeTaskSourceRegistry([])
+    const reviewGraph = PhaseGraphSchema.parse({
+      id: 'review-cadence',
+      name: 'Review cadence graph',
+      phases: [
+        PhaseSchema.parse({
+          ...phaseDefaults,
+          id: 'kickoff',
+          label: 'Kickoff',
+          kind: 'focus',
+          duration: Temporal.Duration.from({ minutes: 5 }),
+          taskSourceId: null,
+          logTarget: null,
+        }),
+        PhaseSchema.parse({
+          ...phaseDefaults,
+          id: 'inbox-review',
+          label: 'Inbox review',
+          kind: 'review',
+          duration: Temporal.Duration.from({ minutes: 10 }),
+          taskSourceId: exercisesTaskSourceId,
+          logTarget: null,
+        }),
+        PhaseSchema.parse({
+          ...phaseDefaults,
+          id: 'planning',
+          label: 'Planning',
+          kind: 'focus',
+          duration: Temporal.Duration.from({ minutes: 10 }),
+          taskSourceId: null,
+          logTarget: null,
+        }),
+      ],
+      transitions: [
+        { fromPhaseId: 'kickoff', toPhaseId: 'inbox-review', condition: { kind: 'always' } },
+        { fromPhaseId: 'inbox-review', toPhaseId: 'planning', condition: { kind: 'queueExhausted' } },
+        { fromPhaseId: 'inbox-review', toPhaseId: 'planning', condition: { kind: 'always' } },
+      ],
+    })
+
+    const store = new EngineStore(reviewGraph, { taskSourceRegistry: registry })
+    expect(store.getState().currentPhaseId).toBe(PhaseIdSchema.parse('kickoff'))
+
+    await store.dispatch({ type: 'advance-phase' })
+
+    expect(store.getState().currentPhaseId).toBe(PhaseIdSchema.parse('inbox-review'))
+    expect(store.getState().status).toBe('stopped')
+    expect(store.getState().queueExhausted).toBe(true)
+
+    // Starting the stopped empty phase triggers immediate queueExhausted transition to planning
+    await store.dispatch({ type: 'start' })
+    expect(store.getState().currentPhaseId).toBe(PhaseIdSchema.parse('planning'))
+  })
 })
 
 describe('EngineStore trackerFrontmatter sync', () => {

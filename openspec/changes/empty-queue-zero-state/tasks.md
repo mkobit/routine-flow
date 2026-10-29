@@ -2,8 +2,8 @@
 
 ## 1. Engine transition evaluation on phase entry and start (flow-1t1.4)
 
-- [ ] 1.1 Update `EngineStore` in `src/timer/store.ts` to synchronize `queueExhausted` state on phase transition and evaluate `queueExhausted` edge guards on phase entry and start.
-- [ ] 1.2 Add unit and store tests in `tests/store.test.ts` verifying automatic transitions when starting or entering a phase whose queue is already empty.
+- [x] 1.1 Update `EngineStore` in `src/timer/store.ts` to synchronize `queueExhausted` state on phase transition and evaluate `queueExhausted` edge guards on phase entry and start.
+- [x] 1.2 Add unit and store tests in `tests/store.test.ts` verifying automatic transitions when starting or entering a phase whose queue is already empty.
 
 ## 2. Queue panel zero-state and advance action UI (flow-1t1.4)
 
