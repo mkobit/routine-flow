@@ -16,7 +16,7 @@
         "@eslint/js": "^10.0.1",
         "@eslint/json": "^2.1.0",
         "@fission-ai/openspec": "1.14.3",
-        "@playwright/test": "^1.63.0",
+        "@playwright/test": "^1.64.1",
         "@stylistic/eslint-plugin": "^5.10.0",
         "@types/bun": "^1.4.3",
         "@types/node": "^26.6.4",
@@ -31,7 +31,7 @@
         "fast-check": "^4.10.2",
         "globals": "17.13.0",
         "jiti": "^2.7.0",
-        "obsidian-launcher": "^3.2.1",
+        "obsidian-launcher": "^3.4.0",
         "ts-node": "^10.9.2",
         "tslib": "2.8.1",
         "typescript": "^6.0.3",
@@ -207,7 +207,7 @@
 
     "@pkgr/core": ["@pkgr/core@0.1.2", "", {}, "sha512-fdDH1LSGfZdTH2sxdpVMw31BanV28K/Gry0cVFxaNP77neJSkd82mM8ErPNYs9e+0O7SdHBLTDzDgwUuy18RnQ=="],
 
-    "@playwright/test": ["@playwright/test@1.63.0", "", { "dependencies": { "playwright": "1.63.0" }, "bin": { "playwright": "cli.js" } }, "sha512-oxMK4vllB9RK5NQ2l1pq1IfOf2AvnEuj/vYGDj0H2nMtmtZpKtCwt/l00GEO6xjGfpBNAvjovvYdCm50dRQkpQ=="],
+    "@playwright/test": ["@playwright/test@1.64.1", "", { "dependencies": { "playwright": "1.64.1" }, "bin": { "playwright": "cli.js" } }, "sha512-IaYGml/nSOiZWROfPtuIL7neuu9qDOZ3TNvNljUIrhDMxiGTgPjzj/g9p9RxpS2tSepPDRY+UwAaEeiKtUvIAg=="],
 
     "@rtsao/scc": ["@rtsao/scc@1.1.0", "", {}, "sha512-zt6OdqaDoOnJ1ZYsCYGt9YmWzDXl4vQdKTyJev62gFhRGKdx7mcT54V9KIjg+d2wi9EXsPvAPKe7i7WjfVWB8g=="],
 
@@ -717,7 +717,7 @@
 
     "obsidian": ["obsidian@1.14.4", "", { "dependencies": { "@types/codemirror": "5.60.8", "moment": "2.31.0" }, "peerDependencies": { "@codemirror/state": "6.7.6", "@codemirror/view": "6.43.13" } }, "sha512-Kyo+5t0wFW2On5irLOPrgtwWDnaJsvE9n/P1OVvdPytx+NqeHJXvxVqADNOqLp9bU1+I64B6i+dHb0fxR/ss3w=="],
 
-    "obsidian-launcher": ["obsidian-launcher@3.2.1", "", { "dependencies": { "7z-wasm": "1.2.0", "@electron/get": "^5.0.0", "@supercharge/promise-pool": "^3.2.0", "chrome-remote-interface": "^0.33.3", "classic-level": "^3.0.0", "commander": "^14.0.2", "consola": "^3.4.2", "dotenv": "^17.2.3", "fast-xml-parser": "^5.10.0", "fs-extra": "^11.4.0", "lodash": "^4.17.21", "readline-sync": "^1.4.10", "semver": "^7.7.3" }, "bin": { "obsidian-launcher": "./dist/cli.js" } }, "sha512-H7kqiYkuiW01/E11gJDJGCc3JWS7boHY0bC0IuCQ2TwJQ/mQyMBGxKuO8CNbZrWsEkh5uFi3vS86HEhoaXcr3w=="],
+    "obsidian-launcher": ["obsidian-launcher@3.4.0", "", { "dependencies": { "7z-wasm": "1.2.0", "@electron/get": "^5.0.0", "@supercharge/promise-pool": "^3.2.0", "chrome-remote-interface": "^0.33.3", "classic-level": "^3.0.0", "commander": "^14.0.2", "consola": "^3.4.2", "dotenv": "^17.2.3", "fast-xml-parser": "^5.10.0", "fs-extra": "^11.4.0", "lodash": "^4.17.21", "readline-sync": "^1.4.10", "semver": "^7.7.3" }, "bin": { "obsidian-launcher": "./dist/cli.js" } }, "sha512-A9Wft8qrMgnITqpHfyKobdmrig+nrB0SHWjn4malQ2mLy/ZFFcLR9HdtQlON2awedqeIBKUolYkpsXO10it1uw=="],
 
     "onetime": ["onetime@7.0.0", "", { "dependencies": { "mimic-function": "^5.0.0" } }, "sha512-VXJjc87FScF88uafS3JllDgvAm+c/Slfz06lorj2uAY34rlUu0Nt+v8wreiImcrgAjjIHp1rXpTDlLOGw29WwQ=="],
 
@@ -743,9 +743,9 @@
 
     "picomatch": ["picomatch@4.0.4", "", {}, "sha512-QP88BAKvMam/3NxH6vj2o21R6MjxZUAd6nlwAS/pnGvN9IVLocLHxGYIzFhg6fUQ+5th6P4dv4eW9jX3DSIj7A=="],
 
-    "playwright": ["playwright@1.63.0", "", { "dependencies": { "playwright-core": "1.63.0" }, "bin": { "playwright": "cli.js" } }, "sha512-+7ziBLidS4NaNCdt57SUDT+wYmmd5fmiQejUic/kb+YsYSCPyOOE9sebzMjNmQrsnNpDJqd4WHvV/8lfKfUDUg=="],
+    "playwright": ["playwright@1.64.1", "", { "dependencies": { "playwright-core": "1.64.1" }, "bin": { "playwright": "cli.js" } }, "sha512-HCrVhHr5QQuwYoswEUGTb7gGp522yflbv/ST8nF4sFWGuLjQCt17Q/EubpGGSNKYn1tsTCPZxqHhHCfVURu7UA=="],
 
-    "playwright-core": ["playwright-core@1.63.0", "", { "bin": { "playwright-core": "cli.js" } }, "sha512-rYCsBF/M5HjUch52bbtVONEFjv6Xu8sm8h72dNlR5bzIE1fvC/bxgspzkjSfU+MweEMmPM8KJebG6nnyxo5mCg=="],
+    "playwright-core": ["playwright-core@1.64.1", "", { "bin": { "playwright-core": "cli.js" } }, "sha512-BC4s8y6SEVA6Q1rSxZTto8hI1KUI3xXlHGZgvGqP4IqPdI/a6FX9H29IDNz7vKo9l21b6LfYosScPL6M3xxyDQ=="],
 
     "pluralize": ["pluralize@8.0.0", "", {}, "sha512-Nc3IT5yHzflTfbjgqWcCPpo7DaKy4FnpB0l/zCAW0Tc7jxAiuqSxHasntB3D7887LSrA93kDJ9IXovxJYxyLCA=="],
 
