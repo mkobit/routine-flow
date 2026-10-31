@@ -17,6 +17,7 @@ The project enforces strict Functional Programming principles via `eslint`.
 
 Run devDependency binaries (e.g. `openspec`) via `bun x <name>`.
 `bd` (beads) is managed via `mise` and is installed on system `PATH` — run `bd` directly (e.g. `bd ready`), never run `bun x bd` or install `bd` via `bun`.
+Query modern web guidance offline with `bun x modern-web-guidance search <query>` and `bun x modern-web-guidance retrieve <id>`.
 
 | Command | Description |
 | :--- | :--- |
@@ -34,6 +35,8 @@ Run devDependency binaries (e.g. `openspec`) via `bun x <name>`.
 | `bun run vault:screenshot [path]` | Screenshots the running `vault:dev` window via the same CLI (default `.test-output/vault-screenshot.png`) -- the way to actually see rendered UI when driving Obsidian headlessly or agent-side. |
 | `bun run vault:reload` | Copies freshly built `main.js`/`manifest.json`/`styles.css` into the *running* vault's plugin dir and reloads it via CLI, no relaunch needed. Pair with `bun run dev` (esbuild watch). |
 | `bun x openspec` | Runs the OpenSpec CLI (proposal/apply/archive workflow). `bun x openspec validate --all` runs as a PR check on changes under `openspec/**`. |
+| `bun x modern-web-guidance search <query>` | Searches modern web guidance topics offline. |
+| `bun x modern-web-guidance retrieve <id>` | Retrieves modern web guidance content for specified topic IDs. |
 
 `vault:eval`/`vault:screenshot`/`vault:reload` all shell out to `obsidian-cli`, which targets a single globally-active Obsidian instance -- with more than one `vault:dev` running at once (from this repo or a sibling sharing the same obsidian-launcher harness, e.g. bases-chartkit), which instance responds is undefined.
 

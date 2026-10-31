@@ -48,6 +48,7 @@
     "fast-check": "^4.10.2",
     "globals": "17.13.0",
     "jiti": "^2.7.0",
+    "modern-web-guidance": "^0.0.195",
     "obsidian-launcher": "^3.4.0",
     "ts-node": "^10.9.2",
     "tslib": "2.8.1",
