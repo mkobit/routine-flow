@@ -66,6 +66,7 @@ The following reference guides detail real-world topologies available in the tes
 | [Multi-property filtering and dispatch](multi-property-filtering-and-dispatch) | Multi-property filters, Priority dispatch queues | Compound Bases filters, numeric priority sorting, lifecycle dispatch lanes |
 | [Audio chimes and desktop notifications](audio-chimes-and-notifications) | Web Audio synthesizer chimes, OS desktop alerts | Web Audio chord synthesis, in-app Notice toasts, milestone alert tones |
 | [Chore blitz execution](chore-blitz) | Chore blitz sprint, Rest and hydrate, Clean-up | `queueExhausted` early exit, rapid check-offs, `completedItems` batch write-back |
+| [Spaced repetition and Leitner box](spaced-repetition-and-leitner-box) | Leitner box spaced review | Expanding review intervals, grade action buttons, deferred status mutations |
 
 ## Routine note format
 
