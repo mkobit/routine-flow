@@ -67,6 +67,7 @@ The following reference guides detail real-world topologies available in the tes
 | [Audio chimes and desktop notifications](audio-chimes-and-notifications) | Web Audio synthesizer chimes, OS desktop alerts | Web Audio chord synthesis, in-app Notice toasts, milestone alert tones |
 | [Chore blitz execution](chore-blitz) | Chore blitz sprint, Rest and hydrate, Clean-up | `queueExhausted` early exit, rapid check-offs, `completedItems` batch write-back |
 | [Spaced repetition and Leitner box](spaced-repetition-and-leitner-box) | Leitner box spaced review | Expanding review intervals, grade action buttons, deferred status mutations |
+| [Structured review cadences](structured-review-cadences) | Weekly GTD review, Daily kickoff, Workday shutdown | Multi-query per-phase task switching, checklist guidance, `queueExhausted` transitions |
 
 ## Routine note format
 

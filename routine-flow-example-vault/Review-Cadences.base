@@ -1,0 +1,39 @@
+type: base
+properties:
+  note.status:
+    displayName: Status
+  note.due:
+    displayName: Due date
+  note.priority:
+    displayName: Priority
+  note.category:
+    displayName: Category
+  note.type:
+    displayName: Task type
+  note.routine-status:
+    displayName: Routine status
+views:
+  - type: routine-timer
+    name: Weekly GTD review
+    routineFile: review-cadences/weekly-gtd-routine.md
+  - type: routine-timer
+    name: Daily kickoff
+    routineFile: review-cadences/daily-kickoff-routine.md
+  - type: routine-timer
+    name: Workday shutdown
+    routineFile: review-cadences/workday-shutdown-routine.md
+  - type: table
+    name: Inbox items
+    filters:
+      and:
+        - note.status == "inbox"
+  - type: table
+    name: Active projects
+    filters:
+      and:
+        - note.status == "active"
+  - type: table
+    name: Waiting for
+    filters:
+      and:
+        - note.status == "waiting"

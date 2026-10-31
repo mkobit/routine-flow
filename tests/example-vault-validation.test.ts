@@ -10,6 +10,7 @@ import {
   generateLeitnerBoxNotes,
   generateRandomSelectorNotes,
   generateChoreBlitzNotes,
+  generateReviewCadencesNotes,
   generateVault,
   rebuildGeneratedVault,
   resolveVaultSeed,
@@ -181,6 +182,59 @@ describe('example vault validation', () => {
     }
   })
 
+  test('review cadences generation is deterministic across seeds and covers cadence routine graphs', () => {
+    const seeds = [101, 202, 303, 404] as const
+    const decks = seeds.map(generateReviewCadencesNotes)
+
+    for (const [index, seed] of seeds.entries()) {
+      expect(decks[index]).toEqual(generateReviewCadencesNotes(seed))
+    }
+    expect(new Set(decks.map(deck => deck.map(getNoteContent).join('\n'))).size).toBeGreaterThan(1)
+
+    for (const note of decks[0] ?? []) {
+      expect(NoteDefinitionSchema.safeParse(note).success).toBe(true)
+      expect(() => serializeFrontmatter(note.frontmatter)).not.toThrow()
+      expect(getNoteContent(note)).not.toContain('undefined')
+    }
+
+    const defaultNotes = generateReviewCadencesNotes(DEFAULT_VAULT_SEED)
+    const readmeNote = defaultNotes.find(note => note.relativePath.base === 'README.md')
+    expect(readmeNote).toBeDefined()
+
+    const expectedRoutines = [
+      'daily-kickoff-routine.md',
+      'workday-shutdown-routine.md',
+      'weekly-gtd-routine.md',
+    ] as const
+
+    for (const routineFilename of expectedRoutines) {
+      const routineNote = defaultNotes.find(note => note.relativePath.base === routineFilename)
+      expect(routineNote).toBeDefined()
+      if (routineNote !== undefined) {
+        const parseResult = parseRoutineFile(getNoteContent(routineNote))
+        expect(parseResult.success).toBe(true)
+        if (parseResult.success) {
+          expect(parseResult.graph.phases.length).toBeGreaterThan(2)
+          expect(parseResult.graph.transitions.some(t => t.guard.kind === 'queueExhausted')).toBe(true)
+          expect(parseResult.graph.phases.some(p => p.guidance !== undefined && p.guidance.length > 0)).toBe(true)
+        }
+      }
+    }
+
+    const taskNotes = defaultNotes.filter(
+      note => note.relativePath.dir === 'review-cadences' && note.relativePath.base !== 'README.md' && !note.relativePath.base.endsWith('-routine.md'),
+    )
+    expect(taskNotes.length).toBe(9)
+    for (const task of taskNotes) {
+      expect(task.frontmatter.type).toBe('review-task')
+      expect(isString(task.frontmatter.status)).toBe(true)
+      if (isString(task.frontmatter.status)) {
+        expect(['inbox', 'active', 'waiting']).toContain(task.frontmatter.status)
+      }
+      expect(task.frontmatter.due).toBeInstanceOf(Temporal.PlainDate)
+    }
+  })
+
   test('resolveVaultSeed uses default seed or parses numeric env override', () => {
     expect(resolveVaultSeed({})).toBe(DEFAULT_VAULT_SEED)
     expect(resolveVaultSeed({ VAULT_SEED: '12345' })).toBe(12_345)
@@ -209,7 +263,7 @@ describe('example vault validation', () => {
     const notes = generateVault(DEFAULT_VAULT_SEED)
     const routineNotes = notes.filter(n => getNotePath(n).endsWith('-routine.md'))
 
-    expect(routineNotes.length).toBe(GENERATED_VAULT_FOLDERS.length + 1)
+    expect(routineNotes.length).toBe(GENERATED_VAULT_FOLDERS.length + 3)
 
     for (const note of routineNotes) {
       expect(note.frontmatter['is-routine']).toBe(true)
@@ -432,6 +486,55 @@ describe('example vault validation', () => {
     expect(viewNameMatches.length).toBeGreaterThan(0)
 
     const embedMatches = [...mdContent.matchAll(/!\[\[Audio-Notifications\.base#([^\]]+)\]\]/g)]
+      .map(m => m[1])
+      .filter(isString)
+      .map(s => s.trim())
+
+    expect(embedMatches.length).toBeGreaterThan(0)
+
+    for (const embedView of embedMatches) {
+      expect(viewNameMatches).toContain(embedView)
+    }
+  })
+
+  test('every routineFile in Review-Cadences.base maps to a valid generated routine', async () => {
+    const reviewCadencesBasePath = path.resolve(__dirname, '../routine-flow-example-vault/Review-Cadences.base')
+    const content = await fs.readFile(reviewCadencesBasePath, 'utf-8')
+    const routineFileMatches = [...content.matchAll(/routineFile:\s*([^\s\n]+)/g)]
+      .map(m => m[1])
+      .filter(isString)
+
+    expect(routineFileMatches.length).toBeGreaterThan(0)
+
+    const notes = generateVault(DEFAULT_VAULT_SEED)
+    const routinePaths = new Set(notes.map(getNotePath))
+
+    for (const routineFile of routineFileMatches) {
+      expect(routinePaths.has(routineFile)).toBe(true)
+      const targetNote = notes.find(n => getNotePath(n) === routineFile)
+      expect(targetNote).toBeDefined()
+      if (targetNote !== undefined) {
+        const parseResult = parseRoutineFile(getNoteContent(targetNote))
+        expect(parseResult.success).toBe(true)
+      }
+    }
+  })
+
+  test('Review-Cadences.md embeds existing views from Review-Cadences.base', async () => {
+    const reviewCadencesMdPath = path.resolve(__dirname, '../routine-flow-example-vault/Review-Cadences.md')
+    const reviewCadencesBasePath = path.resolve(__dirname, '../routine-flow-example-vault/Review-Cadences.base')
+
+    const mdContent = await fs.readFile(reviewCadencesMdPath, 'utf-8')
+    const baseContent = await fs.readFile(reviewCadencesBasePath, 'utf-8')
+
+    const viewNameMatches = [...baseContent.matchAll(/name:\s*([^\s\n][^\n]*)/g)]
+      .map(m => m[1])
+      .filter(isString)
+      .map(s => s.trim())
+
+    expect(viewNameMatches.length).toBeGreaterThan(0)
+
+    const embedMatches = [...mdContent.matchAll(/!\[\[Review-Cadences\.base#([^\]]+)\]\]/g)]
       .map(m => m[1])
       .filter(isString)
       .map(s => s.trim())
