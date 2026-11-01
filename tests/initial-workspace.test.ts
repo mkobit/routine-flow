@@ -10,6 +10,11 @@ describe('resolveOpenTarget', () => {
     expect(resolveOpenTarget('chores')).toEqual({ type: 'bases', file: 'Tasks.base', viewName: 'Chore list' })
     expect(resolveOpenTarget('manual-clear')).toEqual({ type: 'bases', file: 'Tasks.base', viewName: 'Manual clear' })
     expect(resolveOpenTarget('table')).toEqual({ type: 'bases', file: 'Tasks.base', viewName: 'Table' })
+    expect(resolveOpenTarget('review-cadences')).toEqual({
+      type: 'bases',
+      file: 'Review-Cadences.base',
+      viewName: 'Weekly GTD review',
+    })
     expect(resolveOpenTarget('shared-routines')).toEqual({
       type: 'bases',
       file: 'shared-routines/Shared-routines.base',

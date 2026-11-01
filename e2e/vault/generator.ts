@@ -17,6 +17,7 @@ import { generatePomodoroNotes } from './generators/pomodoro'
 import { generateRandomSelectorNotes } from './generators/random-selector'
 import { generateShutdownRitualNotes } from './generators/shutdown-ritual'
 import { generateSilentMeetingNotes } from './generators/silent-meeting'
+import { generateReviewCadencesNotes } from './generators/review-cadences'
 import { generateSpacedRepetitionNotes } from './generators/spaced-repetition'
 import { generateSprintRetrospectiveNotes } from './generators/sprint-retrospective'
 import { generateStandupNotes } from './generators/standup'
@@ -24,7 +25,7 @@ import { generateStretchBreakNotes } from './generators/stretch-break'
 import { generateUltradianRhythmNotes } from './generators/ultradian-rhythm'
 import { generateWorkoutNotes } from './generators/workout'
 import { generateWriteBackVariantsNotes } from './generators/write-back-variants'
-import { DEFAULT_VAULT_SEED, resolveVaultSeed } from './seed'
+import { resolveVaultSeed } from './seed'
 import type { NoteDefinition } from './schema'
 import { writeVault } from './vault'
 
@@ -45,6 +46,7 @@ export * from './generators/manual-clear'
 export * from './generators/morning-kickoff'
 export * from './generators/pomodoro'
 export * from './generators/random-selector'
+export * from './generators/review-cadences'
 export * from './generators/shutdown-ritual'
 export * from './generators/silent-meeting'
 export * from './generators/spaced-repetition'
@@ -69,6 +71,7 @@ const ROUTINE_SEED_OFFSETS = {
   leitnerBox: 10,
   randomSelector: 11,
   choreBlitz: 12,
+  reviewCadences: 13,
 } as const
 
 export const GENERATED_VAULT_FOLDERS = [
@@ -95,6 +98,7 @@ export const GENERATED_VAULT_FOLDERS = [
   'focus-sandwich',
   'random-selector',
   'chore-blitz',
+  'review-cadences',
 ] as const
 
 export function generateVault(seed: number = resolveVaultSeed()): readonly NoteDefinition[] {
@@ -123,6 +127,7 @@ export function generateVault(seed: number = resolveVaultSeed()): readonly NoteD
     ...generateLeitnerBoxNotes(seed + ROUTINE_SEED_OFFSETS.leitnerBox),
     ...generateRandomSelectorNotes(seed + ROUTINE_SEED_OFFSETS.randomSelector),
     ...generateChoreBlitzNotes(seed + ROUTINE_SEED_OFFSETS.choreBlitz),
+    ...generateReviewCadencesNotes(seed + ROUTINE_SEED_OFFSETS.reviewCadences),
   ]
 }
 
