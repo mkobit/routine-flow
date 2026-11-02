@@ -68,6 +68,7 @@ The following reference guides detail real-world topologies available in the tes
 | [Chore blitz execution](chore-blitz) | Chore blitz sprint, Rest and hydrate, Clean-up | `queueExhausted` early exit, rapid check-offs, `completedItems` batch write-back |
 | [Spaced repetition and Leitner box](spaced-repetition-and-leitner-box) | Leitner box spaced review | Expanding review intervals, grade action buttons, deferred status mutations |
 | [Structured review cadences](structured-review-cadences) | Weekly GTD review, Daily kickoff, Workday shutdown | Multi-query per-phase task switching, checklist guidance, `queueExhausted` transitions |
+| [Star jar token economy](star-jar-token-economy) | Star jar reward routine | Variable task star weights, `accumulateReward` point bank, `tracker.stars >= 15` threshold guard, `resetReward` on exit |
 
 ## Routine note format
 

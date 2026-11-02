@@ -15,6 +15,11 @@ describe('resolveOpenTarget', () => {
       file: 'Review-Cadences.base',
       viewName: 'Weekly GTD review',
     })
+    expect(resolveOpenTarget('star-jar')).toEqual({
+      type: 'bases',
+      file: 'Star-Jar.base',
+      viewName: 'Star jar routine',
+    })
     expect(resolveOpenTarget('shared-routines')).toEqual({
       type: 'bases',
       file: 'shared-routines/Shared-routines.base',

@@ -1,0 +1,34 @@
+type: base
+properties:
+  note.stars:
+    displayName: Stars
+  note.category:
+    displayName: Category
+  note.status:
+    displayName: Status
+  note.priority:
+    displayName: Priority
+  note.target:
+    displayName: Milestone target
+views:
+  - type: routine-timer
+    name: Star jar routine
+    routineFile: star-jar-economy/star-jar-routine.md
+    focusProperty: note.status
+    focusValue: pending
+    filters:
+      and:
+        - note.stars > 0
+        - note.status == "pending"
+  - type: table
+    name: Active tasks
+    filters:
+      and:
+        - note.stars > 0
+        - note.status == "pending"
+  - type: table
+    name: Completed tasks
+    filters:
+      and:
+        - note.stars > 0
+        - note.status == "done"
