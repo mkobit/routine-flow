@@ -4,7 +4,9 @@ import { parseRoutineFile } from '../src/domain/routine/routine-file'
 import { engineReducer, initialEngineState } from '../src/timer/reducer'
 import { PhaseIdSchema } from '../src/domain/phase/phase'
 import { TaskSourceIdSchema } from '../src/domain/queue/task-source'
-import { generateChoreBlitzNotes, generateLeitnerBoxNotes } from '../e2e/vault/generator'
+import { PredicateNameSchema } from '../src/domain/hook/predicate'
+import { createFormulaPredicateRegistry } from '../src/timer/formula-predicate-registry'
+import { generateChoreBlitzNotes, generateLeitnerBoxNotes, generateStarJarEconomyNotes } from '../e2e/vault/generator'
 import { serializeFrontmatter } from '../e2e/vault/serializer'
 
 function wrapInRoutineNote(graphJson: object): string {
@@ -786,5 +788,114 @@ describe('routine examples validation', () => {
     expect(state.currentPhaseId).toBe(wrapUpId)
     expect(state.queueExhausted).toBe(true)
     expect(state.session?.history.at(-1)?.endReason).toBe('completed')
+  })
+
+  test('star jar reward economy routine validates schema, handlers, and multi-phase threshold lifecycle', () => {
+    const routineNote = generateStarJarEconomyNotes(123)
+      .find(note => note.relativePath.base === 'star-jar-routine.md')
+    expect(routineNote).toBeDefined()
+    if (routineNote === undefined) {
+      return
+    }
+
+    const parseResult = parseRoutineFile(`${serializeFrontmatter(routineNote.frontmatter)}\n${routineNote.body ?? ''}`)
+    expect(parseResult.success).toBe(true)
+    if (!parseResult.success) {
+      return
+    }
+
+    const graph = parseResult.graph
+    const focusId = PhaseIdSchema.parse('focus')
+    const shortBreakId = PhaseIdSchema.parse('short-break')
+    const prizeBreakId = PhaseIdSchema.parse('prize-break')
+
+    // Verify phases: focus, short-break, prize-break
+    expect(graph.phases.map(phase => phase.id)).toEqual([focusId, shortBreakId, prizeBreakId])
+
+    // Verify transitions and guards
+    const focusTransitions = graph.transitions.filter(t => t.from === focusId)
+    expect(focusTransitions).toHaveLength(2)
+    expect(focusTransitions.find(t => t.to === prizeBreakId)?.guard).toMatchObject({
+      kind: 'custom',
+      predicateName: 'star-jar-full',
+    })
+    expect(focusTransitions.find(t => t.to === shortBreakId)?.guard).toMatchObject({
+      kind: 'always',
+    })
+
+    const shortBreakTransitions = graph.transitions.filter(t => t.from === shortBreakId)
+    expect(shortBreakTransitions).toHaveLength(1)
+    expect(shortBreakTransitions[0]).toMatchObject({
+      to: focusId,
+      guard: { kind: 'always' },
+    })
+
+    const prizeBreakTransitions = graph.transitions.filter(t => t.from === prizeBreakId)
+    expect(prizeBreakTransitions).toHaveLength(1)
+    expect(prizeBreakTransitions[0]).toMatchObject({
+      to: focusId,
+      guard: { kind: 'always' },
+    })
+
+    // Verify handlers
+    const focusPhase = graph.phases.find(p => p.id === focusId)
+    expect(focusPhase?.handlers.onComplete).toEqual([{ kind: 'preset', preset: 'accumulateReward' }])
+
+    const prizeBreakPhase = graph.phases.find(p => p.id === prizeBreakId)
+    expect(prizeBreakPhase?.handlers.onExit).toEqual([{ kind: 'preset', preset: 'resetReward' }])
+
+    // Test multi-phase lifecycle execution using engineReducer and createFormulaPredicateRegistry
+    const predicateRegistry = createFormulaPredicateRegistry()
+    predicateRegistry.setFormulas([
+      { name: PredicateNameSchema.parse('star-jar-full'), formula: 'tracker.stars >= 15' },
+    ])
+    const deps = { predicateRegistry }
+
+    let state = initialEngineState(graph)
+    let now = Temporal.Instant.from('2026-01-01T10:00:00Z')
+
+    // Cycle 1: Start focus, complete with trackerFrontmatter: { stars: 2, target: 15 }
+    state = engineReducer(state, { type: 'start', now }, graph, deps)
+    expect(state.status).toBe('running')
+    expect(state.currentPhaseId).toBe(focusId)
+
+    state = engineReducer(state, { type: 'set-tracker-frontmatter', trackerFrontmatter: { stars: 2, target: 15 } }, graph, deps)
+    now = now.add({ minutes: 25 })
+    state = engineReducer(state, { type: 'finish-phase', now }, graph, deps)
+    expect(state.status).toBe('completed')
+    expect(state.currentPhaseId).toBe(focusId)
+
+    // On advance-phase, branches to short-break because 2 < 15
+    state = engineReducer(state, { type: 'advance-phase', now }, graph, deps)
+    expect(state.currentPhaseId).toBe(shortBreakId)
+    expect(state.status).toBe('stopped')
+
+    // Complete short-break, auto-advances back to focus
+    state = engineReducer(state, { type: 'start', now }, graph, deps)
+    now = now.add({ minutes: 5 })
+    state = engineReducer(state, { type: 'finish-phase', now }, graph, deps)
+    expect(state.currentPhaseId).toBe(focusId)
+    expect(state.status).toBe('stopped')
+
+    // Cycle 2: Start focus, complete with trackerFrontmatter: { stars: 15, target: 15 }
+    state = engineReducer(state, { type: 'start', now }, graph, deps)
+    state = engineReducer(state, { type: 'set-tracker-frontmatter', trackerFrontmatter: { stars: 15, target: 15 } }, graph, deps)
+    now = now.add({ minutes: 25 })
+    state = engineReducer(state, { type: 'finish-phase', now }, graph, deps)
+    expect(state.status).toBe('completed')
+
+    // On advance-phase, predicate star-jar-full evaluates true, branching to prize-break
+    state = engineReducer(state, { type: 'advance-phase', now }, graph, deps)
+    expect(state.currentPhaseId).toBe(prizeBreakId)
+    expect(state.status).toBe('stopped')
+
+    // Cycle 3: On prize-break, simulate finish-phase, which advances back to focus with tracker bank reset to 0
+    state = engineReducer(state, { type: 'start', now }, graph, deps)
+    now = now.add({ minutes: 30 })
+    state = engineReducer(state, { type: 'finish-phase', now }, graph, deps)
+    state = engineReducer(state, { type: 'set-tracker-frontmatter', trackerFrontmatter: { stars: 0, target: 15 } }, graph, deps)
+    expect(state.currentPhaseId).toBe(focusId)
+    expect(state.status).toBe('stopped')
+    expect(state.trackerFrontmatter).toEqual({ stars: 0, target: 15 })
   })
 })
