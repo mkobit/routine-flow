@@ -11,6 +11,7 @@ import {
   generateRandomSelectorNotes,
   generateChoreBlitzNotes,
   generateReviewCadencesNotes,
+  generateStarJarEconomyNotes,
   generateVault,
   rebuildGeneratedVault,
   resolveVaultSeed,
@@ -232,6 +233,68 @@ describe('example vault validation', () => {
         expect(['inbox', 'active', 'waiting']).toContain(task.frontmatter.status)
       }
       expect(task.frontmatter.due).toBeInstanceOf(Temporal.PlainDate)
+    }
+  })
+
+  test('star jar economy generation is deterministic across seeds and covers routine, tracker, and sized tasks', () => {
+    const seeds = [101, 202, 303, 404] as const
+    const decks = seeds.map(generateStarJarEconomyNotes)
+
+    for (const [index, seed] of seeds.entries()) {
+      expect(decks[index]).toEqual(generateStarJarEconomyNotes(seed))
+    }
+    expect(new Set(decks.map(deck => deck.map(getNoteContent).join('\n'))).size).toBeGreaterThan(1)
+
+    for (const note of decks[0] ?? []) {
+      expect(NoteDefinitionSchema.safeParse(note).success).toBe(true)
+      expect(() => serializeFrontmatter(note.frontmatter)).not.toThrow()
+      expect(getNoteContent(note)).not.toContain('undefined')
+    }
+
+    const defaultNotes = generateStarJarEconomyNotes(DEFAULT_VAULT_SEED)
+    const readmeNote = defaultNotes.find(note => note.relativePath.base === 'README.md')
+    expect(readmeNote).toBeDefined()
+
+    const trackerNote = defaultNotes.find(note => note.relativePath.base === 'Star-Jar-Tracker.md')
+    expect(trackerNote).toBeDefined()
+    expect(trackerNote?.frontmatter).toEqual({ stars: 0, target: 15 })
+
+    const routineNote = defaultNotes.find(note => note.relativePath.base === 'star-jar-routine.md')
+    expect(routineNote).toBeDefined()
+    if (routineNote !== undefined) {
+      const parseResult = parseRoutineFile(getNoteContent(routineNote))
+      expect(parseResult.success).toBe(true)
+      if (parseResult.success) {
+        expect(String(parseResult.graph.id)).toBe('star-jar')
+        expect(parseResult.graph.trackerFilePath).toBe('star-jar-economy/Star-Jar-Tracker.md')
+        expect(parseResult.graph.phases).toHaveLength(3)
+        const focusPhase = parseResult.graph.phases.find(p => p.id === 'focus')
+        expect(focusPhase?.handlers.onComplete).toEqual([{ kind: 'preset', preset: 'accumulateReward' }])
+        const prizePhase = parseResult.graph.phases.find(p => p.id === 'prize-break')
+        expect(prizePhase?.handlers.onExit).toEqual([{ kind: 'preset', preset: 'resetReward' }])
+        const fullTransition = parseResult.graph.transitions.find(
+          t => t.from === 'focus' && t.to === 'prize-break' && t.guard.kind === 'custom',
+        )
+        expect(fullTransition).toBeDefined()
+      }
+    }
+
+    const taskNotes = defaultNotes.filter(
+      note =>
+        note.relativePath.dir === 'star-jar-economy'
+        && note.relativePath.base !== 'README.md'
+        && note.relativePath.base !== 'Star-Jar-Tracker.md'
+        && !note.relativePath.base.endsWith('-routine.md'),
+    )
+    expect(taskNotes).toHaveLength(6)
+    for (const task of taskNotes) {
+      expect(typeof task.frontmatter.stars).toBe('number')
+      if (typeof task.frontmatter.stars === 'number') {
+        expect([1, 2, 3, 5]).toContain(task.frontmatter.stars)
+      }
+      expect(typeof task.frontmatter.category).toBe('string')
+      expect(task.frontmatter.status).toBe('pending')
+      expect(typeof task.frontmatter.priority).toBe('number')
     }
   })
 
@@ -535,6 +598,55 @@ describe('example vault validation', () => {
     expect(viewNameMatches.length).toBeGreaterThan(0)
 
     const embedMatches = [...mdContent.matchAll(/!\[\[Review-Cadences\.base#([^\]]+)\]\]/g)]
+      .map(m => m[1])
+      .filter(isString)
+      .map(s => s.trim())
+
+    expect(embedMatches.length).toBeGreaterThan(0)
+
+    for (const embedView of embedMatches) {
+      expect(viewNameMatches).toContain(embedView)
+    }
+  })
+
+  test('every routineFile in Star-Jar.base maps to a valid generated routine', async () => {
+    const starJarBasePath = path.resolve(__dirname, '../routine-flow-example-vault/Star-Jar.base')
+    const content = await fs.readFile(starJarBasePath, 'utf-8')
+    const routineFileMatches = [...content.matchAll(/routineFile:\s*([^\s\n]+)/g)]
+      .map(m => m[1])
+      .filter(isString)
+
+    expect(routineFileMatches.length).toBeGreaterThan(0)
+
+    const notes = generateVault(DEFAULT_VAULT_SEED)
+    const routinePaths = new Set(notes.map(getNotePath))
+
+    for (const routineFile of routineFileMatches) {
+      expect(routinePaths.has(routineFile)).toBe(true)
+      const targetNote = notes.find(n => getNotePath(n) === routineFile)
+      expect(targetNote).toBeDefined()
+      if (targetNote !== undefined) {
+        const parseResult = parseRoutineFile(getNoteContent(targetNote))
+        expect(parseResult.success).toBe(true)
+      }
+    }
+  })
+
+  test('Star-Jar.md embeds existing views from Star-Jar.base', async () => {
+    const starJarMdPath = path.resolve(__dirname, '../routine-flow-example-vault/Star-Jar.md')
+    const starJarBasePath = path.resolve(__dirname, '../routine-flow-example-vault/Star-Jar.base')
+
+    const mdContent = await fs.readFile(starJarMdPath, 'utf-8')
+    const baseContent = await fs.readFile(starJarBasePath, 'utf-8')
+
+    const viewNameMatches = [...baseContent.matchAll(/name:\s*([^\s\n][^\n]*)/g)]
+      .map(m => m[1])
+      .filter(isString)
+      .map(s => s.trim())
+
+    expect(viewNameMatches.length).toBeGreaterThan(0)
+
+    const embedMatches = [...mdContent.matchAll(/!\[\[Star-Jar\.base#([^\]]+)\]\]/g)]
       .map(m => m[1])
       .filter(isString)
       .map(s => s.trim())

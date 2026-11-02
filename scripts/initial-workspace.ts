@@ -30,6 +30,7 @@ const PRESET_OPEN_TARGETS: Readonly<Record<string, TargetViewState>> = {
   'write-back-variants': { type: 'bases', file: 'Tasks.base', viewName: 'Write-back variants' },
   'table': { type: 'bases', file: 'Tasks.base', viewName: 'Table' },
   'review-cadences': { type: 'bases', file: 'Review-Cadences.base', viewName: 'Weekly GTD review' },
+  'star-jar': { type: 'bases', file: 'Star-Jar.base', viewName: 'Star jar routine' },
   'shared-routines': { type: 'bases', file: 'shared-routines/Shared-routines.base', viewName: 'Standup' },
 }
 

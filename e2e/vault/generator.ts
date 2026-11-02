@@ -21,6 +21,7 @@ import { generateReviewCadencesNotes } from './generators/review-cadences'
 import { generateSpacedRepetitionNotes } from './generators/spaced-repetition'
 import { generateSprintRetrospectiveNotes } from './generators/sprint-retrospective'
 import { generateStandupNotes } from './generators/standup'
+import { generateStarJarEconomyNotes } from './generators/star-jar-economy'
 import { generateStretchBreakNotes } from './generators/stretch-break'
 import { generateUltradianRhythmNotes } from './generators/ultradian-rhythm'
 import { generateWorkoutNotes } from './generators/workout'
@@ -52,6 +53,7 @@ export * from './generators/silent-meeting'
 export * from './generators/spaced-repetition'
 export * from './generators/sprint-retrospective'
 export * from './generators/standup'
+export * from './generators/star-jar-economy'
 export * from './generators/stretch-break'
 export * from './generators/ultradian-rhythm'
 export * from './generators/workout'
@@ -72,6 +74,7 @@ const ROUTINE_SEED_OFFSETS = {
   randomSelector: 11,
   choreBlitz: 12,
   reviewCadences: 13,
+  starJarEconomy: 14,
 } as const
 
 export const GENERATED_VAULT_FOLDERS = [
@@ -99,6 +102,7 @@ export const GENERATED_VAULT_FOLDERS = [
   'random-selector',
   'chore-blitz',
   'review-cadences',
+  'star-jar-economy',
 ] as const
 
 export function generateVault(seed: number = resolveVaultSeed()): readonly NoteDefinition[] {
@@ -128,6 +132,7 @@ export function generateVault(seed: number = resolveVaultSeed()): readonly NoteD
     ...generateRandomSelectorNotes(seed + ROUTINE_SEED_OFFSETS.randomSelector),
     ...generateChoreBlitzNotes(seed + ROUTINE_SEED_OFFSETS.choreBlitz),
     ...generateReviewCadencesNotes(seed + ROUTINE_SEED_OFFSETS.reviewCadences),
+    ...generateStarJarEconomyNotes(seed + ROUTINE_SEED_OFFSETS.starJarEconomy),
   ]
 }
 
