@@ -21,7 +21,7 @@ import { ObsidianWriteBackPromptPort } from './views/write-back-modal'
 import { RoutineStatusBarItem } from './views/status-bar'
 import { RoutineSidePanelView, SIDE_PANEL_VIEW_TYPE } from './views/side-panel-view'
 import { RoutineGalleryModal } from './views/routine-gallery-modal'
-import { scaffoldExampleRoutine } from './onboarding/scaffold-example'
+import { EXAMPLE_FOLDER_PATH, scaffoldExampleRoutine } from './onboarding/scaffold-example'
 import { RoutineReplaceModal } from './views/routine-replace-modal'
 import { runCadenceRoutine } from './timer/routine-selection'
 import { Temporal } from 'temporal-polyfill'
@@ -148,10 +148,10 @@ export default class RoutineFlowPlugin extends Plugin {
       callback: async () => {
         const result = await scaffoldExampleRoutine(this.app.vault)
         if (result.createdPaths.length > 0) {
-          new Notice(`Routine flow: created ${String(result.createdPaths.length)} example file(s) in Routine Flow Examples/`)
+          new Notice(`Routine Flow: created ${String(result.createdPaths.length)} example file(s) in ${EXAMPLE_FOLDER_PATH}/`)
         }
         else {
-          new Notice('Routine flow: example files already exist in routine flow examples/')
+          new Notice(`Routine Flow: example files already exist in ${EXAMPLE_FOLDER_PATH}/`)
         }
       },
     })
@@ -204,13 +204,13 @@ export default class RoutineFlowPlugin extends Plugin {
         )
 
         if (result === 'no-match') {
-          new Notice('Routine flow: no matching cadence routine for current time and context')
+          new Notice('Routine Flow: no matching cadence routine for current time and context')
         }
         else if (result === 'file-not-found') {
-          new Notice('Routine flow: scheduled cadence routine file not found')
+          new Notice('Routine Flow: scheduled cadence routine file not found')
         }
         else if (result === 'parse-error') {
-          new Notice('Routine flow: failed to parse scheduled cadence routine file')
+          new Notice('Routine Flow: failed to parse scheduled cadence routine file')
         }
       },
     })

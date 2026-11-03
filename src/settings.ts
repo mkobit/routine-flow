@@ -129,7 +129,7 @@ export class RoutineFlowSettingTab extends PluginSettingTab {
           type: 'dropdown',
           key: 'clockSpeedMultiplier',
           options: {
-            1: '1x (Normal speed)',
+            1: '1x (normal speed)',
             2: '2x speed',
             5: '5x speed',
             10: '10x fast-forward',

@@ -159,6 +159,11 @@ export default tseslint.config(
 
       // ObsidianMD Rules
       'obsidianmd/prefer-file-manager-trash-file': 'error',
+      'obsidianmd/ui/sentence-case': ['error', {
+        enforceCamelCaseLower: true,
+        ignoreWords: ['Bases', 'Flow', 'Pomodoro', 'Leitner'],
+        ignoreRegex: ['\\(e\\.g\\.'],
+      }],
 
       // Additional clean code rules
       'no-console': 'error',
@@ -472,6 +477,7 @@ export default tseslint.config(
     files: ['docs/**/*.ts', 'docs/**/*.tsx', 'docs/**/*.mts', 'docs/**/*.cts'],
     rules: {
       'obsidianmd/prefer-file-manager-trash-file': 'off',
+      'obsidianmd/ui/sentence-case': 'off',
       'functional/no-let': 'off',
       'functional/no-loop-statements': 'off',
       'functional/no-conditional-statements': 'off',
