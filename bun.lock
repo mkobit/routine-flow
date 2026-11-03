@@ -6,7 +6,7 @@
       "name": "routine-flow",
       "dependencies": {
         "obsidian": "1.14.4",
-        "remeda": "^2.54.1",
+        "remeda": "^2.57.0",
         "temporal-polyfill": "^1.0.6",
         "zod": "^4.6.7",
       },
@@ -834,7 +834,7 @@
 
     "regjsparser": ["regjsparser@0.13.4", "", { "dependencies": { "jsesc": "~3.1.0" }, "bin": { "regjsparser": "bin/parser" } }, "sha512-EWV80YgFaVgFrjGCAsV7oybp4GOxbls5RzBg8OB0nKEVXsBJR1JlV8Di1JhCROg3MzTfe1RI8yitIm1eOs68iA=="],
 
-    "remeda": ["remeda@2.54.1", "", {}, "sha512-l3pxw2Hz5V2FG3RaU9C6z121H8dF5VYjj3z6lnHoN3SCRLoxr+pZS2dq8dDe3NA+9kyKm56A1BB2Ejr+DrLlJw=="],
+    "remeda": ["remeda@2.57.0", "", {}, "sha512-bzJOJBNTVzEfrRht0Dg3KiKToP/K+nNnoW1UvJ+qxY7TNlwPjuGdqgKU/SFULIg8GJc11RGwafvPcRDR/f4Wcw=="],
 
     "require-from-string": ["require-from-string@2.0.2", "", {}, "sha512-Xf0nWe6RseziFMu+Ap9biiUbmplq6S9/p+7w7YXP/JBHhrUDDUhwa+vANyubuqfZWTveU//DYVGsDG7RKL/vEw=="],
 
