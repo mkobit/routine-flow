@@ -115,7 +115,7 @@ A timed exercise sequence with warm-up, sets, rest periods, and a terminal cool-
 \`\`\`json
 {
   "id": "exercise-stretch",
-  "name": "Exercise & Stretch Routine",
+  "name": "Exercise & stretch routine",
   "phases": [
     {
       "id": "warmup",
@@ -136,7 +136,7 @@ A timed exercise sequence with warm-up, sets, rest periods, and a terminal cool-
     },
     {
       "id": "set-1",
-      "name": "Work Set 1",
+      "name": "Work set 1",
       "duration": "PT45S",
       "onCompletion": "autoAdvance",
       "handlers": {}
@@ -150,7 +150,7 @@ A timed exercise sequence with warm-up, sets, rest periods, and a terminal cool-
     },
     {
       "id": "set-2",
-      "name": "Work Set 2",
+      "name": "Work set 2",
       "duration": "PT45S",
       "onCompletion": "autoAdvance",
       "handlers": {}
@@ -217,25 +217,25 @@ A manual step-by-step morning routine requiring explicit manual completion to ad
 \`\`\`json
 {
   "id": "morning-routine",
-  "name": "Morning Routine",
+  "name": "Morning routine",
   "phases": [
     {
       "id": "hydrate",
-      "name": "Hydrate & Stretch",
+      "name": "Hydrate & stretch",
       "duration": "PT5M",
       "onCompletion": "waitForManual",
       "handlers": {}
     },
     {
       "id": "plan-day",
-      "name": "Review Daily Goals",
+      "name": "Review daily goals",
       "duration": "PT10M",
       "onCompletion": "waitForManual",
       "handlers": {}
     },
     {
       "id": "morning-focus",
-      "name": "Morning Focus",
+      "name": "Morning focus",
       "duration": "PT25M",
       "onCompletion": "waitForManual",
       "taskSourceId": "focus-queue",

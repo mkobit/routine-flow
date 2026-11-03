@@ -687,7 +687,7 @@ Interval workout circuit with warm-up, timed exercise sets, rest intervals, and 
     },
     {
       "id": "set-1",
-      "name": "Work Set 1",
+      "name": "Work set 1",
       "duration": "PT45S",
       "onCompletion": "autoAdvance",
       "handlers": {}
@@ -701,7 +701,7 @@ Interval workout circuit with warm-up, timed exercise sets, rest intervals, and 
     },
     {
       "id": "set-2",
-      "name": "Work Set 2",
+      "name": "Work set 2",
       "duration": "PT45S",
       "onCompletion": "autoAdvance",
       "handlers": {}
