@@ -1,13 +1,6 @@
 import { beforeAll, describe, expect, mock, test } from 'bun:test'
 import type { renderStarJarMeter as renderStarJarMeterType } from '../src/views/timer/star-jar-meter'
 
-void mock.module('obsidian', () => ({
-  setIcon: (el: MockDomElement, _name: string) => {
-    el.createDiv({ cls: 'lucide-icon' })
-  },
-  Notice: class {},
-}))
-
 class MockDomElement {
   className = ''
   children: MockDomElement[] = []
@@ -66,6 +59,83 @@ class MockDomElement {
     return el
   }
 }
+
+void mock.module('obsidian', () => ({
+  BasesView: class {
+    containerEl = new MockDomElement()
+    constructor(_controller: unknown) {}
+  },
+  PluginSettingTab: class {
+    containerEl = new MockDomElement()
+  },
+  Setting: class {
+    settingEl = new MockDomElement()
+    constructor(_container: MockDomElement) {}
+    setClass(): this {
+      return this
+    }
+
+    setName(): this {
+      return this
+    }
+
+    setDesc(): this {
+      return this
+    }
+
+    addButton(fn: (b: unknown) => void): this {
+      const btn = {
+        setButtonText: () => btn,
+        setCta: () => btn,
+        setWarning: () => btn,
+        onClick: () => btn,
+      }
+      fn(btn)
+      return this
+    }
+
+    addToggle(): this {
+      return this
+    }
+
+    addText(): this {
+      return this
+    }
+
+    addDropdown(): this {
+      return this
+    }
+  },
+  Modal: class {
+    contentEl = new MockDomElement()
+    titleEl = new MockDomElement()
+    containerEl = new MockDomElement()
+    open(): void {}
+    close(): void {}
+  },
+  ItemView: class {
+    containerEl = new MockDomElement()
+  },
+  WorkspaceLeaf: class {
+    view = { containerEl: new MockDomElement() }
+  },
+  Notice: class {},
+  AbstractInputSuggest: class {
+    onSelect(): void {}
+    close(): void {}
+  },
+  App: class {
+    vault = {
+      getFiles: () => [],
+      getFileByPath: () => null,
+    }
+  },
+  Plugin: class {},
+  TFile: class {},
+  setIcon: (el: MockDomElement, _name: string) => {
+    el.createDiv({ cls: 'lucide-icon' })
+  },
+}))
 
 // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- mock element helper
 const asElement = (el: MockDomElement): HTMLElement => el as unknown as HTMLElement
