@@ -4,6 +4,7 @@ import type { FileMutationPort } from '../domain/mutation/apply-mutations'
 import type { FrontmatterReader } from '../domain/mutation/frontmatter-reader'
 import type { TaskSourceRegistry } from '../domain/queue/task-source'
 import type { NotificationPort } from './notification-port'
+import type { AudioCuePort } from './audio-cue-port'
 
 /**
  * Optional collaborators shared by engineReducer and EngineStore. A single
@@ -23,4 +24,5 @@ export interface EngineDeps {
   readonly notificationPort?: NotificationPort
   readonly frontmatterReader?: FrontmatterReader
   readonly trackerFilePath?: string
+  readonly audioCuePort?: AudioCuePort
 }

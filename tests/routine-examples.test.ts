@@ -8,6 +8,8 @@ import { PredicateNameSchema } from '../src/domain/hook/predicate'
 import { createFormulaPredicateRegistry } from '../src/timer/formula-predicate-registry'
 import { generateChoreBlitzNotes, generateLeitnerBoxNotes, generateStarJarEconomyNotes } from '../e2e/vault/generator'
 import { serializeFrontmatter } from '../e2e/vault/serializer'
+import { deriveStarJarState, isRewardPhase, hasAssociatedTracker } from '../src/domain/reward/star-jar'
+import { findPhaseById } from '../src/timer/phase-graph-query'
 
 function wrapInRoutineNote(graphJson: object): string {
   return `---
@@ -811,6 +813,10 @@ describe('routine examples validation', () => {
 
     // Verify phases: focus, short-break, prize-break
     expect(graph.phases.map(phase => phase.id)).toEqual([focusId, shortBreakId, prizeBreakId])
+    expect(hasAssociatedTracker(graph)).toBe(true)
+    expect(isRewardPhase(findPhaseById(graph, prizeBreakId))).toBe(true)
+    expect(isRewardPhase(findPhaseById(graph, focusId))).toBe(false)
+    expect(isRewardPhase(findPhaseById(graph, shortBreakId))).toBe(false)
 
     // Verify transitions and guards
     const focusTransitions = graph.transitions.filter(t => t.from === focusId)
@@ -860,6 +866,10 @@ describe('routine examples validation', () => {
     expect(state.currentPhaseId).toBe(focusId)
 
     state = engineReducer(state, { type: 'set-tracker-frontmatter', trackerFrontmatter: { stars: 2, target: 15 } }, graph, deps)
+    const jarState1 = deriveStarJarState(state.trackerFrontmatter)
+    expect(jarState1.current).toBe(2)
+    expect(jarState1.target).toBe(15)
+    expect(jarState1.isFull).toBe(false)
     now = now.add({ minutes: 25 })
     state = engineReducer(state, { type: 'finish-phase', now }, graph, deps)
     expect(state.status).toBe('completed')
@@ -880,6 +890,10 @@ describe('routine examples validation', () => {
     // Cycle 2: Start focus, complete with trackerFrontmatter: { stars: 15, target: 15 }
     state = engineReducer(state, { type: 'start', now }, graph, deps)
     state = engineReducer(state, { type: 'set-tracker-frontmatter', trackerFrontmatter: { stars: 15, target: 15 } }, graph, deps)
+    const jarState2 = deriveStarJarState(state.trackerFrontmatter)
+    expect(jarState2.current).toBe(15)
+    expect(jarState2.target).toBe(15)
+    expect(jarState2.isFull).toBe(true)
     now = now.add({ minutes: 25 })
     state = engineReducer(state, { type: 'finish-phase', now }, graph, deps)
     expect(state.status).toBe('completed')
@@ -894,6 +908,9 @@ describe('routine examples validation', () => {
     now = now.add({ minutes: 30 })
     state = engineReducer(state, { type: 'finish-phase', now }, graph, deps)
     state = engineReducer(state, { type: 'set-tracker-frontmatter', trackerFrontmatter: { stars: 0, target: 15 } }, graph, deps)
+    const jarState3 = deriveStarJarState(state.trackerFrontmatter)
+    expect(jarState3.current).toBe(0)
+    expect(jarState3.isFull).toBe(false)
     expect(state.currentPhaseId).toBe(focusId)
     expect(state.status).toBe('stopped')
     expect(state.trackerFrontmatter).toEqual({ stars: 0, target: 15 })

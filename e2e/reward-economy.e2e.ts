@@ -56,8 +56,11 @@ test.describe('Reward economy execution (flow-pt9.7)', () => {
     // Verify data-view-graph-id is 'star-jar'
     await expect(view).toHaveAttribute('data-view-graph-id', 'star-jar')
 
-    // Verify initial stars in Star-Jar-Tracker.md is 0
+    // Verify initial stars in Star-Jar-Tracker.md is 0 and star jar meter displays initial 0 / 15
     await expect.poll(() => readTrackerStars(page)).toBe(0)
+    const starJarMeter = panel.locator('.routine-star-jar-meter')
+    await expect(starJarMeter).toBeVisible()
+    await expect(starJarMeter.locator('.routine-star-jar-count')).toContainText('0 / 15 stars')
 
     // Click Start button
     await controls.getByRole('button', { name: 'Start' }).click()
@@ -83,6 +86,7 @@ test.describe('Reward economy execution (flow-pt9.7)', () => {
 
     // Verify Star-Jar-Tracker.md frontmatter stars updated to 1
     await expect.poll(() => readTrackerStars(page)).toBe(1)
+    await expect(starJarMeter.locator('.routine-star-jar-count')).toContainText('1 / 15 stars')
 
     // Verify nextPhase indicates short break
     await expect(nextPhase).toHaveText('Next: Short break')
@@ -145,6 +149,14 @@ test.describe('Reward economy execution (flow-pt9.7)', () => {
     // Verify panel shows Prize celebration break: ...
     await expect(panel.locator('h2')).toContainText('Prize celebration break')
 
+    // Verify celebratory toast notice is displayed celebrating reaching reward threshold
+    await expect(page.locator('.notice').filter({ hasText: 'Routine Flow: Reward threshold reached!' })).toBeVisible()
+
+    // Verify star jar meter indicates full milestone reached
+    const starJarMeter = panel.locator('.routine-star-jar-meter')
+    await expect(starJarMeter).toHaveClass(/is-full/)
+    await expect(starJarMeter.locator('.routine-star-jar-count')).toContainText('15 / 15 stars')
+
     // Start prize celebration break, then finish it by dispatching finish-phase
     await controls.getByRole('button', { name: 'Start' }).click()
     await expect(panel.locator('h2')).toContainText('(running)')
@@ -156,6 +168,8 @@ test.describe('Reward economy execution (flow-pt9.7)', () => {
 
     // Verify Star-Jar-Tracker.md frontmatter stars is reset to 0
     await expect.poll(() => readTrackerStars(page)).toBe(0)
+    await expect(starJarMeter.locator('.routine-star-jar-count')).toContainText('0 / 15 stars')
+    await expect(starJarMeter).not.toHaveClass(/is-full/)
 
     // Verify panel transitions back to Focus session: ...
     await expect(panel.locator('h2')).toContainText('Focus session')

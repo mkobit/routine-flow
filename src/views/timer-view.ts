@@ -21,6 +21,8 @@ import { renderConfigBar, renderConfigPanel } from './timer/config-panel'
 import { renderQueuePanel } from './timer/queue-panel'
 import { getViewOptions } from './timer/view-options'
 import { renderStageProgress, renderGuidanceChecklist } from './timer/stage-progress-panel'
+import { deriveStarJarState, resolveGraphTrackerFilePath } from '../domain/reward/star-jar'
+import { renderStarJarMeter } from './timer/star-jar-meter'
 
 export class RoutineTimerView extends BasesView {
   readonly type = 'routine-timer'
@@ -214,6 +216,31 @@ export class RoutineTimerView extends BasesView {
     const stageProgress = deriveStageProgress(graph, state)
     if (stageProgress.totalCount > 1) {
       renderStageProgress(timerPanel, stageProgress)
+    }
+
+    const activeGraph = isViewRoutineActive ? graph : (viewGraph ?? graph)
+    const trackerFilePath = resolveGraphTrackerFilePath(activeGraph)
+    if (trackerFilePath !== null || state.trackerFrontmatter !== undefined) {
+      let trackerFrontmatter = state.trackerFrontmatter
+      if (trackerFrontmatter === undefined && trackerFilePath !== null) {
+        try {
+          const file = this.plugin.app.vault.getFileByPath(trackerFilePath)
+          if (file !== null) {
+            trackerFrontmatter = this.plugin.app.metadataCache.getFileCache(file)?.frontmatter
+          }
+        }
+        catch {
+          // Ignore cache lookup failure
+        }
+      }
+      const starJarState = deriveStarJarState(trackerFrontmatter)
+      renderStarJarMeter(timerPanel, {
+        current: starJarState.current,
+        target: starJarState.target,
+        progressFraction: starJarState.progressFraction,
+        isFull: starJarState.isFull,
+        trackerFilePath,
+      })
     }
 
     if (phase.guidance && phase.guidance.length > 0) {

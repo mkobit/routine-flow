@@ -16,6 +16,8 @@ import type { EngineDeps } from './engine-deps'
 import { findPhaseById, hasQueueExhaustedTransition } from './phase-graph-query'
 import { executeHandlers } from './handler-executor'
 import type { HandlerContext } from './handler-executor'
+import { isRewardPhase } from '../domain/reward/star-jar'
+import { playFanfareChord } from './fanfare'
 
 /** Result of resolving, invoking, and applying one fired handler's mutations. */
 export interface HookEventApplication {
@@ -79,6 +81,7 @@ export class EngineStore {
     this.graph = graph
     this.state = initialEngineState(graph)
     this.deps = deps
+    this.syncTrackerFrontmatter()
   }
 
   public getState(): EngineState {
@@ -184,7 +187,27 @@ export class EngineStore {
       notificationPort.notifyInApp('Routine Flow: Blitz completed early — all tasks finished')
     }
 
-    if (notificationPort !== undefined && prevState.currentPhaseId !== nextState.currentPhaseId && nextState.status !== 'ended') {
+    const isEnteringRewardPhase = prevState.currentPhaseId !== nextState.currentPhaseId
+      && nextState.status !== 'ended'
+      && isRewardPhase(findPhaseById(this.graph, nextState.currentPhaseId))
+
+    if (isEnteringRewardPhase) {
+      const rewardPhase = findPhaseById(this.graph, nextState.currentPhaseId)
+      const phaseLabel = rewardPhase?.label ?? rewardPhase?.name ?? 'prize break'
+      if (notificationPort !== undefined) {
+        notificationPort.notifyInApp(`Routine Flow: Reward threshold reached! Enjoy your ${phaseLabel.toLowerCase()}`)
+        if (rewardPhase?.notification?.systemNotification === true) {
+          notificationPort.notifySystem('Routine Flow', `Reward threshold reached! Enjoy your ${phaseLabel.toLowerCase()}`)
+        }
+      }
+      if (this.deps.audioCuePort !== undefined) {
+        this.deps.audioCuePort.playFanfare()
+      }
+      else {
+        playFanfareChord()
+      }
+    }
+    else if (notificationPort !== undefined && prevState.currentPhaseId !== nextState.currentPhaseId && nextState.status !== 'ended') {
       const newPhase = findPhaseById(this.graph, nextState.currentPhaseId)
       if (newPhase !== undefined) {
         notificationPort.notifyInApp(`Routine Flow: ${newPhase.name} phase started`)
@@ -357,6 +380,7 @@ export class EngineStore {
   public setGraph(graph: PhaseGraph) {
     this.graph = graph
     this.state = initialEngineState(graph)
+    this.syncTrackerFrontmatter()
     for (const listener of this.listeners) {
       listener(this.state)
     }
