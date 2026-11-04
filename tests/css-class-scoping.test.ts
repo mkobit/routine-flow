@@ -529,6 +529,13 @@ describe('CSS class scoping & theme customization', () => {
     expect(content).toContain('.routine-guidance-checkbox')
     expect(content).toContain('.routine-guidance-text')
 
+    // Star jar progress meter widget styles (flow-pt9.5)
+    expect(content).toContain('.routine-star-jar-meter')
+    expect(content).toContain('.routine-star-jar-progress-bar')
+    expect(content).toContain('.routine-star-jar-indicator')
+    expect(content).toContain('.routine-star-jar-meter.is-full')
+    expect(content).toContain('.routine-star-jar-celebration')
+
     // Must define fallback for paused accent
     expect(content).toContain('var(--color-orange, var(--text-warning))')
 

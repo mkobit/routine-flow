@@ -493,6 +493,90 @@
   color: var(--text-muted);
 }
 
+/* ---- Star jar progress meter widget (flow-pt9.5) ------------------------------------------- */
+
+.routine-star-jar-meter {
+  display: flex;
+  flex-direction: column;
+  gap: var(--size-4-2);
+  width: 100%;
+  padding: var(--size-4-2) var(--size-4-3);
+  border-radius: var(--radius-m);
+  border: 1px solid var(--background-modifier-border);
+  background-color: var(--background-secondary);
+  box-sizing: border-box;
+}
+
+.routine-star-jar-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--size-4-2);
+}
+
+.routine-star-jar-title-container {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--size-4-1);
+  color: var(--text-normal);
+  font-size: var(--font-ui-small);
+  font-weight: var(--font-medium, 500);
+}
+
+.routine-star-jar-title-container .routine-state-icon {
+  display: inline-flex;
+  align-items: center;
+  color: var(--color-yellow, var(--text-warning, var(--interactive-accent)));
+}
+
+.routine-star-jar-count {
+  font-size: var(--font-ui-smaller);
+  color: var(--text-muted);
+}
+
+.routine-star-jar-current {
+  font-weight: var(--font-bold);
+  color: var(--text-normal);
+}
+
+.routine-star-jar-progress-bar {
+  width: 100%;
+  height: var(--size-4-1);
+  border-radius: var(--radius-s);
+  background-color: var(--background-modifier-border);
+  overflow: hidden;
+}
+
+.routine-star-jar-indicator {
+  height: 100%;
+  background-color: var(--interactive-accent);
+  border-radius: var(--radius-s);
+  transition: width 0.3s ease;
+}
+
+.routine-star-jar-meter.is-full {
+  border-color: var(--interactive-accent);
+}
+
+.routine-star-jar-meter.is-full .routine-star-jar-indicator {
+  background-color: var(--color-yellow, var(--text-warning, var(--interactive-accent)));
+}
+
+.routine-star-jar-celebration {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--size-4-1);
+  font-size: var(--font-ui-smaller);
+  color: var(--interactive-accent);
+  margin-top: calc(var(--size-4-1) * 0.5);
+}
+
+.routine-star-jar-celebration .routine-state-icon {
+  display: inline-flex;
+  align-items: center;
+  color: var(--color-yellow, var(--text-warning, var(--interactive-accent)));
+}
+
 /* ---- Controls (shared with the side panel) -------------------------------------------------- */
 
 .routine-controls {

@@ -16,6 +16,7 @@ import type { MutableFormulaPredicateRegistry } from './timer/formula-predicate-
 import { createScriptHookRegistry } from './timer/script-hook-registry'
 import type { MutableScriptHookRegistry } from './timer/script-hook-registry'
 import { ObsidianNotificationPort } from './adapters/obsidian/notification/notification-port'
+import { playFanfareChord } from './timer/fanfare'
 import { RoutineTimerView } from './views/timer-view'
 import { ObsidianWriteBackPromptPort } from './views/write-back-modal'
 import { RoutineStatusBarItem } from './views/status-bar'
@@ -94,6 +95,9 @@ export default class RoutineFlowPlugin extends Plugin {
       taskSourceRegistry: this.taskSourceRegistry,
       notificationPort: new ObsidianNotificationPort(),
       frontmatterReader,
+      audioCuePort: {
+        playFanfare: () => playFanfareChord(),
+      },
     })
     this.ticker = new TimerTicker(
       (action) => {
