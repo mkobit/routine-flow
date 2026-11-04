@@ -1,3 +1,4 @@
+import 'temporal-polyfill/global'
 import { z } from 'zod'
 export const FrontmatterValueSchema = z.union([
   z.string(),
