@@ -1,6 +1,4 @@
 import { z } from 'zod'
-import { Temporal } from 'temporal-polyfill'
-
 /**
  * ISO day of week: 1 (Monday) to 7 (Sunday), matching Temporal.ZonedDateTime.dayOfWeek.
  */

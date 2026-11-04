@@ -1,5 +1,4 @@
 import { mock, test, expect, describe } from 'bun:test'
-import { Temporal } from 'temporal-polyfill'
 import { createScriptHookRegistry } from '../src/timer/script-hook-registry'
 import { HookNameSchema } from '../src/domain/hook/hook-reference'
 import type { FrontmatterReader } from '../src/domain/mutation/frontmatter-reader'

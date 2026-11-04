@@ -1,4 +1,3 @@
-import { Temporal } from 'temporal-polyfill'
 import { mock, test, expect, describe } from 'bun:test'
 import type { FileMutation } from '../src/domain/mutation/file-mutation'
 import { TaskQueueItemIdSchema } from '../src/domain/queue/task-source'

@@ -1,6 +1,4 @@
 import { z } from 'zod'
-import { Temporal } from 'temporal-polyfill'
-
 /** A duration that must be greater than zero (e.g. a phase's configured length). */
 export const PositiveDurationSchema = z.instanceof(Temporal.Duration).refine(
   duration => duration.sign > 0,

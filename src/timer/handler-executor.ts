@@ -1,4 +1,3 @@
-import { Temporal } from 'temporal-polyfill'
 import type { Handler } from '../domain/handler/handler'
 import type { Effect } from '../domain/handler/effect'
 import type { PhaseNode } from '../domain/phase/phase'

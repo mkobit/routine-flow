@@ -1,5 +1,4 @@
 import { test, expect, describe } from 'bun:test'
-import { Temporal } from 'temporal-polyfill'
 import { PhaseSchema } from '../src/domain/phase/phase'
 import { formatCountdown, formatPhaseHeader } from '../src/timer/format'
 

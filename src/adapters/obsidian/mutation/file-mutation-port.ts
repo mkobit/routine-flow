@@ -1,4 +1,3 @@
-import { Temporal } from 'temporal-polyfill'
 import type { FileMutation } from '../../../domain/mutation/file-mutation'
 import type { FileMutationPort } from '../../../domain/mutation/apply-mutations'
 

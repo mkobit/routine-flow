@@ -228,7 +228,6 @@ void mock.module('obsidian', () => {
   }
 })
 
-import type { Temporal as TemporalType } from 'temporal-polyfill'
 import type { PhaseGraph } from '../src/domain/phase/phase-graph'
 import type { RoutineSidePanelView as RoutineSidePanelViewType } from '../src/views/side-panel-view'
 import type { RoutineStatusBarItem as RoutineStatusBarItemType } from '../src/views/status-bar'
@@ -244,7 +243,6 @@ import type RoutineFlowPlugin from '../src/main'
 import type { App as AppType, WorkspaceLeaf as WorkspaceLeafType } from 'obsidian'
 import { progressMeterStyleClass } from '../src/timer/progress-meter-style'
 
-let Temporal: typeof TemporalType
 let RoutineSidePanelView: typeof RoutineSidePanelViewType
 let RoutineStatusBarItem: typeof RoutineStatusBarItemType
 let ResetConfirmModal: typeof ResetConfirmModalType
@@ -279,9 +277,6 @@ class TestRoutinePlugin extends MockPlugin {
 
 describe('CSS class scoping & theme customization', () => {
   beforeAll(async () => {
-    const polyfill = await import('temporal-polyfill')
-    Temporal = polyfill.Temporal
-
     const obsidianModule = await import('obsidian')
     AppConstructor = obsidianModule.App
     WorkspaceLeafConstructor = obsidianModule.WorkspaceLeaf

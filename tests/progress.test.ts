@@ -1,5 +1,4 @@
 import { test, expect, describe } from 'bun:test'
-import { Temporal } from 'temporal-polyfill'
 import { computeProgressFraction } from '../src/timer/progress'
 
 const duration = Temporal.Duration.from({ minutes: 25 })

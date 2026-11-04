@@ -1,4 +1,3 @@
-import type { Temporal } from 'temporal-polyfill'
 import type { EngineState } from '../domain/session/engine-state'
 import type { PhaseNode, PhaseId } from '../domain/phase/phase'
 import type { PhaseGraph } from '../domain/phase/phase-graph'

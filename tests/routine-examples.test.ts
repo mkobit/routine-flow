@@ -1,5 +1,4 @@
 import { describe, expect, test } from 'bun:test'
-import { Temporal } from 'temporal-polyfill'
 import { parseRoutineFile } from '../src/domain/routine/routine-file'
 import { engineReducer, initialEngineState } from '../src/timer/reducer'
 import { PhaseIdSchema } from '../src/domain/phase/phase'

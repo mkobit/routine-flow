@@ -1,4 +1,3 @@
-import { Temporal } from 'temporal-polyfill'
 import { test, expect, describe } from 'bun:test'
 import { createBaseQuerySource } from '../src/adapters/obsidian/bases/query-task-source'
 import type { BaseQueryEntry } from '../src/adapters/obsidian/bases/query-task-source'

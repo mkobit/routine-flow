@@ -1,4 +1,3 @@
-import type { Temporal } from 'temporal-polyfill'
 import { computeProgressFraction } from '../../timer/progress'
 import { progressMeterStyleClass } from '../../timer/progress-meter-style'
 import type { ProgressMeterStyle } from '../../timer/progress-meter-style'

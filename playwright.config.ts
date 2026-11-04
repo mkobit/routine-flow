@@ -1,3 +1,4 @@
+import 'temporal-polyfill/global'
 import { defineConfig } from '@playwright/test'
 
 export default defineConfig({

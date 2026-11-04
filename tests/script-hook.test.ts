@@ -1,5 +1,4 @@
 import { mock, test, expect, describe } from 'bun:test'
-import { Temporal } from 'temporal-polyfill'
 import { PhaseSchema } from '../src/domain/phase/phase'
 import type { Phase } from '../src/domain/phase/phase'
 import { PhaseGraphIdSchema } from '../src/domain/phase/phase-graph'

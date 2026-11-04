@@ -1,5 +1,4 @@
 import { test, expect, describe } from 'bun:test'
-import { Temporal } from 'temporal-polyfill'
 import { PhaseSchema, PhaseNodeSchema, PhaseIdSchema, SELECTOR_PHASE_KIND, FOCUS_PHASE_KIND, BREAK_PHASE_KIND } from '../src/domain/phase/phase'
 import { PhaseGraphIdSchema, PhaseGraphSchema, checkPhaseGraphIntegrity } from '../src/domain/phase/phase-graph'
 import type { PhaseGraph } from '../src/domain/phase/phase-graph'

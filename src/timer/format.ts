@@ -1,4 +1,3 @@
-import type { Temporal } from 'temporal-polyfill'
 import type { Phase, TimeFormat } from '../domain/phase/phase'
 import type { EngineStatus } from '../domain/session/engine-state'
 

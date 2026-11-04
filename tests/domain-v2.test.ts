@@ -1,5 +1,4 @@
 import { test, expect, describe } from 'bun:test'
-import { Temporal } from 'temporal-polyfill'
 import { LogTargetResolverNameSchema, PhaseSchema } from '../src/domain/phase/phase'
 import { PhaseGraphSchema, EdgeGuardSchema } from '../src/domain/phase/phase-graph'
 import { HandlerSchema } from '../src/domain/handler/handler'

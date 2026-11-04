@@ -1,5 +1,4 @@
 import { describe, expect, mock, test } from 'bun:test'
-import { Temporal } from 'temporal-polyfill'
 import { HandlerSchema, PresetHandlerNameSchema } from '../src/domain/handler/handler'
 import type { HookContext, HookRegistry } from '../src/domain/hook/hook'
 import { HookNameSchema } from '../src/domain/hook/hook-reference'

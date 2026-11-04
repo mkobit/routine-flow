@@ -1,7 +1,6 @@
 import * as fs from 'node:fs/promises'
 import * as path from 'node:path'
 import { describe, expect, test } from 'bun:test'
-import { Temporal } from 'temporal-polyfill'
 import { parseRoutineFile } from '../src/domain/routine/routine-file'
 import {
   resolveCadenceRoutine,

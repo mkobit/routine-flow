@@ -1,6 +1,5 @@
 import { beforeAll, describe, expect, test, mock } from 'bun:test'
 import type { App as AppType, BasesOptions, TFile as TFileType, WorkspaceLeaf, QueryController } from 'obsidian'
-import type { Temporal as TemporalType } from 'temporal-polyfill'
 import type RoutineFlowPlugin from '../src/main'
 import type { Phase, PhaseId, PhaseKind } from '../src/domain/phase/phase'
 import type { TaskQueueItem, TaskQueueItemId, TaskSourceId } from '../src/domain/queue/task-source'
@@ -307,7 +306,6 @@ void mock.module('obsidian', () => {
   }
 })
 
-let Temporal: typeof TemporalType
 let getViewOptionsFn: (app: AppType) => BasesOptions[]
 let RoutineTimerViewClass: typeof RoutineTimerView
 let RoutineSidePanelViewClass: typeof RoutineSidePanelView
@@ -315,8 +313,8 @@ let renderStateIconFn: (parent: HTMLElement, names: readonly string[]) => HTMLEl
 let renderProgressMeterFn: (dial: HTMLElement, options: {
   style: 'radial' | 'fill-bar' | 'battery-drain' | 'tick-marks'
   isInert: boolean
-  duration: TemporalType.Duration | null
-  remaining: TemporalType.Duration | null
+  duration: Temporal.Duration | null
+  remaining: Temporal.Duration | null
   isExhausted?: boolean
 }) => void
 let renderConfigBarFn: (parent: HTMLElement, options: { isConfigOpen: boolean, onToggle: () => void }) => HTMLElement
@@ -341,9 +339,6 @@ let TaskQueueItemIdSchemaParse: (val: string) => TaskQueueItemId
 
 describe('Timer view decomposition', () => {
   beforeAll(async () => {
-    const polyfill = await import('temporal-polyfill')
-    Temporal = polyfill.Temporal
-
     const viewOptionsMod = await import('../src/views/timer/view-options')
     getViewOptionsFn = viewOptionsMod.getViewOptions
 

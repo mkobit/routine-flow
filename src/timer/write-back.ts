@@ -1,4 +1,3 @@
-import { Temporal } from 'temporal-polyfill'
 import type { PhaseNode } from '../domain/phase/phase'
 import type { PhaseInstance } from '../domain/session/session'
 import type { LogTargetResolverRegistry } from '../domain/log-target/log-target-resolver'
