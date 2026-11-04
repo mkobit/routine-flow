@@ -1,6 +1,5 @@
 import { Notice, setIcon } from 'obsidian'
 import type { App } from 'obsidian'
-import { Temporal } from 'temporal-polyfill'
 import type { Phase } from '../../domain/phase/phase'
 import type { TaskQueueItem, TaskQueueItemId } from '../../domain/queue/task-source'
 import type { QueueItemAction } from '../../domain/action/queue-item-action'

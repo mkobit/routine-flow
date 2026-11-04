@@ -1,5 +1,3 @@
-import { Temporal } from 'temporal-polyfill'
-
 /** Fixed so a fresh checkout without VAULT_SEED set reproduces the same vault every run. */
 export const DEFAULT_VAULT_SEED = 424_242
 

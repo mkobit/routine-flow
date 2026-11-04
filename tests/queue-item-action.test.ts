@@ -1,5 +1,4 @@
 import { describe, expect, test } from 'bun:test'
-import { Temporal } from 'temporal-polyfill'
 import { deriveActionMutations } from '../src/domain/action/derive-action-mutations'
 import { QueueItemActionSchema } from '../src/domain/action/queue-item-action'
 import { TaskQueueItemIdSchema } from '../src/domain/queue/task-source'

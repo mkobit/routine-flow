@@ -1,3 +1,4 @@
+import 'temporal-polyfill/global'
 import { Notice, Plugin } from 'obsidian'
 import { DEFAULT_SETTINGS, type RoutineFlowSettings, RoutineFlowSettingTab } from './settings'
 import { EngineStore } from './timer/store'
@@ -25,7 +26,6 @@ import { RoutineGalleryModal } from './views/routine-gallery-modal'
 import { EXAMPLE_FOLDER_PATH, scaffoldExampleRoutine } from './onboarding/scaffold-example'
 import { RoutineReplaceModal } from './views/routine-replace-modal'
 import { runCadenceRoutine } from './timer/routine-selection'
-import { Temporal } from 'temporal-polyfill'
 
 /** Surfaces a dispatched hook's invocation failures and failed FileMutation applications — mirrors the reporting main.ts's old write-back subscriber did inline. */
 function reportFailedHookApplications(applications: readonly HookEventApplication[]): void {

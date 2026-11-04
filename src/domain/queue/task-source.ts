@@ -1,6 +1,4 @@
 import { z } from 'zod'
-import type { Temporal } from 'temporal-polyfill'
-
 /** Identifier for a configured TaskSource, referenced from Phase.taskSourceId and resolved via TaskSourceRegistry. */
 export const TaskSourceIdSchema = z.string().min(1).brand<'TaskSourceId'>()
 export type TaskSourceId = z.infer<typeof TaskSourceIdSchema>

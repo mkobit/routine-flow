@@ -1,5 +1,4 @@
 import { z } from 'zod'
-import type { Temporal } from 'temporal-polyfill'
 import type { PhaseId } from '../phase/phase'
 import type { PhaseGraphId } from '../phase/phase-graph'
 import type { Session } from './session'

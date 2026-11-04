@@ -1,4 +1,3 @@
-import { Temporal } from 'temporal-polyfill'
 import { deriveHookEvents, engineReducer, initialEngineState } from './reducer'
 import type { EngineAction, StampedEngineAction } from './reducer'
 import type { EngineState } from '../domain/session/engine-state'

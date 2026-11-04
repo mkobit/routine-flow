@@ -1,5 +1,4 @@
 import { z } from 'zod'
-import { Temporal } from 'temporal-polyfill'
 import type { BasesPropertyId } from 'obsidian'
 import { PositiveDurationSchema } from '../duration'
 import { TaskSourceIdSchema } from '../queue/task-source'

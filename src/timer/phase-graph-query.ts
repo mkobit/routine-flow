@@ -1,4 +1,3 @@
-import { Temporal } from 'temporal-polyfill'
 import { FOCUS_PHASE_KIND, BREAK_PHASE_KIND, SELECTOR_PHASE_KIND, PhaseNodeSchema } from '../domain/phase/phase'
 import type { PhaseNode, PhaseId } from '../domain/phase/phase'
 import { PhaseGraphIdSchema, PhaseGraphSchema } from '../domain/phase/phase-graph'

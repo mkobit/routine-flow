@@ -10,7 +10,6 @@ void mock.module('obsidian', () => {
   }
 })
 
-import { Temporal } from 'temporal-polyfill'
 import { deriveHookEvents, engineReducer, initialEngineState } from '../src/timer/reducer'
 import type { StampedEngineAction } from '../src/timer/reducer'
 import type { EngineState } from '../src/domain/session/engine-state'

@@ -1,4 +1,3 @@
-import type { Temporal } from 'temporal-polyfill'
 import type { FileMutation } from '../mutation/file-mutation'
 import { TaskQueueItemIdSchema } from '../queue/task-source'
 import type { QueueItemAction } from './queue-item-action'

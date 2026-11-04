@@ -1,5 +1,4 @@
 import { test, expect, describe } from 'bun:test'
-import { Temporal } from 'temporal-polyfill'
 import { PositiveDurationSchema, NonNegativeDurationSchema } from '../src/domain/duration'
 import { LogEntrySchema, nextLogEntry } from '../src/domain/mutation/log-entry'
 

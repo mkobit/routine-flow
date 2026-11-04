@@ -1,5 +1,4 @@
 import type { Page } from '@playwright/test'
-import { Temporal } from 'temporal-polyfill'
 import { test, expect } from './fixtures/obsidian'
 import { evaluateObsidian } from './helpers/evaluate'
 import { selectBasesSubView } from './helpers/bases'

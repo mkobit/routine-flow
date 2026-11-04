@@ -172,7 +172,7 @@ export default tseslint.config(
 
       'no-restricted-globals': ['error', {
         name: 'Date',
-        message: 'Use Temporal (from temporal-polyfill) instead of Date. In Obsidian code, use moment.',
+        message: 'Use Temporal instead of Date. In Obsidian code, use moment.',
       }],
       'no-restricted-imports': ['error', {
         patterns: ['**/index', '**/index.ts', '**/index.js'],

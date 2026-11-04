@@ -1,5 +1,4 @@
 import { describe, expect, it } from 'bun:test'
-import { Temporal } from 'temporal-polyfill'
 import {
   createMulberry32,
   selectRandomQueueItem,

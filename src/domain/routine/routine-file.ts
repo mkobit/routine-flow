@@ -1,4 +1,3 @@
-import { Temporal } from 'temporal-polyfill'
 import { PhaseGraphSchema, checkPhaseGraphIntegrity } from '../phase/phase-graph'
 import type { PhaseGraph } from '../phase/phase-graph'
 import { map, andThen } from '../result'

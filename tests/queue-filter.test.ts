@@ -1,4 +1,3 @@
-import { Temporal } from 'temporal-polyfill'
 import { test, expect, describe } from 'bun:test'
 import type { BasesPropertyId } from 'obsidian'
 import { filterQueueCandidates } from '../src/adapters/obsidian/bases/queue-filter'

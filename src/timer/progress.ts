@@ -1,5 +1,3 @@
-import type { Temporal } from 'temporal-polyfill'
-
 /**
  * Fraction of a phase that has *elapsed*, in [0, 1]: 0 the instant a phase
  * starts (remaining === duration), 1 once it completes (remaining === 0).

@@ -1,5 +1,4 @@
 import { test, expect, describe } from 'bun:test'
-import { Temporal } from 'temporal-polyfill'
 import { parseRoutineFile } from '../src/domain/routine/routine-file'
 import { PhaseGraphIdSchema } from '../src/domain/phase/phase-graph'
 

@@ -1,5 +1,4 @@
 import { z } from 'zod'
-import { Temporal } from 'temporal-polyfill'
 import { NonNegativeDurationSchema } from '../duration'
 import type { TaskQueueItem, TaskQueueItemCycleStatus } from './task-source'
 
