@@ -162,7 +162,7 @@ export default tseslint.config(
       'obsidianmd/ui/sentence-case': ['error', {
         enforceCamelCaseLower: true,
         ignoreWords: ['Bases', 'Flow', 'Pomodoro', 'Leitner'],
-        ignoreRegex: ['\\(e\\.g\\.'],
+        ignoreRegex: ['\\(e\\.g\\.', '^ (?:to|on) $'],
       }],
 
       // Additional clean code rules
