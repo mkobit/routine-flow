@@ -9,9 +9,6 @@ on:
         paths: ["docs/**"]
     workflow_dispatch: {}
 
-env:
-    BUN_VERSION: "1.4.3"
-
 concurrency:
     group: pages
     cancel-in-progress: false
@@ -33,7 +30,7 @@ jobs:
             - name: Install Bun
               uses: oven-sh/setup-bun@v2
               with:
-                  bun-version: ${{ env.BUN_VERSION }}
+                  bun-version-file: package.json
             - name: Install dependencies
               run: bun install
 

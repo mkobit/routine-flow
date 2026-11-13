@@ -6,9 +6,6 @@ on:
     pull_request:
         branches: ["**"]
 
-env:
-    BUN_VERSION: "1.4.3"
-
 jobs:
     build:
         runs-on: ubuntu-latest
@@ -20,8 +17,6 @@ jobs:
             - name: Setup Environment
               id: setup
               uses: ./.github/actions/setup-env
-              with:
-                  bun-version: ${{ env.BUN_VERSION }}
 
             - name: Set Artifact Name
               id: set-artifact-name
@@ -50,8 +45,6 @@ jobs:
             - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
             - name: Setup Environment
               uses: ./.github/actions/setup-env
-              with:
-                  bun-version: ${{ env.BUN_VERSION }}
 
             - name: Check types
               run: bun run typecheck
@@ -63,8 +56,6 @@ jobs:
             - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
             - name: Setup Environment
               uses: ./.github/actions/setup-env
-              with:
-                  bun-version: ${{ env.BUN_VERSION }}
 
             - name: Lint
               run: bun run lint
@@ -76,8 +67,6 @@ jobs:
             - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
             - name: Setup Environment
               uses: ./.github/actions/setup-env
-              with:
-                  bun-version: ${{ env.BUN_VERSION }}
 
             - name: Test
               run: bun run test:coverage
@@ -98,8 +87,6 @@ jobs:
             - name: Setup Environment
               id: setup
               uses: ./.github/actions/setup-env
-              with:
-                  bun-version: ${{ env.BUN_VERSION }}
 
             - name: Download Build Artifacts
               uses: actions/download-artifact@v8
