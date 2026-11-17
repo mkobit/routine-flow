@@ -22,13 +22,13 @@ jobs:
             run:
                 working-directory: docs
         steps:
-            - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+            - uses: actions/checkout@v7.0.1
 
             - name: Configure Pages
-              uses: actions/configure-pages@v6
+              uses: actions/configure-pages@v6.0.0
 
             - name: Install Bun
-              uses: oven-sh/setup-bun@v2
+              uses: oven-sh/setup-bun@v2.2.0
               with:
                   bun-version-file: package.json
             - name: Install dependencies
@@ -39,7 +39,7 @@ jobs:
 
             - name: Upload Pages artifact
               if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-              uses: actions/upload-pages-artifact@v5
+              uses: actions/upload-pages-artifact@v5.0.0
               with:
                   path: docs/build
 
@@ -56,4 +56,4 @@ jobs:
         steps:
             - name: Deploy to GitHub Pages
               id: deployment
-              uses: actions/deploy-pages@v5
+              uses: actions/deploy-pages@v5.0.1
