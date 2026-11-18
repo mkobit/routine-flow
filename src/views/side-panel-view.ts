@@ -11,6 +11,30 @@ import { renderStageProgress, renderGuidanceChecklist } from './timer/stage-prog
 
 export const SIDE_PANEL_VIEW_TYPE = 'routine-side-panel'
 
+interface SidePanelRenderSnapshot {
+  readonly graphId: string
+  readonly status: EngineState['status']
+  readonly currentPhaseId: PhaseId
+  readonly hasRemaining: boolean
+  readonly activeFilePath: string | null
+  readonly queueExhausted: boolean
+  readonly itemsTouchedCount: number
+  readonly phaseVisitCount: number
+  readonly nextPhaseId: PhaseId | undefined
+}
+
+function sidePanelSnapshotsMatch(a: SidePanelRenderSnapshot, b: SidePanelRenderSnapshot): boolean {
+  return a.graphId === b.graphId
+    && a.status === b.status
+    && a.currentPhaseId === b.currentPhaseId
+    && a.hasRemaining === b.hasRemaining
+    && a.activeFilePath === b.activeFilePath
+    && a.queueExhausted === b.queueExhausted
+    && a.itemsTouchedCount === b.itemsTouchedCount
+    && a.phaseVisitCount === b.phaseVisitCount
+    && a.nextPhaseId === b.nextPhaseId
+}
+
 /**
  * Workspace-wide side panel mirroring the shared EngineStore, closer to
  * RoutineTimerView's fidelity (phase + controls + queue) than the status
@@ -19,6 +43,11 @@ export const SIDE_PANEL_VIEW_TYPE = 'routine-side-panel'
  */
 export class RoutineSidePanelView extends ItemView {
   private unsubscribe: (() => void) | null = null
+  private timerSectionEl: HTMLElement | null = null
+  private controlsSectionEl: HTMLElement | null = null
+  private queueSectionEl: HTMLElement | null = null
+  private headerEl: HTMLElement | null = null
+  private lastRenderSnapshot: SidePanelRenderSnapshot | null = null
   private checkedGuidanceItems = new Set<string>()
   private lastGuidancePhaseId: PhaseId | null = null
 
@@ -49,11 +78,19 @@ export class RoutineSidePanelView extends ItemView {
     this.unsubscribe = null
   }
 
-  private render(state: EngineState): void {
-    this.contentEl.empty()
-    this.contentEl.className = 'routine-side-panel'
+  private resetPersistentContainers(): void {
+    this.timerSectionEl = null
+    this.controlsSectionEl = null
+    this.queueSectionEl = null
+    this.headerEl = null
+    this.lastRenderSnapshot = null
+  }
 
+  private render(state: EngineState): void {
     if (state.status === 'stopped') {
+      this.resetPersistentContainers()
+      this.contentEl.empty()
+      this.contentEl.className = 'routine-side-panel'
       this.contentEl.createEl('p', { text: 'No routine is running. Start one from a Bases timer view.' })
       return
     }
@@ -69,23 +106,57 @@ export class RoutineSidePanelView extends ItemView {
       this.checkedGuidanceItems.clear()
     }
 
+    const nextPhase = findNextPhase(graph, state, this.plugin.formulaPredicateRegistry)
+    const snapshot: SidePanelRenderSnapshot = {
+      graphId: graph.id,
+      status: state.status,
+      currentPhaseId: state.currentPhaseId,
+      hasRemaining: state.remaining !== null,
+      activeFilePath: state.activeFilePath,
+      queueExhausted: state.queueExhausted,
+      itemsTouchedCount: state.session?.currentInstance?.itemsTouched.length ?? 0,
+      phaseVisitCount: state.phaseVisitCounts[state.currentPhaseId] ?? 0,
+      nextPhaseId: nextPhase?.id,
+    }
+
+    if (
+      this.lastRenderSnapshot !== null
+      && this.headerEl !== null
+      && this.timerSectionEl !== null
+      && this.controlsSectionEl !== null
+      && sidePanelSnapshotsMatch(this.lastRenderSnapshot, snapshot)
+    ) {
+      this.headerEl.setText(formatPhaseHeader(phase, state.remaining, state.status))
+      return
+    }
+
+    this.contentEl.className = 'routine-side-panel'
     this.contentEl.addClass(`is-${state.status}`)
 
-    this.contentEl.createEl('h2', { text: formatPhaseHeader(phase, state.remaining, state.status) })
+    if (this.timerSectionEl === null || this.controlsSectionEl === null) {
+      this.contentEl.empty()
+      this.timerSectionEl = this.contentEl.createDiv({ cls: 'routine-side-panel-timer' })
+      this.controlsSectionEl = this.contentEl.createDiv({ cls: 'routine-controls' })
+      this.queueSectionEl = null
+    }
 
-    const nextPhase = findNextPhase(graph, state, this.plugin.formulaPredicateRegistry)
+    const timerSection = this.timerSectionEl
+    timerSection.empty()
+
+    this.headerEl = timerSection.createEl('h2', { text: formatPhaseHeader(phase, state.remaining, state.status) })
+
     if (nextPhase !== undefined) {
-      const nextPhaseEl = this.contentEl.createDiv({ cls: 'routine-next-phase' })
+      const nextPhaseEl = timerSection.createDiv({ cls: 'routine-next-phase' })
       nextPhaseEl.createSpan({ text: `Next: ${nextPhase.label}` })
     }
 
     const stageProgress = deriveStageProgress(graph, state)
     if (stageProgress.totalCount > 1) {
-      renderStageProgress(this.contentEl, stageProgress)
+      renderStageProgress(timerSection, stageProgress)
     }
 
     if (phase.guidance && phase.guidance.length > 0) {
-      renderGuidanceChecklist(this.contentEl, phase.guidance, {
+      renderGuidanceChecklist(timerSection, phase.guidance, {
         checkedItems: this.checkedGuidanceItems,
         onToggle: (item, checked) => {
           if (checked) {
@@ -98,7 +169,8 @@ export class RoutineSidePanelView extends ItemView {
       })
     }
 
-    const controls = this.contentEl.createDiv({ cls: 'routine-controls' })
+    const controls = this.controlsSectionEl
+    controls.empty()
 
     if (state.status === 'running') {
       const pauseBtn = controls.createEl('button', { text: 'Pause' })
@@ -147,6 +219,11 @@ export class RoutineSidePanelView extends ItemView {
 
     // A phase with no taskSourceId has no queue at all (e.g. a rep-based workout phase).
     if (phase.taskSourceId === null) {
+      if (this.queueSectionEl !== null) {
+        this.queueSectionEl.remove()
+        this.queueSectionEl = null
+      }
+      this.lastRenderSnapshot = snapshot
       return
     }
 
@@ -157,11 +234,18 @@ export class RoutineSidePanelView extends ItemView {
         : 'Break queue'
     const queueItems = this.plugin.taskSourceRegistry.resolve(phase.taskSourceId)?.getQueue() ?? []
 
-    const queueEl = this.contentEl.createDiv({ cls: 'routine-queue' })
+    if (this.queueSectionEl === null) {
+      this.queueSectionEl = this.contentEl.createDiv({ cls: 'routine-queue' })
+    }
+    else {
+      this.queueSectionEl.empty()
+    }
+    const queueEl = this.queueSectionEl
     queueEl.createEl('h3', { text: queueTitle })
 
     if (queueItems.length === 0) {
       queueEl.createEl('p', { text: 'No tasks found.' })
+      this.lastRenderSnapshot = snapshot
       return
     }
 
@@ -218,6 +302,8 @@ export class RoutineSidePanelView extends ItemView {
         void this.plugin.store.dispatch({ type: 'start', filePath: item.sourcePath })
       })
     }
+
+    this.lastRenderSnapshot = snapshot
   }
 
   private async handleReset(routineName: string): Promise<void> {

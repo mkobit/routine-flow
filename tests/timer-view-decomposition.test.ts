@@ -1,4 +1,4 @@
-import { beforeAll, describe, expect, test, mock } from 'bun:test'
+import { beforeAll, describe, expect, test, mock, spyOn } from 'bun:test'
 import type { App as AppType, BasesOptions, TFile as TFileType, WorkspaceLeaf, QueryController } from 'obsidian'
 import type RoutineFlowPlugin from '../src/main'
 import type { Phase, PhaseId, PhaseKind } from '../src/domain/phase/phase'
@@ -1775,6 +1775,178 @@ describe('Timer view decomposition', () => {
       const timerPanel = findDescendant(containerEl, 'routine-timer-panel')
       expect(findDescendant(timerPanel!, 'routine-stage-progress')).toBeUndefined()
       expect(findDescendant(timerPanel!, 'routine-guidance-checklist')).toBeUndefined()
+    })
+
+    test('RoutineTimerView updates only countdown digits and progress on tick without DOM teardown or registerTaskSources', async () => {
+      const { EngineStore: StoreClass } = await import('../src/timer/store')
+      const { PhaseGraphSchema: GraphSchema } = await import('../src/domain/phase/phase-graph')
+      const { PhaseSchema: PhaseSchemaClass } = await import('../src/domain/phase/phase')
+      const { TaskSourceIdSchema, TaskQueueItemIdSchema } = await import('../src/domain/queue/task-source')
+
+      const taskSourceId = TaskSourceIdSchema.parse('focus-queue')
+      const p1 = PhaseSchemaClass.parse({
+        id: PhaseIdSchemaParse('focus-1'),
+        label: 'Focus',
+        kind: FOCUS_PHASE_KIND_VAL,
+        duration: Temporal.Duration.from({ minutes: 10 }),
+        taskSourceId,
+        logTarget: { kind: 'activeItem' as const },
+        completionPolicy: null,
+        notification: null,
+        onEnter: null,
+        onComplete: null,
+        onSkip: null,
+        onExit: null,
+      })
+
+      const { DEFAULT_PHASE_GRAPH } = await import('../src/timer/phase-graph-query')
+
+      const graph = GraphSchema.parse({
+        id: DEFAULT_PHASE_GRAPH.id,
+        name: 'Tick Test',
+        phases: [p1],
+        transitions: [],
+      })
+
+      const registerMock = mock(() => {})
+      const mockQueue = [{
+        id: TaskQueueItemIdSchema.parse('task-1'),
+        sourcePath: 'Tasks/Task 1.md',
+        displayName: 'Task 1',
+      }]
+      const store = new StoreClass(graph)
+      const mockPlugin = {
+        app: new MockApp(),
+        store,
+        settings: { progressMeterStyle: 'radial' as const },
+        taskSourceRegistry: {
+          register: registerMock,
+          resolve: () => ({ getQueue: () => mockQueue }),
+        },
+        formulaPredicateRegistry: { get: () => undefined },
+        activateView: async () => {},
+      }
+
+      const containerEl = new MockElement()
+      const controller = {}
+      // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- mock view
+      const timerView = new RoutineTimerViewClass(controller as unknown as QueryController, asElement(containerEl), mockPlugin as unknown as RoutineFlowPlugin)
+      timerView.onload()
+      // Initial onload registers task sources once for default graph if matching, or 0 if custom graph
+      const initialRegisterCalls = registerMock.mock.calls.length
+
+      await store.dispatch({ type: 'start' })
+
+      const timerPanelBefore = findDescendant(containerEl, 'routine-timer-panel')
+      const controlsBefore = findDescendant(containerEl, 'routine-controls')
+      const queueBefore = findDescendant(containerEl, 'routine-queue')
+      const dialBefore = findDescendant(containerEl, 'routine-countdown-dial')
+      const timeBefore = findDescendant(containerEl, 'routine-countdown-time')
+      const startBtnBefore = controlsBefore?.children[0]
+
+      expect(timerPanelBefore).toBeDefined()
+      expect(controlsBefore).toBeDefined()
+      expect(queueBefore).toBeDefined()
+      expect(dialBefore).toBeDefined()
+      expect(timeBefore?.getText()).toBe('10:00')
+      expect(dialBefore?.style.getPropertyValue('--routine-flow-progress')).toBe('0')
+
+      const registerCallsBeforeTicks = registerMock.mock.calls.length
+      expect(registerCallsBeforeTicks).toBe(initialRegisterCalls)
+
+      // Dispatch a 1-second tick
+      await store.dispatch({ type: 'tick' })
+
+      // Same persistent DOM element instances remain in place (no empty() teardown)
+      expect(findDescendant(containerEl, 'routine-timer-panel')).toBe(timerPanelBefore)
+      expect(findDescendant(containerEl, 'routine-controls')).toBe(controlsBefore)
+      expect(findDescendant(containerEl, 'routine-queue')).toBe(queueBefore)
+      expect(findDescendant(containerEl, 'routine-countdown-dial')).toBe(dialBefore)
+      expect(findDescendant(containerEl, 'routine-countdown-time')).toBe(timeBefore)
+      expect(controlsBefore?.children[0]).toBe(startBtnBefore)
+
+      // Only digits and progress CSS custom property updated
+      expect(timeBefore?.getText()).toBe('09:59')
+      expect(Number(dialBefore?.style.getPropertyValue('--routine-flow-progress'))).toBeCloseTo(1 / 600, 6)
+
+      // registerTaskSources was NOT called on tick
+      expect(registerMock.mock.calls.length).toBe(registerCallsBeforeTicks)
+
+      // onDataUpdated DOES re-register task sources
+      timerView.onDataUpdated()
+      expect(registerMock.mock.calls.length).toBeGreaterThan(registerCallsBeforeTicks)
+    })
+
+    test('RoutineSidePanelView updates only header text on tick without DOM teardown', async () => {
+      const { EngineStore: StoreClass } = await import('../src/timer/store')
+      const { PhaseGraphSchema: GraphSchema } = await import('../src/domain/phase/phase-graph')
+      const { PhaseSchema: PhaseSchemaClass } = await import('../src/domain/phase/phase')
+      const { TaskSourceIdSchema, TaskQueueItemIdSchema } = await import('../src/domain/queue/task-source')
+
+      const taskSourceId = TaskSourceIdSchema.parse('focus-queue')
+      const p1 = PhaseSchemaClass.parse({
+        id: PhaseIdSchemaParse('focus-1'),
+        label: 'Focus',
+        kind: FOCUS_PHASE_KIND_VAL,
+        duration: Temporal.Duration.from({ minutes: 5 }),
+        taskSourceId,
+        logTarget: { kind: 'activeItem' as const },
+        completionPolicy: null,
+        notification: null,
+        onEnter: null,
+        onComplete: null,
+        onSkip: null,
+        onExit: null,
+      })
+
+      const graph = GraphSchema.parse({
+        id: 'side-panel-tick-routine',
+        name: 'Side Panel Tick Test',
+        phases: [p1],
+        transitions: [],
+      })
+
+      const store = new StoreClass(graph)
+      const mockQueue = [{
+        id: TaskQueueItemIdSchema.parse('task-1'),
+        sourcePath: 'Tasks/Task 1.md',
+        displayName: 'Task 1',
+      }]
+      const mockPlugin = {
+        app: new MockApp(),
+        store,
+        settings: { clockSpeedMultiplier: 1 },
+        ticker: { restart: () => {} },
+        taskSourceRegistry: { resolve: () => ({ getQueue: () => mockQueue }) },
+        formulaPredicateRegistry: { get: () => undefined },
+        saveSettings: async () => {},
+      }
+      const leaf = { containerEl: new MockElement() }
+      // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- mock view
+      const sidePanel = new RoutineSidePanelViewClass(leaf as unknown as WorkspaceLeaf, mockPlugin as unknown as RoutineFlowPlugin)
+      await sidePanel.onOpen()
+      await store.dispatch({ type: 'start' })
+
+      // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- mock element
+      const contentEl = sidePanel.contentEl as unknown as MockElement
+      const timerSectionBefore = findDescendant(contentEl, 'routine-side-panel-timer')
+      const controlsBefore = findDescendant(contentEl, 'routine-controls')
+      const queueBefore = findDescendant(contentEl, 'routine-queue')
+      const headerBefore = timerSectionBefore?.children.find(c => c.tagName === 'H2')
+
+      expect(timerSectionBefore).toBeDefined()
+      expect(controlsBefore).toBeDefined()
+      expect(queueBefore).toBeDefined()
+      expect(headerBefore).toBeDefined()
+
+      const setTextSpy = spyOn(headerBefore!, 'setText')
+      await store.dispatch({ type: 'tick' })
+
+      expect(findDescendant(contentEl, 'routine-side-panel-timer')).toBe(timerSectionBefore)
+      expect(findDescendant(contentEl, 'routine-controls')).toBe(controlsBefore)
+      expect(findDescendant(contentEl, 'routine-queue')).toBe(queueBefore)
+      expect(timerSectionBefore?.children.find(c => c.tagName === 'H2')).toBe(headerBefore)
+      expect(setTextSpy).toHaveBeenCalledWith('Focus: 04:59 (running)')
     })
   })
 })
