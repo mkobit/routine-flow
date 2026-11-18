@@ -13,6 +13,13 @@ The project enforces strict Functional Programming principles via `eslint`.
 - **Lint quirk**: `eslint-plugin-obsidianmd`'s sentence-case rule can flag or miss `(e.g. someCamelCase)` parentheticals inconsistently depending on surrounding text — before attributing a new warning to your edit, check it wasn't already present on `main`.
 - **Lint FP carve-outs**: `eslint.config.mts` relaxes `functional/no-try-statements`, `functional/no-expression-statements`, and `functional/prefer-immutable-types` across `src/**` so domain code can wrap throwing stdlib/parser APIs (e.g. `JSON.parse`) in try/catch blocks and use expression statements, while maintaining immutability via `functional/immutable-data` and pure state reducers.
 
+## Design and planning workflow
+
+> [!NOTE]
+> **OpenSpec is deprecated in this repository.**
+> Do not create new OpenSpec proposals or changes; existing files under `openspec/` will be pruned in a follow-up chore.
+> Use the **Elephant Goldfish Model (EGM)** (`egm-*` subagents) for design reviews and architectural brainstorming, and use **Beads (`bd`)** as the canonical tracking system for plans, blockers, labels, and decisions.
+
 ## Commands
 
 Run devDependency binaries (e.g. `openspec`) via `bun x <name>`.
