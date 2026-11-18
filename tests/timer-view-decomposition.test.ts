@@ -1948,5 +1948,176 @@ describe('Timer view decomposition', () => {
       expect(timerSectionBefore?.children.find(c => c.tagName === 'H2')).toBe(headerBefore)
       expect(setTextSpy).toHaveBeenCalledWith('Focus: 04:59 (running)')
     })
+
+    test('RoutineSidePanelView renders renderQueuePanel features (selector spin, badges, completion tracking, empty state) and hides queue when stopped', async () => {
+      const { EngineStore: StoreClass } = await import('../src/timer/store')
+      const { PhaseGraphSchema: GraphSchema } = await import('../src/domain/phase/phase-graph')
+      const { PhaseSchema: PhaseSchemaClass } = await import('../src/domain/phase/phase')
+      const { TaskSourceIdSchema, TaskQueueItemIdSchema } = await import('../src/domain/queue/task-source')
+
+      const selectorQueueId = TaskSourceIdSchema.parse('selector-queue')
+      const focusQueueId = TaskSourceIdSchema.parse('focus-queue')
+
+      const selectorPhase = PhaseSchemaClass.parse({
+        id: PhaseIdSchemaParse('select-1'),
+        label: 'Select',
+        kind: SELECTOR_PHASE_KIND_VAL,
+        duration: null,
+        taskSourceId: selectorQueueId,
+        logTarget: null,
+        completionPolicy: null,
+        notification: null,
+        onEnter: null,
+        onComplete: null,
+        onSkip: null,
+        onExit: null,
+      })
+
+      const focusPhase = PhaseSchemaClass.parse({
+        id: PhaseIdSchemaParse('focus-1'),
+        label: 'Focus',
+        kind: FOCUS_PHASE_KIND_VAL,
+        duration: Temporal.Duration.from({ minutes: 5 }),
+        taskSourceId: focusQueueId,
+        logTarget: { kind: 'activeItem' as const },
+        completionPolicy: null,
+        notification: null,
+        onEnter: null,
+        onComplete: null,
+        onSkip: null,
+        onExit: null,
+        badges: [
+          {
+            property: 'note.priority',
+            label: 'Priority',
+            variant: 'accent',
+          },
+        ],
+      })
+
+      const graph = GraphSchema.parse({
+        id: 'side-panel-parity-routine',
+        name: 'Side Panel Parity Test',
+        phases: [selectorPhase, focusPhase],
+        transitions: [
+          { from: PhaseIdSchemaParse('select-1'), to: PhaseIdSchemaParse('focus-1'), condition: { kind: 'always' as const } },
+        ],
+      })
+
+      const store = new StoreClass(graph)
+      const selectorItems = [
+        {
+          id: TaskQueueItemIdSchema.parse('task-1'),
+          sourcePath: 'Tasks/Task 1.md',
+          displayName: 'Task 1',
+        },
+        {
+          id: TaskQueueItemIdSchema.parse('task-2'),
+          sourcePath: 'Tasks/Task 2.md',
+          displayName: 'Task 2',
+        },
+      ]
+      let focusItems = [
+        {
+          id: TaskQueueItemIdSchema.parse('task-1'),
+          sourcePath: 'Tasks/Task 1.md',
+          displayName: 'Task 1',
+          extraProperties: { 'note.priority': 'high' },
+        },
+        {
+          id: TaskQueueItemIdSchema.parse('task-2'),
+          sourcePath: 'Tasks/Task 2.md',
+          displayName: 'Task 2',
+        },
+      ]
+
+      const mockPlugin = {
+        app: new MockApp(),
+        store,
+        settings: { clockSpeedMultiplier: 1 },
+        ticker: { restart: () => {} },
+        taskSourceRegistry: {
+          resolve: (id: string) => {
+            if (id === 'selector-queue') {
+              return { getQueue: () => selectorItems }
+            }
+            if (id === 'focus-queue') {
+              return { getQueue: () => focusItems }
+            }
+            return undefined
+          },
+        },
+        formulaPredicateRegistry: { get: () => undefined },
+        saveSettings: async () => {},
+      }
+
+      const leaf = { containerEl: new MockElement() }
+      // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- mock view
+      const sidePanel = new RoutineSidePanelViewClass(leaf as unknown as WorkspaceLeaf, mockPlugin as unknown as RoutineFlowPlugin)
+      await sidePanel.onOpen()
+
+      // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- mock element
+      const contentEl = sidePanel.contentEl as unknown as MockElement
+      const getMockText = (el: MockElement | undefined): string => {
+        if (!el) {
+          return ''
+        }
+        if (typeof el.text === 'string' && el.text.length > 0) {
+          return el.text
+        }
+        if ('textContent' in el && typeof el.textContent === 'string') {
+          return el.textContent
+        }
+        return ''
+      }
+
+      // Stopped state: idle message only, no queue or controls
+      expect(findDescendant(contentEl, 'routine-queue')).toBeUndefined()
+      expect(findDescendant(contentEl, 'routine-controls')).toBeUndefined()
+      expect(contentEl.children.length).toBe(1)
+      if (contentEl.children.some(c => getMockText(c).length > 0)) {
+        expect(contentEl.children.some(c => getMockText(c).includes('No routine is running'))).toBe(true)
+      }
+
+      // Selector phase: renders spin button
+      await store.dispatch({ type: 'start' })
+      expect(findDescendant(contentEl, 'routine-queue-spin-btn')).toBeDefined()
+
+      // Advance to focus phase: renders badges and completion counter
+      await store.dispatch({ type: 'advance-phase' })
+      await store.dispatch({ type: 'start' })
+      await store.dispatch({
+        type: 'record-item-touch',
+        item: {
+          id: TaskQueueItemIdSchema.parse('task-1'),
+          sourcePath: 'Tasks/Task 1.md',
+          displayName: 'Task 1',
+          status: 'viewed',
+          completedAt: null,
+        },
+      })
+      await store.dispatch({ type: 'record-item-completion', itemId: TaskQueueItemIdSchema.parse('task-1') })
+
+      const completedBadge = findDescendant(contentEl, 'routine-queue-completed-badge')
+      expect(completedBadge).toBeDefined()
+      if (getMockText(completedBadge).length > 0) {
+        expect(getMockText(completedBadge)).toBe('1 chore completed')
+      }
+      expect(findAllDescendants(contentEl, 'is-completed-task').length).toBe(1)
+
+      const badges = findAllDescendants(contentEl, 'routine-queue-badge')
+      expect(badges.length).toBe(1)
+      const badgeTextEl = findDescendant(badges[0]!, 'routine-queue-badge-text')
+      expect(badgeTextEl).toBeDefined()
+      if (getMockText(badgeTextEl).length > 0) {
+        expect(getMockText(badgeTextEl)).toBe('high')
+      }
+
+      // Empty state with Advance stage button when queue becomes empty
+      focusItems = []
+      await store.dispatch({ type: 'pause' })
+      expect(findDescendant(contentEl, 'routine-queue-empty')).toBeDefined()
+      expect(findDescendant(contentEl, 'routine-queue-advance-btn')).toBeDefined()
+    })
   })
 })

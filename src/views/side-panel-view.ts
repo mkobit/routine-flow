@@ -1,13 +1,15 @@
-import { ItemView, Notice, setIcon } from 'obsidian'
+import { ItemView, Notice } from 'obsidian'
 import type { WorkspaceLeaf } from 'obsidian'
 import type RoutineFlowPlugin from '../main'
 import type { EngineState } from '../domain/session/engine-state'
 import type { PhaseId } from '../domain/phase/phase'
 import { deriveStageProgress } from '../domain/phase/stage-progress'
-import { findNextPhase, findPhaseById, FOCUS_PHASE_KIND, SELECTOR_PHASE_KIND } from '../timer/phase-graph-query'
+import { findNextPhase, findPhaseById, SELECTOR_PHASE_KIND } from '../timer/phase-graph-query'
 import { formatPhaseHeader } from '../timer/format'
+import { handleSelectorWinner } from '../timer/selector-winner'
 import { ResetConfirmModal } from './reset-confirm-modal'
 import { renderStageProgress, renderGuidanceChecklist } from './timer/stage-progress-panel'
+import { renderQueuePanel } from './timer/queue-panel'
 
 export const SIDE_PANEL_VIEW_TYPE = 'routine-side-panel'
 
@@ -19,6 +21,7 @@ interface SidePanelRenderSnapshot {
   readonly activeFilePath: string | null
   readonly queueExhausted: boolean
   readonly itemsTouchedCount: number
+  readonly completedCount: number
   readonly phaseVisitCount: number
   readonly nextPhaseId: PhaseId | undefined
 }
@@ -31,6 +34,7 @@ function sidePanelSnapshotsMatch(a: SidePanelRenderSnapshot, b: SidePanelRenderS
     && a.activeFilePath === b.activeFilePath
     && a.queueExhausted === b.queueExhausted
     && a.itemsTouchedCount === b.itemsTouchedCount
+    && a.completedCount === b.completedCount
     && a.phaseVisitCount === b.phaseVisitCount
     && a.nextPhaseId === b.nextPhaseId
 }
@@ -106,6 +110,12 @@ export class RoutineSidePanelView extends ItemView {
       this.checkedGuidanceItems.clear()
     }
 
+    const completedItems = state.session?.currentInstance?.itemsTouched.filter((touch) => {
+      return touch.status === 'completed'
+    }) ?? []
+    const completedCount = completedItems.length
+    const completedPaths = completedItems.map(touch => touch.sourcePath)
+
     const nextPhase = findNextPhase(graph, state, this.plugin.formulaPredicateRegistry)
     const snapshot: SidePanelRenderSnapshot = {
       graphId: graph.id,
@@ -115,6 +125,7 @@ export class RoutineSidePanelView extends ItemView {
       activeFilePath: state.activeFilePath,
       queueExhausted: state.queueExhausted,
       itemsTouchedCount: state.session?.currentInstance?.itemsTouched.length ?? 0,
+      completedCount,
       phaseVisitCount: state.phaseVisitCounts[state.currentPhaseId] ?? 0,
       nextPhaseId: nextPhase?.id,
     }
@@ -227,81 +238,30 @@ export class RoutineSidePanelView extends ItemView {
       return
     }
 
-    const queueTitle = phase.kind === SELECTOR_PHASE_KIND
-      ? 'Selection queue'
-      : phase.kind === FOCUS_PHASE_KIND || phase.kind === 'review'
-        ? 'Work queue'
-        : 'Break queue'
     const queueItems = this.plugin.taskSourceRegistry.resolve(phase.taskSourceId)?.getQueue() ?? []
+    const isSelector = phase.kind === SELECTOR_PHASE_KIND
 
     if (this.queueSectionEl === null) {
       this.queueSectionEl = this.contentEl.createDiv({ cls: 'routine-queue' })
     }
-    else {
-      this.queueSectionEl.empty()
-    }
-    const queueEl = this.queueSectionEl
-    queueEl.createEl('h3', { text: queueTitle })
 
-    if (queueItems.length === 0) {
-      queueEl.createEl('p', { text: 'No tasks found.' })
-      this.lastRenderSnapshot = snapshot
-      return
-    }
-
-    const ul = queueEl.createEl('ul')
-    for (const item of queueItems) {
-      const li = ul.createEl('li')
-      const itemRow = li.createDiv({ cls: 'routine-queue-item-row' })
-      const taskBtn = itemRow.createEl('button', { cls: 'routine-task-name', text: item.displayName })
-
-      const openFileBtn = itemRow.createEl('button', {
-        cls: 'routine-open-file-btn',
-        attr: { 'aria-label': `Open ${item.displayName}`, 'title': `Open ${item.displayName}` },
-      })
-      setIcon(openFileBtn, 'file-text')
-      openFileBtn.addEventListener('click', (e) => {
-        e.stopPropagation()
-        const file = this.plugin.app.vault.getFileByPath(item.sourcePath)
-        if (file) {
-          const leaf = this.plugin.app.workspace.getLeaf('tab')
-          void leaf.openFile(file)
-          this.plugin.app.workspace.setActiveLeaf(leaf, { focus: true })
+    renderQueuePanel(this.queueSectionEl, {
+      phase,
+      activeFilePath: state.activeFilePath,
+      queueItems,
+      app: this.plugin.app,
+      actionExecutor: this.plugin.store,
+      completedCount,
+      completedPaths,
+      onSelectTask: (filePath) => {
+        if (isSelector) {
+          void handleSelectorWinner(this.plugin.store, phase, filePath, msg => new Notice(msg))
         }
-      })
-
-      if (state.activeFilePath === item.sourcePath) {
-        li.addClass('is-active-task')
-        if (phase.actions.length > 0) {
-          const actionsEl = li.createDiv({ cls: 'routine-queue-actions' })
-          for (const action of phase.actions) {
-            const actionBtn = actionsEl.createEl('button', {
-              cls: `routine-action-btn${action.style ? ` mod-${action.style === 'primary' ? 'cta' : action.style === 'destructive' ? 'warning' : action.style}` : ''}`,
-              text: action.label,
-            })
-            actionBtn.addEventListener('click', (e) => {
-              e.stopPropagation()
-              void (async () => {
-                try {
-                  const result = await this.plugin.store.executeAction(action, item.sourcePath)
-                  if (result !== null && !result.success) {
-                    const causeMsg = result.cause instanceof Error ? result.cause.message : String(result.cause)
-                    new Notice(`Routine Flow: action failed (${action.label}) — ${causeMsg}`)
-                  }
-                }
-                catch (cause: unknown) {
-                  const causeMsg = cause instanceof Error ? cause.message : String(cause)
-                  new Notice(`Routine Flow: action failed (${action.label}) — ${causeMsg}`)
-                }
-              })()
-            })
-          }
+        else {
+          void this.plugin.store.dispatch({ type: 'start', filePath })
         }
-      }
-      taskBtn.addEventListener('click', () => {
-        void this.plugin.store.dispatch({ type: 'start', filePath: item.sourcePath })
-      })
-    }
+      },
+    })
 
     this.lastRenderSnapshot = snapshot
   }
