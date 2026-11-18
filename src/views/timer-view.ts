@@ -17,12 +17,46 @@ import { createBaseQuerySource } from '../adapters/obsidian/bases/query-task-sou
 import { filterQueueCandidates } from '../adapters/obsidian/bases/queue-filter'
 import { renderStateIcon } from './timer/state-icon'
 import { renderProgressMeter } from './timer/progress-meter'
+import { computeProgressFraction } from '../timer/progress'
+import type { ProgressMeterStyle } from '../timer/progress-meter-style'
 import { renderConfigBar, renderConfigPanel } from './timer/config-panel'
 import { renderQueuePanel } from './timer/queue-panel'
 import { getViewOptions } from './timer/view-options'
 import { renderStageProgress, renderGuidanceChecklist } from './timer/stage-progress-panel'
 import { deriveStarJarState, resolveGraphTrackerFilePath } from '../domain/reward/star-jar'
 import { renderStarJarMeter } from './timer/star-jar-meter'
+
+interface TimerRenderSnapshot {
+  readonly viewGraphId: string
+  readonly activeGraphId: string
+  readonly status: EngineState['status']
+  readonly currentPhaseId: PhaseId
+  readonly hasRemaining: boolean
+  readonly activeFilePath: string | null
+  readonly queueExhausted: boolean
+  readonly isConfigOpen: boolean
+  readonly progressMeterStyle: ProgressMeterStyle
+  readonly trackerFrontmatter: EngineState['trackerFrontmatter']
+  readonly itemsTouchedCount: number
+  readonly phaseVisitCount: number
+  readonly nextPhaseId: PhaseId | undefined
+}
+
+function timerSnapshotsMatch(a: TimerRenderSnapshot, b: TimerRenderSnapshot): boolean {
+  return a.viewGraphId === b.viewGraphId
+    && a.activeGraphId === b.activeGraphId
+    && a.status === b.status
+    && a.currentPhaseId === b.currentPhaseId
+    && a.hasRemaining === b.hasRemaining
+    && a.activeFilePath === b.activeFilePath
+    && a.queueExhausted === b.queueExhausted
+    && a.isConfigOpen === b.isConfigOpen
+    && a.progressMeterStyle === b.progressMeterStyle
+    && a.trackerFrontmatter === b.trackerFrontmatter
+    && a.itemsTouchedCount === b.itemsTouchedCount
+    && a.phaseVisitCount === b.phaseVisitCount
+    && a.nextPhaseId === b.nextPhaseId
+}
 
 export class RoutineTimerView extends BasesView {
   readonly type = 'routine-timer'
@@ -32,7 +66,12 @@ export class RoutineTimerView extends BasesView {
   private routineFilePath: string | null = null
   private routineResolution: RoutineResolution = { kind: 'default', graph: DEFAULT_PHASE_GRAPH }
   private isConfigOpen = false
+  private timerSectionEl: HTMLElement | null = null
+  private controlsSectionEl: HTMLElement | null = null
   private queueEl: HTMLElement | null = null
+  private dialEl: HTMLElement | null = null
+  private countdownTimeEl: HTMLElement | null = null
+  private lastRenderSnapshot: TimerRenderSnapshot | null = null
   private checkedGuidanceItems = new Set<string>()
   private lastGuidancePhaseId: PhaseId | null = null
 
@@ -44,6 +83,15 @@ export class RoutineTimerView extends BasesView {
 
   onload() {
     this.containerEl.addClass('routine-timer-view')
+    this.routineFilePath = this.getConfiguredRoutineFilePath()
+    if (this.routineFilePath === null) {
+      this.routineResolution = { kind: 'default', graph: DEFAULT_PHASE_GRAPH }
+      this.syncTaskSourcesIfActive()
+    }
+    else {
+      this.routineResolution = { kind: 'loading' }
+      void this.loadRoutineFile(this.routineFilePath)
+    }
     this.unsubscribe = this.plugin.store.subscribe((state) => {
       this.render(state)
     })
@@ -58,14 +106,9 @@ export class RoutineTimerView extends BasesView {
 
   onDataUpdated() {
     this.applyAutoAdvance()
-    if (this.routineResolution.kind === 'default' || this.routineResolution.kind === 'loaded') {
-      const viewGraph = this.routineResolution.graph
-      const graph = this.plugin.store.getGraph()
-      if (graph.id === viewGraph.id) {
-        this.registerTaskSources(viewGraph)
-      }
-    }
+    this.syncTaskSourcesIfActive()
     void this.plugin.store.syncQueueExhausted()
+    this.lastRenderSnapshot = null
     this.render(this.plugin.store.getState())
   }
 
@@ -82,21 +125,51 @@ export class RoutineTimerView extends BasesView {
     }
   }
 
+  private resetPersistentContainers(): void {
+    this.timerSectionEl = null
+    this.controlsSectionEl = null
+    this.queueEl = null
+    this.dialEl = null
+    this.countdownTimeEl = null
+    this.lastRenderSnapshot = null
+  }
+
+  private syncTaskSourcesIfActive(): void {
+    if (this.routineResolution.kind === 'default' || this.routineResolution.kind === 'loaded') {
+      const viewGraph = this.routineResolution.graph
+      if (this.plugin.store.getGraph().id === viewGraph.id) {
+        this.registerTaskSources(viewGraph)
+      }
+    }
+  }
+
+  private updateCountdownTick(phase: Phase, state: EngineState, isInert: boolean): void {
+    const countdownTime = formatCountdown(state.remaining, phase.timeFormat ?? 'mm:ss')
+    if (countdownTime !== null && this.countdownTimeEl !== null) {
+      this.countdownTimeEl.setText(countdownTime)
+    }
+    if (this.dialEl !== null && !isInert && phase.duration !== null && state.remaining !== null) {
+      const fraction = state.queueExhausted ? 1 : computeProgressFraction(phase.duration, state.remaining)
+      this.dialEl.style.setProperty('--routine-flow-progress', String(fraction))
+    }
+  }
+
   private render(state: EngineState) {
     if (state.currentPhaseId !== this.lastGuidancePhaseId) {
       this.lastGuidancePhaseId = state.currentPhaseId
       this.checkedGuidanceItems.clear()
     }
 
-    this.containerEl.empty()
-    this.containerEl.className = 'routine-timer-view'
-
     const configuredPath = this.getConfiguredRoutineFilePath()
     if (configuredPath !== this.routineFilePath) {
       this.routineFilePath = configuredPath
       this.routineResolution = configuredPath === null ? { kind: 'default', graph: DEFAULT_PHASE_GRAPH } : { kind: 'loading' }
+      this.lastRenderSnapshot = null
       if (configuredPath !== null) {
         void this.loadRoutineFile(configuredPath)
+      }
+      else {
+        this.syncTaskSourcesIfActive()
       }
     }
 
@@ -113,6 +186,9 @@ export class RoutineTimerView extends BasesView {
     }
 
     if (this.routineResolution.kind === 'error') {
+      this.resetPersistentContainers()
+      this.containerEl.empty()
+      this.containerEl.className = 'routine-timer-view'
       const errorEl = this.containerEl.createDiv({ cls: 'routine-error' })
       renderStateIcon(errorEl, ['circle-alert', 'alert-circle'])
       errorEl.createEl('p', { text: `Routine error: ${this.routineResolution.error.message}` })
@@ -124,6 +200,9 @@ export class RoutineTimerView extends BasesView {
     }
 
     if (this.routineResolution.kind === 'loading') {
+      this.resetPersistentContainers()
+      this.containerEl.empty()
+      this.containerEl.className = 'routine-timer-view'
       const loadingEl = this.containerEl.createDiv({ cls: 'routine-loading' })
       renderStateIcon(loadingEl, ['loader-circle', 'loader-2'])
       loadingEl.createEl('p', { text: 'Loading routine…' })
@@ -140,19 +219,49 @@ export class RoutineTimerView extends BasesView {
 
     const isViewRoutineActive = graph.id === viewGraph.id
 
-    // Only the view backing the currently active graph writes to the shared registry — otherwise
-    // two simultaneously open Bases leaves showing different (inactive) sub-views would stomp each
-    // other's registration for a taskSourceId they happen to share (flow-gu1.29).
-    if (isViewRoutineActive) {
-      this.registerTaskSources(viewGraph)
-    }
-
     // This leaf is a bystander to a routine running elsewhere -- the header/queue below belong to
     // that *other* routine, not this view's own (see design.md surface #4).
     const isInert = !isViewRoutineActive && state.status !== 'stopped'
+    const nextPhase = findNextPhase(graph, state, this.plugin.formulaPredicateRegistry)
+
+    const snapshot: TimerRenderSnapshot = {
+      viewGraphId: viewGraph.id,
+      activeGraphId: graph.id,
+      status: state.status,
+      currentPhaseId: state.currentPhaseId,
+      hasRemaining: state.remaining !== null,
+      activeFilePath: state.activeFilePath,
+      queueExhausted: state.queueExhausted,
+      isConfigOpen: this.isConfigOpen,
+      progressMeterStyle: this.plugin.settings.progressMeterStyle,
+      trackerFrontmatter: state.trackerFrontmatter,
+      itemsTouchedCount: state.session?.currentInstance?.itemsTouched.length ?? 0,
+      phaseVisitCount: state.phaseVisitCounts[state.currentPhaseId] ?? 0,
+      nextPhaseId: nextPhase?.id,
+    }
+
+    if (
+      this.lastRenderSnapshot !== null
+      && this.timerSectionEl !== null
+      && this.controlsSectionEl !== null
+      && timerSnapshotsMatch(this.lastRenderSnapshot, snapshot)
+    ) {
+      this.updateCountdownTick(phase, state, isInert)
+      return
+    }
+
+    if (this.timerSectionEl === null || this.controlsSectionEl === null) {
+      this.containerEl.empty()
+      this.containerEl.className = 'routine-timer-view'
+      this.timerSectionEl = this.containerEl.createDiv({ cls: 'routine-timer-panel' })
+      this.controlsSectionEl = this.containerEl.createDiv({ cls: 'routine-controls' })
+      this.queueEl = null
+    }
 
     // Timer Panel
-    const timerPanel = this.containerEl.createDiv({ cls: 'routine-timer-panel' })
+    const timerPanel = this.timerSectionEl
+    timerPanel.empty()
+    timerPanel.className = 'routine-timer-panel'
     timerPanel.addClass(`is-${state.status}`)
     if (state.queueExhausted) {
       timerPanel.addClass('is-queue-exhausted')
@@ -185,23 +294,26 @@ export class RoutineTimerView extends BasesView {
       text: countdownTime === null ? phase.label : `${phase.label}: `,
     })
     if (countdownTime !== null) {
-      const dial = header.createSpan({ cls: 'routine-countdown-dial' })
+      this.dialEl = header.createSpan({ cls: 'routine-countdown-dial' })
       if (state.queueExhausted) {
-        dial.addClass('is-exhausted')
-        dial.addClass('is-celebrating')
+        this.dialEl.addClass('is-exhausted')
+        this.dialEl.addClass('is-celebrating')
       }
-      renderProgressMeter(dial, {
+      renderProgressMeter(this.dialEl, {
         style: this.plugin.settings.progressMeterStyle,
         isInert,
         duration: phase.duration,
         remaining: state.remaining,
         isExhausted: state.queueExhausted,
       })
-      dial.createSpan({ cls: 'routine-countdown-time', text: countdownTime })
+      this.countdownTimeEl = this.dialEl.createSpan({ cls: 'routine-countdown-time', text: countdownTime })
+    }
+    else {
+      this.dialEl = null
+      this.countdownTimeEl = null
     }
     header.createSpan({ cls: 'routine-countdown-status', text: ` (${state.status})` })
 
-    const nextPhase = findNextPhase(graph, state, this.plugin.formulaPredicateRegistry)
     if (nextPhase !== undefined) {
       const nextPhaseEl = timerPanel.createDiv({ cls: 'routine-next-phase' })
       nextPhaseEl.createSpan({ text: `Next: ${nextPhase.label}` })
@@ -258,7 +370,8 @@ export class RoutineTimerView extends BasesView {
     }
 
     // Controls
-    const controls = this.containerEl.createDiv({ cls: 'routine-controls' })
+    const controls = this.controlsSectionEl
+    controls.empty()
 
     if (isViewRoutineActive && state.status === 'running') {
       const pauseBtn = controls.createEl('button', { text: 'Pause' })
@@ -286,13 +399,23 @@ export class RoutineTimerView extends BasesView {
 
     // A phase with no taskSourceId has no queue at all (e.g. a rep-based workout phase) — nothing to render.
     if (phase.taskSourceId === null) {
-      this.queueEl = null
-      return
+      if (this.queueEl !== null) {
+        this.queueEl.remove()
+        this.queueEl = null
+      }
+    }
+    else {
+      // Queue Panel
+      if (this.queueEl === null) {
+        this.queueEl = this.containerEl.createDiv({ cls: 'routine-queue' })
+      }
+      else {
+        this.queueEl.empty()
+      }
+      this.renderQueueContent(this.queueEl, phase, state)
     }
 
-    // Queue Panel
-    this.queueEl = this.containerEl.createDiv({ cls: 'routine-queue' })
-    this.renderQueueContent(this.queueEl, phase, state)
+    this.lastRenderSnapshot = snapshot
   }
 
   private renderConfigBar(parent: HTMLElement): void {
@@ -315,8 +438,12 @@ export class RoutineTimerView extends BasesView {
         this.routineResolution = this.routineFilePath === null
           ? { kind: 'default', graph: DEFAULT_PHASE_GRAPH }
           : { kind: 'loading' }
+        this.lastRenderSnapshot = null
         if (this.routineFilePath !== null) {
           await this.loadRoutineFile(this.routineFilePath)
+        }
+        else {
+          this.syncTaskSourcesIfActive()
         }
         this.render(this.plugin.store.getState())
       },
@@ -325,19 +452,14 @@ export class RoutineTimerView extends BasesView {
   }
 
   private refreshQueueView(): void {
-    if (this.routineResolution.kind === 'default' || this.routineResolution.kind === 'loaded') {
-      const viewGraph = this.routineResolution.graph
-      const graph = this.plugin.store.getGraph()
-      if (graph.id === viewGraph.id) {
-        this.registerTaskSources(viewGraph)
-      }
-    }
+    this.syncTaskSourcesIfActive()
     const state = this.plugin.store.getState()
     const graph = this.plugin.store.getGraph()
     const phase = findPhaseById(graph, state.currentPhaseId)
     if (!phase || !this.queueEl) {
       return
     }
+    this.queueEl.empty()
     this.renderQueueContent(this.queueEl, phase, state)
   }
 
@@ -418,6 +540,8 @@ export class RoutineTimerView extends BasesView {
     // Only apply if still the current selection — the user may have picked a different file mid-load.
     if (this.routineFilePath === path) {
       this.routineResolution = resolution
+      this.lastRenderSnapshot = null
+      this.syncTaskSourcesIfActive()
       this.render(this.plugin.store.getState())
     }
   }
@@ -439,6 +563,7 @@ export class RoutineTimerView extends BasesView {
     if (activeGraph.id !== graph.id) {
       this.plugin.store.setGraph(graph)
     }
+    this.registerTaskSources(graph)
     void this.plugin.store.dispatch({ type: 'start' })
     void this.plugin.activateView()
   }
