@@ -1,10 +1,11 @@
 import 'temporal-polyfill/global'
-import { Notice, Plugin } from 'obsidian'
+import { Notice, Plugin, TFile } from 'obsidian'
 import { DEFAULT_SETTINGS, type RoutineFlowSettings, RoutineFlowSettingTab } from './settings'
 import { EngineStore } from './timer/store'
 import type { HookEventApplication } from './timer/store'
 import { TimerTicker } from './timer/ticker'
-import { DEFAULT_PHASE_GRAPH } from './timer/phase-graph-query'
+import { DEFAULT_PHASE_GRAPH, findPhaseById } from './timer/phase-graph-query'
+import { resolveActiveFilePath } from './timer/queue-advance'
 import { ObsidianFileMutationPort } from './adapters/obsidian/mutation/file-mutation-port'
 import { ObsidianFrontmatterReader } from './adapters/obsidian/mutation/frontmatter-reader'
 import { ACCUMULATOR_HOOK_NAME, createAccumulatorHook } from './timer/accumulator'
@@ -12,6 +13,7 @@ import { createWriteBackHook, WRITE_BACK_HOOK_NAME } from './timer/write-back'
 import type { HookRegistry } from './domain/hook/hook'
 import { createTaskSourceRegistry } from './timer/task-source-registry'
 import type { MutableTaskSourceRegistry } from './timer/task-source-registry'
+import { FallbackTaskSourceManager } from './timer/fallback-task-sources'
 import { createFormulaPredicateRegistry } from './timer/formula-predicate-registry'
 import type { MutableFormulaPredicateRegistry } from './timer/formula-predicate-registry'
 import { createScriptHookRegistry } from './timer/script-hook-registry'
@@ -48,6 +50,7 @@ export default class RoutineFlowPlugin extends Plugin {
   public store!: EngineStore
   public ticker!: TimerTicker
   public taskSourceRegistry: MutableTaskSourceRegistry = createTaskSourceRegistry()
+  public fallbackTaskSources: FallbackTaskSourceManager = new FallbackTaskSourceManager(this.taskSourceRegistry)
   public formulaPredicateRegistry: MutableFormulaPredicateRegistry = createFormulaPredicateRegistry()
   public scriptHookRegistry!: MutableScriptHookRegistry
   public hookRegistry!: HookRegistry
@@ -116,7 +119,33 @@ export default class RoutineFlowPlugin extends Plugin {
       else {
         this.ticker.stop()
       }
+      if (state.status === 'stopped') {
+        this.fallbackTaskSources.clearAll()
+      }
     })
+
+    this.registerEvent(
+      this.app.metadataCache.on('changed', (file, _data, cache) => {
+        if (this.fallbackTaskSources.handleFileChanged(file.path, cache.frontmatter)) {
+          this.syncAfterFallbackChange()
+        }
+      }),
+    )
+    this.registerEvent(
+      this.app.metadataCache.on('deleted', (file) => {
+        if (this.fallbackTaskSources.handleFileDeleted(file.path)) {
+          this.syncAfterFallbackChange()
+        }
+      }),
+    )
+    this.registerEvent(
+      this.app.vault.on('rename', (file, oldPath) => {
+        const basename = file instanceof TFile ? file.basename : file.name
+        if (this.fallbackTaskSources.handleFileRenamed(oldPath, file.path, basename)) {
+          this.syncAfterFallbackChange()
+        }
+      }),
+    )
 
     this.registerBasesView(
       'routine-timer',
@@ -228,6 +257,21 @@ export default class RoutineFlowPlugin extends Plugin {
   onunload() {
     this.ticker.stop()
     this.statusBarItem.unload()
+  }
+
+  private syncAfterFallbackChange(): void {
+    const state = this.store.getState()
+    const phase = findPhaseById(this.store.getGraph(), state.currentPhaseId)
+    if (phase !== undefined && phase.taskSourceId !== null) {
+      const queuePaths = this.taskSourceRegistry.resolve(phase.taskSourceId)?.getQueue().map(i => i.sourcePath)
+      if (queuePaths !== undefined) {
+        const resolved = resolveActiveFilePath(state.activeFilePath, queuePaths)
+        if (resolved !== state.activeFilePath) {
+          void this.store.dispatch({ type: 'set-active-file', filePath: resolved })
+        }
+      }
+    }
+    void this.store.syncQueueExhausted()
   }
 
   public async activateView(): Promise<void> {

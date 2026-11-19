@@ -1,9 +1,11 @@
 import { BasesView, Notice } from 'obsidian'
-import type { QueryController, BasesPropertyId, BasesEntry } from 'obsidian'
+import type { QueryController, BasesPropertyId } from 'obsidian'
 import type RoutineFlowPlugin from '../main'
 import type { EngineState } from '../domain/session/engine-state'
 import type { PhaseGraph } from '../domain/phase/phase-graph'
 import type { Phase, PhaseId } from '../domain/phase/phase'
+import type { TaskSource, TaskSourceId } from '../domain/queue/task-source'
+import type { FallbackTaskSourceSnapshot } from '../timer/fallback-task-sources'
 import { deriveStageProgress } from '../domain/phase/stage-progress'
 import { findNextPhase, findPhaseById, DEFAULT_PHASE_GRAPH, SELECTOR_PHASE_KIND } from '../timer/phase-graph-query'
 import { handleSelectorWinner } from '../timer/selector-winner'
@@ -74,6 +76,7 @@ export class RoutineTimerView extends BasesView {
   private lastRenderSnapshot: TimerRenderSnapshot | null = null
   private checkedGuidanceItems = new Set<string>()
   private lastGuidancePhaseId: PhaseId | null = null
+  private registeredSnapshots = new Map<TaskSourceId, FallbackTaskSourceSnapshot>()
 
   constructor(controller: QueryController, containerEl: HTMLElement, plugin: RoutineFlowPlugin) {
     super(controller)
@@ -100,6 +103,15 @@ export class RoutineTimerView extends BasesView {
 
   onunload() {
     this.plugin.taskSourceRegistry.unregisterScope?.(this)
+    if (
+      this.plugin.store.getState().status !== 'stopped'
+      && (this.routineResolution.kind === 'default' || this.routineResolution.kind === 'loaded')
+      && this.routineResolution.graph.id === this.plugin.store.getGraph().id
+    ) {
+      for (const [id, snapshot] of this.registeredSnapshots) {
+        this.plugin.fallbackTaskSources?.retainIfUnprovided(id, snapshot)
+      }
+    }
     if (this.unsubscribe) {
       this.unsubscribe()
     }
@@ -504,28 +516,40 @@ export class RoutineTimerView extends BasesView {
    * queueExhausted TransitionCondition, which can ask about a phase other than the active one).
    */
   private registerTaskSources(viewGraph: PhaseGraph): void {
-    this.plugin.taskSourceRegistry.unregisterScope?.(this)
     const entries = this.data?.data ?? []
-    for (const phase of viewGraph.phases) {
-      if (phase.taskSourceId !== null) {
-        this.plugin.taskSourceRegistry.register(phase.taskSourceId, this.buildTaskSource(phase, entries), this)
-      }
-    }
-  }
-
-  private buildTaskSource(phase: Phase, entries: readonly BasesEntry[]) {
     const candidates = entries.map(entry => ({
       path: entry.file.path,
       basename: entry.file.basename,
       frontmatter: this.plugin.app.metadataCache.getFileCache(entry.file)?.frontmatter,
       getValue: (propId: BasesPropertyId) => entry.getValue(propId),
     }))
-    const badgeProps = phase.badges?.map(b => b.property) ?? []
-    const extraPropertiesLens = badgeProps.length > 0 ? badgeProps : undefined
-    return createBaseQuerySource(
-      filterQueueCandidates(phase, this.config, candidates),
-      { extraPropertiesLens },
-    )
+    const nextSources = new Map<TaskSourceId, TaskSource>()
+    this.registeredSnapshots.clear()
+    for (const phase of viewGraph.phases) {
+      if (phase.taskSourceId !== null) {
+        this.plugin.fallbackTaskSources?.clearForSource(phase.taskSourceId)
+        const badgeProps = phase.badges?.map(b => b.property) ?? []
+        const extraPropertiesLens = badgeProps.length > 0 ? badgeProps : undefined
+        const filteredEntries = filterQueueCandidates(phase, this.config, candidates)
+        this.registeredSnapshots.set(phase.taskSourceId, {
+          entries: filteredEntries,
+          extraPropertiesLens,
+        })
+        nextSources.set(
+          phase.taskSourceId,
+          createBaseQuerySource(filteredEntries, { extraPropertiesLens }),
+        )
+      }
+    }
+    if (this.plugin.taskSourceRegistry.replaceScope !== undefined) {
+      this.plugin.taskSourceRegistry.replaceScope(this, nextSources)
+    }
+    else {
+      this.plugin.taskSourceRegistry.unregisterScope?.(this)
+      for (const [id, source] of nextSources.entries()) {
+        this.plugin.taskSourceRegistry.register(id, source, this)
+      }
+    }
   }
 
   private getConfiguredRoutineFilePath(): string | null {
