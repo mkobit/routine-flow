@@ -94,13 +94,25 @@ export class EngineStore {
     }
   }
 
-  public dispatch(action: EngineAction): Promise<readonly HookEventApplication[]> {
-    const result = this.pendingDispatch.then(() => this.runDispatch(action))
+  private enqueue<T>(fn: () => Promise<T>): Promise<T> {
+    const result = this.pendingDispatch.then(fn)
     this.pendingDispatch = result.then(() => undefined, () => undefined)
     return result
   }
 
-  public async executeAction(action: QueueItemAction, targetPath?: string): Promise<ApplyMutationsResult | null> {
+  public dispatch(action: EngineAction): Promise<readonly HookEventApplication[]> {
+    return this.enqueue(() => this.runDispatch(action))
+  }
+
+  public executeAction(action: QueueItemAction, targetPath?: string): Promise<ApplyMutationsResult | null> {
+    return this.enqueue(() => this.runExecuteAction(action, targetPath))
+  }
+
+  public reorderQueueItem(itemId: TaskQueueItemId, position: 'front' | 'back'): Promise<ApplyMutationsResult | null> {
+    return this.enqueue(() => this.runReorderQueueItem(itemId, position))
+  }
+
+  private async runExecuteAction(action: QueueItemAction, targetPath?: string): Promise<ApplyMutationsResult | null> {
     const { port } = this.deps
     const filePath = targetPath ?? this.state.activeFilePath
     if (port === undefined || filePath === null) {
@@ -115,7 +127,7 @@ export class EngineStore {
     return result
   }
 
-  public async reorderQueueItem(itemId: TaskQueueItemId, position: 'front' | 'back'): Promise<ApplyMutationsResult | null> {
+  private async runReorderQueueItem(itemId: TaskQueueItemId, position: 'front' | 'back'): Promise<ApplyMutationsResult | null> {
     const { port } = this.deps
     if (port === undefined) {
       return null

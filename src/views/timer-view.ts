@@ -99,6 +99,7 @@ export class RoutineTimerView extends BasesView {
   }
 
   onunload() {
+    this.plugin.taskSourceRegistry.unregisterScope?.(this)
     if (this.unsubscribe) {
       this.unsubscribe()
     }
@@ -503,10 +504,11 @@ export class RoutineTimerView extends BasesView {
    * queueExhausted TransitionCondition, which can ask about a phase other than the active one).
    */
   private registerTaskSources(viewGraph: PhaseGraph): void {
+    this.plugin.taskSourceRegistry.unregisterScope?.(this)
     const entries = this.data?.data ?? []
     for (const phase of viewGraph.phases) {
       if (phase.taskSourceId !== null) {
-        this.plugin.taskSourceRegistry.register(phase.taskSourceId, this.buildTaskSource(phase, entries))
+        this.plugin.taskSourceRegistry.register(phase.taskSourceId, this.buildTaskSource(phase, entries), this)
       }
     }
   }
