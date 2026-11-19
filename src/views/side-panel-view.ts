@@ -3,6 +3,7 @@ import type { WorkspaceLeaf } from 'obsidian'
 import type RoutineFlowPlugin from '../main'
 import type { EngineState } from '../domain/session/engine-state'
 import type { PhaseId } from '../domain/phase/phase'
+import type { TaskQueueItem } from '../domain/queue/task-source'
 import { deriveStageProgress } from '../domain/phase/stage-progress'
 import { findNextPhase, findPhaseById, SELECTOR_PHASE_KIND } from '../timer/phase-graph-query'
 import { formatPhaseHeader } from '../timer/format'
@@ -24,6 +25,21 @@ interface SidePanelRenderSnapshot {
   readonly completedCount: number
   readonly phaseVisitCount: number
   readonly nextPhaseId: PhaseId | undefined
+  readonly queueSignature: string
+}
+
+function computeQueueSignature(queueItems: readonly TaskQueueItem[]): string {
+  return queueItems
+    .map(item => JSON.stringify({
+      id: item.id,
+      sourcePath: item.sourcePath,
+      displayName: item.displayName,
+      cycleStatus: item.cycleStatus,
+      timeSpent: item.timeSpent?.toString() ?? null,
+      lastCycledAt: item.lastCycledAt?.toString() ?? null,
+      extraProperties: item.extraProperties ?? null,
+    }))
+    .join('\n')
 }
 
 function sidePanelSnapshotsMatch(a: SidePanelRenderSnapshot, b: SidePanelRenderSnapshot): boolean {
@@ -37,6 +53,7 @@ function sidePanelSnapshotsMatch(a: SidePanelRenderSnapshot, b: SidePanelRenderS
     && a.completedCount === b.completedCount
     && a.phaseVisitCount === b.phaseVisitCount
     && a.nextPhaseId === b.nextPhaseId
+    && a.queueSignature === b.queueSignature
 }
 
 /**
@@ -47,6 +64,7 @@ function sidePanelSnapshotsMatch(a: SidePanelRenderSnapshot, b: SidePanelRenderS
  */
 export class RoutineSidePanelView extends ItemView {
   private unsubscribe: (() => void) | null = null
+  private unsubscribeRegistry: (() => void) | null = null
   private timerSectionEl: HTMLElement | null = null
   private controlsSectionEl: HTMLElement | null = null
   private queueSectionEl: HTMLElement | null = null
@@ -74,12 +92,15 @@ export class RoutineSidePanelView extends ItemView {
   async onOpen(): Promise<void> {
     this.contentEl.addClass('routine-side-panel')
     this.unsubscribe = this.plugin.store.subscribe(state => this.render(state))
+    this.unsubscribeRegistry = this.plugin.taskSourceRegistry?.subscribe?.(() => this.render(this.plugin.store.getState())) ?? null
     this.render(this.plugin.store.getState())
   }
 
   async onClose(): Promise<void> {
     this.unsubscribe?.()
     this.unsubscribe = null
+    this.unsubscribeRegistry?.()
+    this.unsubscribeRegistry = null
   }
 
   private resetPersistentContainers(): void {
@@ -116,6 +137,11 @@ export class RoutineSidePanelView extends ItemView {
     const completedCount = completedItems.length
     const completedPaths = completedItems.map(touch => touch.sourcePath)
 
+    const queueItems = phase.taskSourceId !== null
+      ? (this.plugin.taskSourceRegistry.resolve(phase.taskSourceId)?.getQueue() ?? [])
+      : []
+    const queueSignature = phase.taskSourceId !== null ? computeQueueSignature(queueItems) : ''
+
     const nextPhase = findNextPhase(graph, state, this.plugin.formulaPredicateRegistry)
     const snapshot: SidePanelRenderSnapshot = {
       graphId: graph.id,
@@ -128,6 +154,7 @@ export class RoutineSidePanelView extends ItemView {
       completedCount,
       phaseVisitCount: state.phaseVisitCounts[state.currentPhaseId] ?? 0,
       nextPhaseId: nextPhase?.id,
+      queueSignature,
     }
 
     if (
@@ -238,7 +265,6 @@ export class RoutineSidePanelView extends ItemView {
       return
     }
 
-    const queueItems = this.plugin.taskSourceRegistry.resolve(phase.taskSourceId)?.getQueue() ?? []
     const isSelector = phase.kind === SELECTOR_PHASE_KIND
 
     if (this.queueSectionEl === null) {

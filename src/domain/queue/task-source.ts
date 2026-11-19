@@ -58,4 +58,6 @@ export interface TaskSource {
  */
 export interface TaskSourceRegistry {
   readonly resolve: (id: TaskSourceId) => TaskSource | undefined
+  // eslint-disable-next-line functional/no-return-void -- Observer callback and unsubscribe handle inherently return void
+  readonly subscribe?: (listener: () => void) => () => void
 }
