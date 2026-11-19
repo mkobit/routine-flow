@@ -845,6 +845,72 @@ describe('EngineStore action execution', () => {
       { kind: 'queueStatusChange', itemId: TaskQueueItemIdSchema.parse('tasks/item-2.md'), status: 'done' },
     ])
   })
+
+  test('executeAction and reorderQueueItem serialize through pendingDispatch behind in-flight dispatches', async () => {
+    let events: readonly string[] = []
+    let notifyStarted!: () => void
+    const hookStarted = new Promise<void>((resolve) => {
+      notifyStarted = resolve
+    })
+    let releaseDispatch!: () => void
+    const dispatchGate = new Promise<void>((resolve) => {
+      releaseDispatch = resolve
+    })
+
+    const port: FileMutationPort = {
+      ...createNoopPort(),
+      writeFrontmatter: async (mutation) => {
+        events = [...events, `execute:${mutation.filePath}`]
+      },
+      reorderQueueItem: async (mutation) => {
+        events = [...events, `reorder:${mutation.itemId}`]
+      },
+    }
+    const graph = buildIsolationGraph({ onEnter: hookRef('async-gate') })
+    const store = new EngineStore(graph, {
+      port,
+      hookRegistry: {
+        resolve: id => id === 'async-gate'
+          ? async () => {
+            events = [...events, 'dispatch-start']
+            notifyStarted()
+            await dispatchGate
+            events = [...events, 'dispatch-end']
+            return []
+          }
+          : undefined,
+      },
+    })
+
+    const action = QueueItemActionSchema.parse({
+      id: 'priority-1',
+      label: 'Priority 1',
+      payload: { kind: 'setFrontmatter', property: 'priority', value: 1 },
+    })
+
+    await store.dispatch({ type: 'start', filePath: 'tasks/from-dispatch.md' })
+
+    // Start an async dispatch, then immediately queue executeAction and reorderQueueItem.
+    const dispatchPromise = store.dispatch({ type: 'advance-phase' })
+    const executePromise = store.executeAction(action)
+    const reorderPromise = store.reorderQueueItem(TaskQueueItemIdSchema.parse('tasks/from-dispatch.md'), 'front')
+
+    // Neither executeAction nor reorderQueueItem should run before the in-flight dispatch finishes.
+    await hookStarted
+    expect(events).toEqual(['dispatch-start'])
+
+    releaseDispatch()
+    const [execResult, reorderResult] = await Promise.all([executePromise, reorderPromise, dispatchPromise])
+
+    expect(execResult).toEqual({ success: true })
+    expect(reorderResult).toEqual({ success: true })
+    expect(events).toEqual([
+      'dispatch-start',
+      'dispatch-end',
+      'execute:tasks/from-dispatch.md',
+      'reorder:tasks/from-dispatch.md',
+    ])
+  })
 })
 
 describe('EngineStore notifications', () => {

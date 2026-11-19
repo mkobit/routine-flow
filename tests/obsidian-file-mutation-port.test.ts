@@ -161,4 +161,31 @@ describe('ObsidianFileMutationPort', () => {
     await expectToReject(port.changeQueueItemStatus(statusChangeMutation))
     expect(processFrontMatter).not.toHaveBeenCalled()
   })
+
+  test('writeFrontmatterBatch applies frontmatter, reorder, and status mutations in one processFrontMatter call', async () => {
+    const { deps, processFrontMatter, getWrittenFrontmatter } = createFakeDeps(fakeFile('tasks/a.md'))
+    const port = new ObsidianFileMutationPort(deps)
+
+    await port.writeFrontmatterBatch('tasks/a.md', [
+      { kind: 'queueStatusChange', itemId: TaskQueueItemIdSchema.parse('tasks/a.md'), status: 'deferred' },
+      { kind: 'frontmatter', filePath: 'tasks/a.md', property: 'routine-due', value: '2026-11-20' },
+      { kind: 'frontmatter', filePath: 'tasks/a.md', property: 'box', value: 3 },
+      { kind: 'queueReorder', itemId: TaskQueueItemIdSchema.parse('tasks/a.md'), position: 'back' },
+    ])
+
+    expect(processFrontMatter).toHaveBeenCalledTimes(1)
+    const fm = getWrittenFrontmatter()
+    expect(fm?.['routine-status']).toBe('deferred')
+    expect(fm?.['routine-due']).toBe('2026-11-20')
+    expect(fm?.box).toBe(3)
+    expect(typeof fm?.['routine-priority']).toBe('number')
+  })
+
+  test('writeFrontmatterBatch rejects when filePath does not resolve to a vault file', async () => {
+    const { deps, processFrontMatter } = createFakeDeps(null)
+    const port = new ObsidianFileMutationPort(deps)
+
+    await expectToReject(port.writeFrontmatterBatch('missing.md', [frontmatterMutation]))
+    expect(processFrontMatter).not.toHaveBeenCalled()
+  })
 })

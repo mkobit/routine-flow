@@ -3,6 +3,7 @@ import { FileMutationSchema } from '../src/domain/mutation/file-mutation'
 import type { FileMutation } from '../src/domain/mutation/file-mutation'
 import { applyMutations } from '../src/domain/mutation/apply-mutations'
 import type { FileMutationPort } from '../src/domain/mutation/apply-mutations'
+import { TaskQueueItemIdSchema } from '../src/domain/queue/task-source'
 
 type PortMethodName = keyof FileMutationPort
 
@@ -118,5 +119,68 @@ describe('applyMutations', () => {
     expect(port.appendText).not.toHaveBeenCalled()
     expect(port.reorderQueueItem).not.toHaveBeenCalled()
     expect(port.changeQueueItemStatus).not.toHaveBeenCalled()
+  })
+
+  test('coalesces same-file frontmatter mutations into writeFrontmatterBatch when supported, preserving append boundaries', async () => {
+    let calls: readonly string[] = []
+    let batches: readonly { filePath: string, count: number }[] = []
+    const { port } = createFakePort()
+    const batchPort: FileMutationPort = {
+      ...port,
+      writeFrontmatter: mock(async (m) => {
+        calls = [...calls, `single:${m.filePath}:${m.property}`]
+      }),
+      appendText: mock(async (m) => {
+        calls = [...calls, `append:${m.filePath}`]
+      }),
+      writeFrontmatterBatch: mock(async (filePath, group) => {
+        calls = [...calls, `batch:${filePath}:${group.length}`]
+        batches = [...batches, { filePath, count: group.length }]
+      }),
+    }
+
+    const sameFileStatus: FileMutation = { kind: 'queueStatusChange', itemId: TaskQueueItemIdSchema.parse('notes/task.md'), status: 'deferred' }
+    const sameFileDue: FileMutation = { kind: 'frontmatter', filePath: 'notes/task.md', property: 'routine-due', value: '2026-11-19' }
+    const otherFileFm: FileMutation = { kind: 'frontmatter', filePath: 'notes/other.md', property: 'box', value: 2 }
+    const afterAppendFm: FileMutation = { kind: 'frontmatter', filePath: 'notes/task.md', property: 'after', value: true }
+
+    const result = await applyMutations(batchPort, [
+      sameFileStatus,
+      otherFileFm,
+      sameFileDue,
+      appendMutation,
+      afterAppendFm,
+    ])
+
+    expect(result).toEqual({ success: true })
+    expect(batches).toEqual([{ filePath: 'notes/task.md', count: 2 }])
+    expect(calls).toEqual([
+      'batch:notes/task.md:2',
+      'single:notes/other.md:box',
+      'append:daily-note.md',
+      'single:notes/task.md:after',
+    ])
+  })
+
+  test('reports accurate appliedCount when writeFrontmatterBatch fails after earlier steps', async () => {
+    const cause = new Error('batch failed')
+    const { port } = createFakePort()
+    const batchPort: FileMutationPort = {
+      ...port,
+      writeFrontmatterBatch: mock(async () => {
+        throw cause
+      }),
+    }
+
+    const fm1: FileMutation = { kind: 'frontmatter', filePath: 'notes/a.md', property: 'p1', value: 1 }
+    const fm2: FileMutation = { kind: 'frontmatter', filePath: 'notes/b.md', property: 'p1', value: 1 }
+    const fm3: FileMutation = { kind: 'frontmatter', filePath: 'notes/b.md', property: 'p2', value: 2 }
+
+    const result = await applyMutations(batchPort, [fm1, fm2, fm3])
+
+    expect(result.success).toBe(false)
+    expect(result.success === false && result.mutation).toBe(fm2)
+    expect(result.success === false && result.cause).toBe(cause)
+    expect(result.success === false && result.appliedCount).toBe(1)
   })
 })

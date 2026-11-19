@@ -1,5 +1,5 @@
 import type { FileMutation } from '../../../domain/mutation/file-mutation'
-import type { FileMutationPort } from '../../../domain/mutation/apply-mutations'
+import type { FileMutationPort, FrontmatterMutation } from '../../../domain/mutation/apply-mutations'
 
 /**
  * Only the field this port actually reads off a resolved file. Deliberately
@@ -85,6 +85,24 @@ export class ObsidianFileMutationPort implements FileMutationPort {
     const file = resolveFile(this.deps.vault, mutation.itemId)
     await this.deps.fileManager.processFrontMatter(file, (frontmatter) => {
       frontmatter['routine-status'] = mutation.status
+    })
+  }
+
+  async writeFrontmatterBatch(filePath: string, mutations: readonly FrontmatterMutation[]): Promise<void> {
+    const file = resolveFile(this.deps.vault, filePath)
+    const epochMillis = Temporal.Now.instant().epochMilliseconds
+    await this.deps.fileManager.processFrontMatter(file, (frontmatter) => {
+      for (const mutation of mutations) {
+        if (mutation.kind === 'frontmatter') {
+          frontmatter[mutation.property] = mutation.value
+        }
+        else if (mutation.kind === 'queueReorder') {
+          frontmatter['routine-priority'] = mutation.position === 'back' ? epochMillis : -epochMillis
+        }
+        else {
+          frontmatter['routine-status'] = mutation.status
+        }
+      }
     })
   }
 }
