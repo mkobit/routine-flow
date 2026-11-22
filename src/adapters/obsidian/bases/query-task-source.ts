@@ -175,6 +175,7 @@ export type ExtraPropertiesLens
 export interface BaseQuerySourceOptions {
   readonly now?: Temporal.Instant | (() => Temporal.Instant)
   readonly extraPropertiesLens?: ExtraPropertiesLens
+  readonly preserveInputOrder?: boolean
 }
 
 function resolveExtraProperties(
@@ -229,17 +230,22 @@ export function createBaseQuerySource(
   const effectiveNow = isOptionsObject ? nowOrOptions.now : nowOrOptions
   const effectiveOptions = isOptionsObject ? nowOrOptions : options
   const extraPropertiesLens = effectiveOptions?.extraPropertiesLens
+  const preserveInputOrder = effectiveOptions?.preserveInputOrder ?? false
 
   return {
     getQueue: () => {
       const evaluationTime = resolveNow(effectiveNow)
-      return entries
+      const projected = entries
         .filter(entry => !isDeferredInFuture(entry.frontmatter, evaluationTime))
         .map((entry, index) => ({
           item: toTaskQueueItem(entry, evaluationTime, extraPropertiesLens),
           priority: readPriority(entry.frontmatter),
           index,
         }))
+      if (preserveInputOrder) {
+        return projected.map(({ item }) => item)
+      }
+      return [...projected]
         .sort((a, b) => a.priority - b.priority || a.index - b.index)
         .map(({ item }) => item)
     },

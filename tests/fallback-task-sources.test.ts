@@ -126,4 +126,29 @@ describe('FallbackTaskSourceManager', () => {
     expect(queue[0]?.displayName).toBe('renamed')
     expect(queue[0]?.cycleStatus).toBe('active')
   })
+
+  test('preserves preserveInputOrder across retainIfUnprovided and handleFileChanged', () => {
+    const registry = createTaskSourceRegistry()
+    const manager = new FallbackTaskSourceManager(registry)
+
+    manager.retainIfUnprovided(focusId, {
+      entries: [
+        { path: 'tasks/b.md', basename: 'b', frontmatter: { 'routine-priority': 10 } },
+        { path: 'tasks/a.md', basename: 'a', frontmatter: { 'routine-priority': -5 } },
+      ],
+      preserveInputOrder: true,
+    })
+
+    expect(registry.resolve(focusId)?.getQueue().map(i => i.sourcePath)).toEqual([
+      'tasks/b.md',
+      'tasks/a.md',
+    ])
+
+    const changed = manager.handleFileChanged('tasks/b.md', { 'routine-priority': 99 })
+    expect(changed).toBe(true)
+    expect(registry.resolve(focusId)?.getQueue().map(i => i.sourcePath)).toEqual([
+      'tasks/b.md',
+      'tasks/a.md',
+    ])
+  })
 })

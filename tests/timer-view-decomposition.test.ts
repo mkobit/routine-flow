@@ -1,5 +1,5 @@
 import { beforeAll, describe, expect, test, mock, spyOn } from 'bun:test'
-import type { App as AppType, BasesOptions, TFile as TFileType, WorkspaceLeaf, QueryController } from 'obsidian'
+import type { App as AppType, BasesEntry, BasesOptions, BasesPropertyId, BasesViewConfig, RenderContext, TFile as TFileType, Value, WorkspaceLeaf, QueryController } from 'obsidian'
 import type RoutineFlowPlugin from '../src/main'
 import type { Phase, PhaseId, PhaseKind } from '../src/domain/phase/phase'
 import type { TaskQueueItem, TaskQueueItemId, TaskSourceId } from '../src/domain/queue/task-source'
@@ -207,8 +207,47 @@ class MockApp {
   }
 }
 
+class MockNullValue {
+  static readonly value = new MockNullValue()
+  toString(): string {
+    return ''
+  }
+
+  isTruthy(): boolean {
+    return false
+  }
+
+  renderTo(_el: HTMLElement, _ctx: unknown): void {}
+}
+
+class MockListValue {
+  constructor(private readonly items: readonly unknown[]) {}
+
+  length(): number {
+    return this.items.length
+  }
+
+  get(index: number): unknown {
+    return this.items[index] ?? MockNullValue.value
+  }
+
+  toString(): string {
+    return this.items.map(String).join(', ')
+  }
+
+  isTruthy(): boolean {
+    return this.items.length > 0
+  }
+
+  renderTo(el: MockElement, _ctx: unknown): void {
+    el.setText(this.toString())
+  }
+}
+
 void mock.module('obsidian', () => {
   return {
+    NullValue: MockNullValue,
+    ListValue: MockListValue,
     BasesView: class {
       containerEl = new MockElement()
       constructor(_controller: unknown) {}
@@ -325,6 +364,12 @@ let renderConfigPanelFn: (parent: HTMLElement, options: {
   onRoutineFileChange: () => void
   onFilterConfigChange: () => void
 }) => HTMLElement
+let renderOrderedEntryPropertiesFn: (
+  containerEl: HTMLElement,
+  entry: BasesEntry,
+  config: BasesViewConfig,
+  renderContext: RenderContext,
+) => void
 let renderQueuePanelFn: (queueEl: HTMLElement, options: QueuePanelOptions) => void
 let renderStageProgressFn: typeof renderStageProgress
 let renderGuidanceChecklistFn: typeof renderGuidanceChecklist
@@ -358,6 +403,9 @@ describe('Timer view decomposition', () => {
     const configPanelMod = await import('../src/views/timer/config-panel')
     renderConfigBarFn = configPanelMod.renderConfigBar
     renderConfigPanelFn = configPanelMod.renderConfigPanel
+
+    const queueEntryPropsMod = await import('../src/views/timer/queue-entry-properties')
+    renderOrderedEntryPropertiesFn = queueEntryPropsMod.renderOrderedEntryProperties
 
     const queuePanelMod = await import('../src/views/timer/queue-panel')
     renderQueuePanelFn = queuePanelMod.renderQueuePanel
@@ -1508,26 +1556,26 @@ describe('Timer view decomposition', () => {
     })
   })
 
+  function findDescendant(root: MockElement, cls: string): MockElement | undefined {
+    if (root.hasClass(cls)) {
+      return root
+    }
+    for (const child of root.children) {
+      const found = findDescendant(child, cls)
+      if (found) {
+        return found
+      }
+    }
+    return undefined
+  }
+
+  function findAllDescendants(root: MockElement, cls: string): readonly MockElement[] {
+    const selfList = root.hasClass(cls) ? [root] : []
+    const childLists = root.children.flatMap(child => findAllDescendants(child, cls))
+    return [...selfList, ...childLists]
+  }
+
   describe('view integration with stage progress and checklist guidance', () => {
-    function findDescendant(root: MockElement, cls: string): MockElement | undefined {
-      if (root.hasClass(cls)) {
-        return root
-      }
-      for (const child of root.children) {
-        const found = findDescendant(child, cls)
-        if (found) {
-          return found
-        }
-      }
-      return undefined
-    }
-
-    function findAllDescendants(root: MockElement, cls: string): readonly MockElement[] {
-      const selfList = root.hasClass(cls) ? [root] : []
-      const childLists = root.children.flatMap(child => findAllDescendants(child, cls))
-      return [...selfList, ...childLists]
-    }
-
     test('RoutineSidePanelView renders stage progress and interactive guidance checklist', async () => {
       const { EngineStore: StoreClass } = await import('../src/timer/store')
       const { PhaseGraphSchema: GraphSchema } = await import('../src/domain/phase/phase-graph')
@@ -2118,6 +2166,210 @@ describe('Timer view decomposition', () => {
       await store.dispatch({ type: 'pause' })
       expect(findDescendant(contentEl, 'routine-queue-empty')).toBeDefined()
       expect(findDescendant(contentEl, 'routine-queue-advance-btn')).toBeDefined()
+    })
+  })
+
+  describe('Bases sort and order property rendering', () => {
+    function makeMockValue(text: string): {
+      readonly value: Value
+      readonly renderSpy: ReturnType<typeof mock<(el: HTMLElement, ctx: unknown) => void>>
+    } {
+      const renderSpy = mock((el: HTMLElement, _ctx: unknown) => {
+        // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- mock element
+        const mockEl = el as unknown as MockElement
+        mockEl.setText(text)
+      })
+      const val = {
+        toString: () => text,
+        isTruthy: () => text.length > 0,
+        equals: () => false,
+        looseEquals: () => false,
+        renderTo: renderSpy,
+      }
+      return {
+        value: val,
+        renderSpy,
+      }
+    }
+
+    test('renderOrderedEntryProperties renders non-empty config.getOrder() properties and formulas via Value.renderTo and skips empty/file.name', () => {
+      const containerEl = new MockElement()
+      const renderContext = { hoverPopover: null }
+      const fileNameVal = makeMockValue('Task A')
+      const estimateVal = makeMockValue('15m')
+      const formulaVal = makeMockValue('Score: 42')
+      // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- mock ListValue
+      const nonEmptyList = new MockListValue(['alpha', 'beta']) as unknown as Value
+      // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- mock ListValue
+      const emptyList = new MockListValue([]) as unknown as Value
+      // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- mock ListValue
+      const nullOnlyList = new MockListValue([MockNullValue.value]) as unknown as Value
+      // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- mock NullValue
+      const nullValue = MockNullValue.value as unknown as Value
+
+      const values: Record<string, Value | null> = {
+        'file.name': fileNameVal.value,
+        'note.estimate': estimateVal.value,
+        'formula.score': formulaVal.value,
+        'note.missing': null,
+        'note.nullval': nullValue,
+        'note.emptylist': emptyList,
+        'note.nulllist': nullOnlyList,
+        'note.tags': nonEmptyList,
+      }
+
+      const entry = {
+        file: new MockTFile('Tasks/Task A.md'),
+        getValue: (propId: BasesPropertyId) => values[propId] ?? null,
+      }
+
+      const displayNames: Record<string, string> = {
+        'note.estimate': 'Estimate',
+        'formula.score': 'Score',
+        'note.tags': 'Tags',
+      }
+
+      const config = {
+        getOrder: (): BasesPropertyId[] => [
+          'file.name',
+          'note.estimate',
+          'note.missing',
+          'note.nullval',
+          'note.emptylist',
+          'note.nulllist',
+          'formula.score',
+          'note.tags',
+        ],
+        getDisplayName: (propId: BasesPropertyId) => displayNames[propId] ?? propId,
+      }
+
+      renderOrderedEntryPropertiesFn(
+        asElement(containerEl),
+        // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- mock BasesEntry
+        entry as unknown as BasesEntry,
+        // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- mock BasesViewConfig
+        config as unknown as BasesViewConfig,
+        renderContext,
+      )
+
+      const propsContainer = findDescendant(containerEl, 'routine-queue-properties')
+      expect(propsContainer).toBeDefined()
+      const propRows = findAllDescendants(propsContainer!, 'routine-queue-property')
+      expect(propRows).toHaveLength(3)
+
+      const labels = propRows.map(row => findDescendant(row, 'routine-queue-property-label')?.getText())
+      expect(labels).toEqual(['Estimate', 'Score', 'Tags'])
+
+      const renderedValues = propRows.map(row => findDescendant(row, 'routine-queue-property-value')?.getText())
+      expect(renderedValues).toEqual(['15m', 'Score: 42', 'alpha, beta'])
+
+      expect(estimateVal.renderSpy).toHaveBeenCalledTimes(1)
+      expect(estimateVal.renderSpy.mock.calls[0]?.[1]).toBe(renderContext)
+      expect(formulaVal.renderSpy).toHaveBeenCalledTimes(1)
+      expect(formulaVal.renderSpy.mock.calls[0]?.[1]).toBe(renderContext)
+      expect(fileNameVal.renderSpy).not.toHaveBeenCalled()
+    })
+
+    test('renderOrderedEntryProperties omits container when all ordered properties are skipped', () => {
+      const containerEl = new MockElement()
+      // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- mock NullValue
+      const nullValue = MockNullValue.value as unknown as Value
+      const entry = {
+        file: new MockTFile('Tasks/Empty.md'),
+        getValue: () => nullValue,
+      }
+      const config = {
+        getOrder: (): BasesPropertyId[] => ['file.name', 'note.empty'],
+        getDisplayName: (propId: BasesPropertyId) => propId,
+      }
+
+      renderOrderedEntryPropertiesFn(
+        asElement(containerEl),
+        // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- mock BasesEntry
+        entry as unknown as BasesEntry,
+        // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- mock BasesViewConfig
+        config as unknown as BasesViewConfig,
+        // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- mock RenderContext
+        {} as unknown as RenderContext,
+      )
+
+      expect(findDescendant(containerEl, 'routine-queue-properties')).toBeUndefined()
+    })
+
+    test('RoutineTimerView preserves Bases entry order when config.getSort() is non-empty and sorts by routine-priority when empty', async () => {
+      const { EngineStore } = await import('../src/timer/store')
+      const { createTaskSourceRegistry } = await import('../src/timer/task-source-registry')
+      const { DEFAULT_PHASE_GRAPH } = await import('../src/timer/phase-graph-query')
+
+      const setupView = (sortConfig: readonly unknown[]) => {
+        const registry = createTaskSourceRegistry()
+        const store = new EngineStore(DEFAULT_PHASE_GRAPH, { taskSourceRegistry: registry })
+        const frontmatters: Record<string, Record<string, unknown>> = {
+          'Tasks/Second.md': { 'routine-priority': 10 },
+          'Tasks/First.md': { 'routine-priority': -5 },
+        }
+        const renderContext = { isMockRenderContext: true }
+        const mockApp = {
+          vault: {
+            getFiles: () => [],
+            getMarkdownFiles: () => [],
+            getFileByPath: () => null,
+          },
+          metadataCache: {
+            getFileCache: (file: { readonly path: string }) => ({ frontmatter: frontmatters[file.path] }),
+          },
+          renderContext,
+        }
+        const mockPlugin = {
+          app: mockApp,
+          store,
+          settings: { progressMeterStyle: 'radial' as const },
+          taskSourceRegistry: registry,
+          formulaPredicateRegistry: { get: () => undefined },
+          activateView: async () => {},
+        }
+        const containerEl = new MockElement()
+        // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- mock view creation
+        const timerView = new RoutineTimerViewClass({} as unknown as QueryController, asElement(containerEl), mockPlugin as unknown as RoutineFlowPlugin)
+        const estimateVal = makeMockValue('25m')
+        const workVal = makeMockValue('work')
+        const entries = [
+          {
+            file: { path: 'Tasks/Second.md', basename: 'Second' },
+            getValue: (propId: BasesPropertyId) => (propId === 'note.estimate' ? estimateVal.value : workVal.value),
+          },
+          {
+            file: { path: 'Tasks/First.md', basename: 'First' },
+            getValue: (propId: BasesPropertyId) => (propId === 'note.estimate' ? null : workVal.value),
+          },
+        ]
+        Reflect.set(timerView, 'config', {
+          get: () => undefined,
+          getAsPropertyId: () => null,
+          getSort: () => sortConfig,
+          getOrder: () => ['file.name', 'note.estimate'],
+          getDisplayName: (propId: BasesPropertyId) => (propId === 'note.estimate' ? 'Estimate' : propId),
+        })
+        Reflect.set(timerView, 'data', { data: entries })
+        timerView.onload()
+        estimateVal.renderSpy.mockClear()
+        timerView.onDataUpdated()
+        return { containerEl, estimateVal, renderContext }
+      }
+
+      // Non-empty getSort() preserves Bases input order: Second before First, and renders ordered properties
+      const sortedResult = setupView([{ property: 'note.estimate', direction: 'ASC' }])
+      const sortedTaskNames = findAllDescendants(sortedResult.containerEl, 'routine-task-name').map(el => el.getText())
+      expect(sortedTaskNames).toEqual(['Second', 'First'])
+      expect(sortedResult.estimateVal.renderSpy).toHaveBeenCalledTimes(1)
+      expect(sortedResult.estimateVal.renderSpy.mock.calls[0]?.[1]).toBe(sortedResult.renderContext)
+      const propLabel = findDescendant(sortedResult.containerEl, 'routine-queue-property-label')
+      expect(propLabel?.getText()).toBe('Estimate')
+
+      // Empty getSort() falls back to routine-priority ascending: First (-5) before Second (10)
+      const defaultResult = setupView([])
+      const defaultTaskNames = findAllDescendants(defaultResult.containerEl, 'routine-task-name').map(el => el.getText())
+      expect(defaultTaskNames).toEqual(['First', 'Second'])
     })
   })
 })
