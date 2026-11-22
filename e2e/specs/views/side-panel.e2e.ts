@@ -1,8 +1,8 @@
 import type { Page } from '@playwright/test'
-import { test, expect } from './fixtures/obsidian'
-import { evaluateObsidian } from './helpers/evaluate'
-import { selectBasesSubView } from './helpers/bases'
-import type { EngineAction } from '../src/timer/reducer'
+import { test, expect } from '../../fixtures/obsidian'
+import { evaluateObsidian } from '../../helpers/evaluate'
+import { selectBasesSubView } from '../../helpers/bases'
+import type { EngineAction } from '../../../src/timer/reducer'
 
 const PLUGIN_ID = 'routine-flow'
 const RIBBON_ICON = '.side-dock-ribbon-action[aria-label="Open routine panel"]'

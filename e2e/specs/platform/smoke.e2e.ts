@@ -1,5 +1,5 @@
-import { test, expect } from './fixtures/obsidian'
-import { evaluateObsidian } from './helpers/evaluate'
+import { test, expect } from '../../fixtures/obsidian'
+import { evaluateObsidian } from '../../helpers/evaluate'
 
 const PLUGIN_ID = 'routine-flow'
 

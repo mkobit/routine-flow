@@ -4,11 +4,11 @@ import {
   expect,
   setMobileViewport,
   closeMobileSidebars,
-} from './fixtures/obsidian'
-import { evaluateObsidian } from './helpers/evaluate'
-import { selectBasesSubView } from './helpers/bases'
-import { createNote, writeNoteToVault } from './vault'
-import type { EngineAction } from '../src/timer/reducer'
+} from '../../fixtures/obsidian'
+import { evaluateObsidian } from '../../helpers/evaluate'
+import { selectBasesSubView } from '../../helpers/bases'
+import { createNote, writeNoteToVault } from '../../vault'
+import type { EngineAction } from '../../../src/timer/reducer'
 
 const PLUGIN_ID = 'routine-flow'
 const WRITE_BACK_TASK_PATH = 'mobile-write-back-task.md'
