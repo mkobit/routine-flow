@@ -1,6 +1,8 @@
+import * as fs from 'node:fs/promises'
+import { tmpdir } from 'node:os'
 import * as path from 'node:path'
 import { spawn } from 'node:child_process'
-import { rebuildGeneratedVault, resolveVaultSeed } from './vault'
+import { rebuildGeneratedVault, resolveVaultSeed, stripGitignoredVaultState } from './vault'
 
 const ROOT_DIR = path.resolve(import.meta.dirname, '..')
 const VAULT_PATH = path.join(ROOT_DIR, 'routine-flow-example-vault')
@@ -18,19 +20,28 @@ async function rebuildPlugin(): Promise<void> {
   })
 }
 
-/**
- * Rebuilds the shared vault's per-routine notes once before the whole run
- * (playwright.config.ts runs `workers: 1`, so there's no concurrent-write race
- * with per-test fixtures). Each test's `copy: true` fixture then copies this
- * freshly-rebuilt content into its own isolated per-test vault directory.
- */
-export default async function globalSetup(): Promise<void> {
+/** Prepares a temporary vault for the per-test fixtures to copy. */
+export default async function globalSetup(): Promise<() => Promise<void>> {
   await rebuildPlugin()
 
   const seed = resolveVaultSeed()
-  const errors = await rebuildGeneratedVault(VAULT_PATH, seed)
-  if (errors.length > 0) {
-    throw new AggregateError(errors, `Failed to write ${errors.length} generated vault note(s)`)
+  const vaultPath = await fs.mkdtemp(path.join(tmpdir(), 'routine-flow-e2e-'))
+  const cleanup = () => fs.rm(vaultPath, { recursive: true, force: true })
+
+  try {
+    await fs.cp(VAULT_PATH, vaultPath, { recursive: true })
+    await stripGitignoredVaultState(vaultPath)
+    const errors = await rebuildGeneratedVault(vaultPath, seed)
+    if (errors.length > 0) {
+      throw new AggregateError(errors, `Failed to write ${errors.length} generated vault note(s)`)
+    }
+    // eslint-disable-next-line functional/immutable-data -- Playwright passes setup environment variables to workers.
+    process.env.ROUTINE_FLOW_E2E_VAULT = vaultPath
+    process.stdout.write(`Rebuilt generated vault notes in ${vaultPath} (seed=${seed})\n`)
+    return cleanup
   }
-  process.stdout.write(`Rebuilt generated vault notes in ${VAULT_PATH} (seed=${seed})\n`)
+  catch (error) {
+    await cleanup()
+    throw error
+  }
 }
