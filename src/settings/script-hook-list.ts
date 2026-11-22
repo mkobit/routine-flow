@@ -1,5 +1,5 @@
 import type { Setting, SettingDefinition } from 'obsidian'
-import type { ScriptHookBindingSetting } from './timer/script-hook-registry'
+import type { ScriptHookBindingSetting } from '../timer/script-hook-registry'
 
 /**
  * Maps settings-authored script-hook bindings to declarative

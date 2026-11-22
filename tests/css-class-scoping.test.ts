@@ -249,9 +249,9 @@ import type { ScriptHookConfirmModal as ScriptHookConfirmModalType } from '../sr
 import type { WriteBackModal as WriteBackModalType } from '../src/views/write-back-modal'
 import type { RoutineReplaceModal as RoutineReplaceModalType } from '../src/views/routine-replace-modal'
 import type { RoutineGalleryModal as RoutineGalleryModalType } from '../src/views/routine-gallery-modal'
-import type { RoutineFlowSettingTab as RoutineFlowSettingTabType } from '../src/settings'
+import type { RoutineFlowSettingTab as RoutineFlowSettingTabType } from '../src/settings/settings-tab'
 import type { EngineStore as EngineStoreType } from '../src/timer/store'
-import type { RoutineFlowSettings } from '../src/settings'
+import type { RoutineFlowSettings } from '../src/settings/settings-types'
 import type RoutineFlowPlugin from '../src/main'
 import type { App as AppType, WorkspaceLeaf as WorkspaceLeafType } from 'obsidian'
 import { progressMeterStyleClass } from '../src/timer/progress-meter-style'
@@ -304,7 +304,8 @@ describe('CSS class scoping & theme customization', () => {
     const replaceModalModule = await import('../src/views/routine-replace-modal')
     const galleryModalModule = await import('../src/views/routine-gallery-modal')
     const storeModule = await import('../src/timer/store')
-    const settingsModule = await import('../src/settings')
+    const settingsTabModule = await import('../src/settings/settings-tab')
+    const settingsTypesModule = await import('../src/settings/settings-types')
 
     RoutineSidePanelView = sidePanelModule.RoutineSidePanelView
     RoutineStatusBarItem = statusBarModule.RoutineStatusBarItem
@@ -313,9 +314,9 @@ describe('CSS class scoping & theme customization', () => {
     WriteBackModal = writeBackModalModule.WriteBackModal
     RoutineReplaceModal = replaceModalModule.RoutineReplaceModal
     RoutineGalleryModal = galleryModalModule.RoutineGalleryModal
-    RoutineFlowSettingTab = settingsModule.RoutineFlowSettingTab
+    RoutineFlowSettingTab = settingsTabModule.RoutineFlowSettingTab
     EngineStore = storeModule.EngineStore
-    DEFAULT_SETTINGS = settingsModule.DEFAULT_SETTINGS
+    DEFAULT_SETTINGS = settingsTypesModule.DEFAULT_SETTINGS
 
     const phaseDefaults = {
       logTarget: { kind: 'activeItem' as const },

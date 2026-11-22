@@ -29,7 +29,7 @@ Three configuration axes, all read at completion time, decide whether and what a
 
 - Opt-in — whether a hook slot names `write-back`. `active-write` and `callback-write` set `onComplete`; `no-write` leaves it `null` and never fires the hook.
 - Target — `phase.logTarget`. `activeItem` resolves to the `HookContext`'s `activeFilePath`; `callback` looks the name up in a `LogTargetResolverRegistry`.
-- Property — `settings.writeBackProperty` (default `sessions`, `src/settings.ts`), read live via `getWriteBackProperty` on every invocation. It is one global setting, not a per-phase field.
+- Property — `settings.writeBackProperty` (default `sessions`, `src/settings/settings-types.ts`), read live via `getWriteBackProperty` on every invocation. It is one global setting, not a per-phase field.
 
 ## Walk-through
 

@@ -1,5 +1,5 @@
 import { test, expect, describe } from 'bun:test'
-import { formulaPredicatesToListItems } from '../src/settings-predicate-list'
+import { formulaPredicatesToListItems } from '../src/settings/predicate-list'
 import { PredicateNameSchema } from '../src/domain/hook/predicate'
 
 describe('formulaPredicatesToListItems', () => {

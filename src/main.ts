@@ -1,6 +1,7 @@
 import 'temporal-polyfill/global'
 import { Notice, Plugin, TFile } from 'obsidian'
-import { DEFAULT_SETTINGS, type RoutineFlowSettings, RoutineFlowSettingTab } from './settings'
+import { RoutineFlowSettingTab } from './settings/settings-tab'
+import { DEFAULT_SETTINGS, type RoutineFlowSettings } from './settings/settings-types'
 import { EngineStore } from './timer/store'
 import type { HookEventApplication } from './timer/store'
 import { TimerTicker } from './timer/ticker'

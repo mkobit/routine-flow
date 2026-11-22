@@ -1,12 +1,12 @@
 import type { SettingDefinition } from 'obsidian'
-import type { FormulaPredicateSetting } from './timer/formula-predicate-registry'
+import type { FormulaPredicateSetting } from '../timer/formula-predicate-registry'
 
 /**
  * Maps settings-authored formula predicates to declarative SettingDefinitionList
  * items -- name/formula become name/desc, both display-only (no
  * control/action/render), matching SettingDefinitionEmpty. Kept in its own
  * module, whose only 'obsidian' import is this type (erased at compile time):
- * src/settings.ts pulls in PluginSettingTab as a runtime value, which bun:test
+ * src/settings/settings-tab.ts pulls in PluginSettingTab as a runtime value, which bun:test
  * can't resolve outside the real Obsidian process, so this pure mapping logic
  * lives here instead, where it's unit-testable.
  */

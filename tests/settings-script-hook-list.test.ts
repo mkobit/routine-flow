@@ -1,5 +1,5 @@
 import { test, expect, describe } from 'bun:test'
-import { scriptHookBindingsToListItems } from '../src/settings-script-hook-list'
+import { scriptHookBindingsToListItems } from '../src/settings/script-hook-list'
 import { HookNameSchema } from '../src/domain/hook/hook-reference'
 
 describe('scriptHookBindingsToListItems', () => {
