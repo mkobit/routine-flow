@@ -5,13 +5,11 @@ import ObsidianLauncher from 'obsidian-launcher'
 import * as path from 'node:path'
 import * as net from 'node:net'
 import * as fs from 'node:fs/promises'
-import { stripGitignoredVaultState } from '../vault'
 import { terminateProcess } from './process-lifecycle'
 import { enableMobileEmulation } from '../helpers/mobile'
 import obsidianVersion from '../obsidian-version.json' with { type: 'json' }
 
 const ROOT_DIR = path.resolve(import.meta.dirname, '../../')
-const VAULT_PATH = path.join(ROOT_DIR, 'routine-flow-example-vault')
 const CACHE_DIR = path.join(ROOT_DIR, '.obsidian-cache')
 
 function findFreePort(): Promise<number> {
@@ -57,13 +55,12 @@ type ObsidianResources = ObsidianPage & {
  * obsidian-launcher doesn't clean up the configDir/vault-copy tmpdirs it creates
  * per launch -- without this, every test run leaks a fresh configDir and vault
  * copy into the OS tmpdir forever (confirmed: ~280MB across 100+ leaked dirs in
- * /tmp from prior runs before this fix). `vaultPath` is only removed when it's
- * the per-test copy, never the git-tracked VAULT_PATH.
+ * /tmp from prior runs before this fix).
  */
 async function cleanupObsidianTmpdirs(configDir: string, vaultPath: string): Promise<void> {
   const results = await Promise.allSettled([
     fs.rm(configDir, { recursive: true, force: true }),
-    vaultPath === VAULT_PATH ? Promise.resolve() : fs.rm(vaultPath, { recursive: true, force: true }),
+    fs.rm(vaultPath, { recursive: true, force: true }),
   ])
   for (const result of results) {
     if (result.status === 'rejected') {
@@ -93,15 +90,13 @@ async function acquireObsidian(
 ): Promise<ObsidianResources> {
   const launcher = new ObsidianLauncher({ cacheDir: CACHE_DIR })
 
-  // launcher.setupVault's copy is a plain recursive fs.cp -- it doesn't know about
-  // .gitignore, so the per-test copy is stripped of gitignored runtime state
-  // (.obsidian/workspace.json, .obsidian/plugins/, etc.) before Obsidian ever sees it.
-  // Otherwise a local dev machine's leftover interactive-session state can silently
-  // leak into every test and diverge from what a fresh checkout/CI produces.
-  const copiedVault = await launcher.setupVault({ vault: VAULT_PATH, copy: true })
-  await stripGitignoredVaultState(copiedVault)
+  const templateVault = process.env.ROUTINE_FLOW_E2E_VAULT
+  if (!templateVault) {
+    throw new Error('E2E global setup did not prepare a vault')
+  }
+  const copiedVault = await launcher.setupVault({ vault: templateVault, copy: true })
 
-  const { proc, configDir, vault } = await launcher.launch({
+  const { proc, configDir } = await launcher.launch({
     appVersion: obsidianVersion.appVersion,
     installerVersion: obsidianVersion.installerVersion,
     vault: copiedVault,
@@ -130,7 +125,7 @@ async function acquireObsidian(
     spawnOptions: { stdio: 'pipe', detached: true },
   })
   onProcSpawned?.(proc)
-  const vaultPath = vault ?? VAULT_PATH
+  const vaultPath = copiedVault
 
   try {
     if (proc.stderr) {
