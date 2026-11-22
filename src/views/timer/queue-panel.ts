@@ -31,6 +31,7 @@ export interface QueuePanelOptions {
   readonly prefersReducedMotion?: boolean
   readonly setTimeout?: (callback: () => void, delayMs: number) => number
   readonly onSpinEnd?: (winner: TaskQueueItem) => void
+  readonly renderItemProperties?: (item: TaskQueueItem, li: HTMLElement) => void
 }
 
 const DEFAULT_SCHEDULE_TOTAL_STEPS = 20
@@ -273,6 +274,8 @@ export function renderQueuePanel(queueEl: HTMLElement, options: QueuePanelOption
         }
       }
     })
+
+    options.renderItemProperties?.(item, li)
 
     if (completedPaths.includes(item.sourcePath)) {
       li.addClass('is-completed-task')

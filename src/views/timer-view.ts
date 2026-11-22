@@ -23,6 +23,7 @@ import { computeProgressFraction } from '../timer/progress'
 import type { ProgressMeterStyle } from '../timer/progress-meter-style'
 import { renderConfigBar, renderConfigPanel } from './timer/config-panel'
 import { renderQueuePanel } from './timer/queue-panel'
+import { renderOrderedEntryProperties } from './timer/queue-entry-properties'
 import { getViewOptions } from './timer/view-options'
 import { renderStageProgress, renderGuidanceChecklist } from './timer/stage-progress-panel'
 import { deriveStarJarState, resolveGraphTrackerFilePath } from '../domain/reward/star-jar'
@@ -488,6 +489,7 @@ export class RoutineTimerView extends BasesView {
     }) ?? []
     const completedCount = completedItems.length
     const completedPaths = completedItems.map(touch => touch.sourcePath)
+    const entriesByPath = new Map((this.data?.data ?? []).map(entry => [entry.file.path, entry] as const))
 
     renderQueuePanel(queueEl, {
       phase,
@@ -497,6 +499,12 @@ export class RoutineTimerView extends BasesView {
       actionExecutor: this.plugin.store,
       completedCount,
       completedPaths,
+      renderItemProperties: (item, li) => {
+        const entry = entriesByPath.get(item.sourcePath)
+        if (entry && typeof this.config?.getOrder === 'function') {
+          renderOrderedEntryProperties(li, entry, this.config, this.plugin.app.renderContext)
+        }
+      },
       onSelectTask: (filePath) => {
         if (isSelector) {
           void handleSelectorWinner(this.plugin.store, phase, filePath, msg => new Notice(msg))
@@ -524,6 +532,7 @@ export class RoutineTimerView extends BasesView {
       getValue: (propId: BasesPropertyId) => entry.getValue(propId),
     }))
     const nextSources = new Map<TaskSourceId, TaskSource>()
+    const preserveInputOrder = (typeof this.config?.getSort === 'function' ? this.config.getSort() : []).length > 0
     this.registeredSnapshots.clear()
     for (const phase of viewGraph.phases) {
       if (phase.taskSourceId !== null) {
@@ -534,10 +543,11 @@ export class RoutineTimerView extends BasesView {
         this.registeredSnapshots.set(phase.taskSourceId, {
           entries: filteredEntries,
           extraPropertiesLens,
+          preserveInputOrder,
         })
         nextSources.set(
           phase.taskSourceId,
-          createBaseQuerySource(filteredEntries, { extraPropertiesLens }),
+          createBaseQuerySource(filteredEntries, { extraPropertiesLens, preserveInputOrder }),
         )
       }
     }

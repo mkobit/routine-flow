@@ -160,6 +160,19 @@ class MockPlugin {
 
 void mock.module('obsidian', () => {
   return {
+    NullValue: class {
+      static readonly value = new (class {
+        toString(): string { return '' }
+        isTruthy(): boolean { return false }
+        renderTo(): void {}
+      })()
+    },
+    ListValue: class {
+      constructor(private readonly items: readonly unknown[] = []) {}
+      length(): number { return this.items.length }
+      get(index: number): unknown { return this.items[index] }
+      renderTo(): void {}
+    },
     BasesView: class {
       containerEl = new MockElement()
       constructor(_controller: unknown) {}

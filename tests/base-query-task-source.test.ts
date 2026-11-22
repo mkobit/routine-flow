@@ -284,4 +284,20 @@ describe('BaseQuerySource', () => {
       expect(Object.isFrozen(item?.extraProperties)).toBe(true)
     })
   })
+
+  describe('preserveInputOrder option', () => {
+    test('preserves input order over routine-priority when preserveInputOrder is true, while default sorts by routine-priority', () => {
+      const entries = [
+        entry({ path: 'b.md', basename: 'b', frontmatter: { 'routine-priority': 10 } }),
+        entry({ path: 'a.md', basename: 'a', frontmatter: { 'routine-priority': -5 } }),
+        entry({ path: 'c.md', basename: 'c', frontmatter: { 'routine-priority': 0 } }),
+      ]
+
+      const preservedSource = createBaseQuerySource(entries, { preserveInputOrder: true })
+      expect(preservedSource.getQueue().map(item => item.sourcePath)).toEqual(['b.md', 'a.md', 'c.md'])
+
+      const defaultSource = createBaseQuerySource(entries)
+      expect(defaultSource.getQueue().map(item => item.sourcePath)).toEqual(['a.md', 'c.md', 'b.md'])
+    })
+  })
 })

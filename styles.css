@@ -783,6 +783,31 @@
   vertical-align: middle;
 }
 
+.routine-queue-properties {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--size-4-1) var(--size-4-3);
+  padding-left: var(--size-4-2);
+  margin-top: var(--size-2-1);
+  font-size: var(--font-ui-smaller);
+  color: var(--text-muted);
+}
+
+.routine-queue-property {
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--size-4-1);
+  min-width: 0;
+}
+
+.routine-queue-property-label {
+  color: var(--text-faint);
+}
+
+.routine-queue-property-value {
+  color: var(--text-muted);
+}
+
 /* The active queue item is visually distinct, not just structurally marked (design.md #1). */
 .routine-queue li.is-active-task .routine-task-name {
   font-weight: var(--font-bold);
