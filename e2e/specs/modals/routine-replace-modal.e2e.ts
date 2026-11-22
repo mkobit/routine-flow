@@ -1,6 +1,6 @@
-import { test, expect } from './fixtures/obsidian'
-import { evaluateObsidian } from './helpers/evaluate'
-import { selectBasesSubView } from './helpers/bases'
+import { test, expect } from '../../fixtures/obsidian'
+import { evaluateObsidian } from '../../helpers/evaluate'
+import { selectBasesSubView } from '../../helpers/bases'
 
 test.describe('routine replace confirmation modal', () => {
   test.beforeEach(async ({ obsidianPage: { page } }) => {

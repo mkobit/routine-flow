@@ -1,9 +1,9 @@
 import type { Page } from '@playwright/test'
-import { test, expect } from './fixtures/obsidian'
-import { evaluateObsidian } from './helpers/evaluate'
-import { selectBasesSubView } from './helpers/bases'
-import type { EngineAction } from '../src/timer/reducer'
-import type { ProgressMeterStyle } from '../src/timer/progress-meter-style'
+import { test, expect } from '../../fixtures/obsidian'
+import { evaluateObsidian } from '../../helpers/evaluate'
+import { selectBasesSubView } from '../../helpers/bases'
+import type { EngineAction } from '../../../src/timer/reducer'
+import type { ProgressMeterStyle } from '../../../src/timer/progress-meter-style'
 
 const PLUGIN_ID = 'routine-flow'
 

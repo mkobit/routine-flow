@@ -6,8 +6,8 @@ import {
   openMobileSettings,
   closeMobileSettings,
   MOBILE_VIEWPORTS,
-} from './fixtures/obsidian'
-import { evaluateObsidian } from './helpers/evaluate'
+} from '../../fixtures/obsidian'
+import { evaluateObsidian } from '../../helpers/evaluate'
 
 test.describe('mobile obsidian fixture and emulation', () => {
   test('mobileObsidianPage fixture boots in phone emulation mode', async ({ mobileObsidianPage: { page } }) => {

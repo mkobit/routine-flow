@@ -1,6 +1,6 @@
 import type { Page } from '@playwright/test'
-import { test as obsidianTest, expect } from './fixtures/obsidian'
-import { evaluateObsidian } from './helpers/evaluate'
+import { test as obsidianTest, expect } from '../../fixtures/obsidian'
+import { evaluateObsidian } from '../../helpers/evaluate'
 
 const PLUGIN_ID = 'routine-flow'
 

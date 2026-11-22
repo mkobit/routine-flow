@@ -1,8 +1,8 @@
-import { test, expect } from './fixtures/obsidian'
-import { evaluateObsidian } from './helpers/evaluate'
-import { selectBasesSubView } from './helpers/bases'
-import { generateVault, resolveVaultSeed } from './vault'
-import type { NoteDefinition } from './vault'
+import { test, expect } from '../../fixtures/obsidian'
+import { evaluateObsidian } from '../../helpers/evaluate'
+import { selectBasesSubView } from '../../helpers/bases'
+import { generateVault, resolveVaultSeed } from '../../vault'
+import type { NoteDefinition } from '../../vault'
 
 const PLUGIN_ID = 'routine-flow'
 

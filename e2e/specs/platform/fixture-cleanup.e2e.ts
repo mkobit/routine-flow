@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test'
 import type { ChildProcess } from 'node:child_process'
-import { acquireObsidian, findFreePort } from './fixtures/obsidian'
+import { acquireObsidian, findFreePort } from '../../fixtures/obsidian'
 
 function isRunning(pid: number): boolean {
   try {

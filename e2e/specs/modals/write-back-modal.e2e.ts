@@ -1,8 +1,8 @@
 import type { Page } from '@playwright/test'
-import { test, expect } from './fixtures/obsidian'
-import { evaluateObsidian } from './helpers/evaluate'
-import { createNote, writeNoteToVault } from './vault'
-import type { EngineAction } from '../src/timer/reducer'
+import { test, expect } from '../../fixtures/obsidian'
+import { evaluateObsidian } from '../../helpers/evaluate'
+import { createNote, writeNoteToVault } from '../../vault'
+import type { EngineAction } from '../../../src/timer/reducer'
 
 const PLUGIN_ID = 'routine-flow'
 const TASK_PATH = 'write-back-e2e-task.md'
