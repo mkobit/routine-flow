@@ -1,0 +1,1280 @@
+import { test, expect, describe } from 'bun:test'
+import { EngineStore } from '../../src/timer/store'
+import { PhaseGraphSchema, PhaseGraphIdSchema } from '../../src/domain/phase/phase-graph'
+import type { PhaseGraph } from '../../src/domain/phase/phase-graph'
+import { PhaseIdSchema, PhaseSchema, SELECTOR_PHASE_KIND, FOCUS_PHASE_KIND } from '../../src/domain/phase/phase'
+import { DEFAULT_PHASE_GRAPH } from '../../src/timer/phase-graph-query'
+import { handleSelectorWinner } from '../../src/timer/selector-winner'
+import { TaskQueueItemIdSchema, TaskSourceIdSchema } from '../../src/domain/queue/task-source'
+import type { TaskQueueItem, TaskSource, TaskSourceRegistry } from '../../src/domain/queue/task-source'
+import { HookNameSchema, HookReferenceSchema } from '../../src/domain/hook/hook-reference'
+import type { HookReference } from '../../src/domain/hook/hook-reference'
+import type { Hook, HookRegistry } from '../../src/domain/hook/hook'
+import type { FileMutationPort } from '../../src/domain/mutation/apply-mutations'
+import { FileMutationSchema } from '../../src/domain/mutation/file-mutation'
+import type { FileMutation } from '../../src/domain/mutation/file-mutation'
+import { QueueItemActionSchema } from '../../src/domain/action/queue-item-action'
+import { createFormulaPredicateRegistry } from '../../src/timer/formula-predicate-registry'
+import { PredicateNameSchema } from '../../src/domain/hook/predicate'
+
+const phaseDefaults = {
+  taskSourceId: null,
+  completionPolicy: null,
+  notification: null,
+  onEnter: null,
+  onComplete: null,
+  onSkip: null,
+  onExit: null,
+} as const
+
+function createCounter() {
+  let count = 0
+  return {
+    increment: () => {
+      count += 1
+    },
+    count: () => count,
+  }
+}
+
+function buildGraph(id: string, durationSeconds = 10): PhaseGraph {
+  return PhaseGraphSchema.parse({
+    id,
+    name: `Graph ${id}`,
+    phases: [
+      PhaseSchema.parse({ ...phaseDefaults, id: 'focus', label: 'Focus', kind: 'focus', duration: Temporal.Duration.from({ seconds: durationSeconds }), logTarget: { kind: 'activeItem' } }),
+      PhaseSchema.parse({ ...phaseDefaults, id: 'break', label: 'Break', kind: 'break', duration: Temporal.Duration.from({ seconds: 5 }), logTarget: { kind: 'activeItem' } }),
+    ],
+    transitions: [
+      { fromPhaseId: 'focus', toPhaseId: 'break', condition: { kind: 'always' } },
+      { fromPhaseId: 'break', toPhaseId: 'focus', condition: { kind: 'always' } },
+    ],
+  })
+}
+
+const exercisesTaskSourceId = TaskSourceIdSchema.parse('exercises')
+
+function buildQueueExhaustedGraph(): PhaseGraph {
+  return PhaseGraphSchema.parse({
+    id: 'workout',
+    name: 'Workout graph',
+    phases: [
+      PhaseSchema.parse({ ...phaseDefaults, id: 'set', label: 'Set', kind: 'set', duration: null, taskSourceId: exercisesTaskSourceId, logTarget: { kind: 'activeItem' } }),
+      PhaseSchema.parse({ ...phaseDefaults, id: 'done', label: 'Done', kind: 'done', duration: null, logTarget: { kind: 'activeItem' } }),
+    ],
+    transitions: [
+      { fromPhaseId: 'set', toPhaseId: 'done', condition: { kind: 'queueExhausted' } },
+      { fromPhaseId: 'set', toPhaseId: 'set', condition: { kind: 'always' } },
+    ],
+  })
+}
+
+function buildQueueItem(id: string): TaskQueueItem {
+  return {
+    id: TaskQueueItemIdSchema.parse(id),
+    sourcePath: `${id}.md`,
+    displayName: id,
+    cycleStatus: 'pending',
+    timeSpent: Temporal.Duration.from({ seconds: 0 }),
+    lastCycledAt: null,
+  }
+}
+
+/** A mutable TaskSourceRegistry resolving `exercisesTaskSourceId` to whatever items were last set, so a test can simulate items being worked through between dispatches. */
+function createFakeTaskSourceRegistry(initialItems: readonly TaskQueueItem[]) {
+  let items = initialItems
+  const source: TaskSource = { getQueue: () => items }
+  const registry: TaskSourceRegistry = { resolve: id => (id === exercisesTaskSourceId ? source : undefined) }
+  const setItems = (next: readonly TaskQueueItem[]) => {
+    items = next
+  }
+  return { registry, setItems }
+}
+
+describe('EngineStore', () => {
+  test('constructs with the initial state of the given graph', () => {
+    const graph = buildGraph('a')
+    const store = new EngineStore(graph)
+
+    expect(store.getGraph()).toBe(graph)
+    expect(store.getState().status).toBe('stopped')
+    expect(store.getState().phaseGraphId).toBe(PhaseGraphIdSchema.parse('a'))
+  })
+
+  test('subscribe is notified after a state-changing dispatch', async () => {
+    const store = new EngineStore(buildGraph('a'))
+    let seen: readonly string[] = []
+    store.subscribe((state) => {
+      seen = [...seen, state.status]
+    })
+
+    await store.dispatch({ type: 'start' })
+
+    expect(seen).toEqual(['running'])
+  })
+
+  test('subscribe is not notified when the reducer returns the same state reference (duration-less phase tick)', async () => {
+    const manualGraph = PhaseGraphSchema.parse({
+      id: 'manual',
+      name: 'Manual graph',
+      phases: [PhaseSchema.parse({ ...phaseDefaults, id: 'turn', label: 'Turn', kind: 'focus', duration: null, logTarget: { kind: 'activeItem' } })],
+      transitions: [],
+    })
+    const store = new EngineStore(manualGraph)
+    await store.dispatch({ type: 'start' })
+    const counter = createCounter()
+    store.subscribe(() => counter.increment())
+
+    await store.dispatch({ type: 'tick' })
+
+    expect(counter.count()).toBe(0)
+  })
+
+  test('unsubscribe stops further notifications', async () => {
+    const store = new EngineStore(buildGraph('a'))
+    const counter = createCounter()
+    const unsubscribe = store.subscribe(() => counter.increment())
+
+    await store.dispatch({ type: 'start' })
+    unsubscribe()
+    await store.dispatch({ type: 'pause' })
+
+    expect(counter.count()).toBe(1)
+  })
+
+  test('setGraph switches the active graph and resets to its initial state', () => {
+    const store = new EngineStore(buildGraph('a'))
+    const graphB = buildGraph('b', 42)
+
+    store.setGraph(graphB)
+
+    expect(store.getGraph()).toBe(graphB)
+    expect(store.getState().status).toBe('stopped')
+    expect(store.getState().phaseGraphId).toBe(PhaseGraphIdSchema.parse('b'))
+    expect(store.getState().currentPhaseId).toBe(PhaseIdSchema.parse('focus'))
+    expect(store.getState().remaining?.total({ unit: 'seconds' })).toBe(42)
+  })
+
+  test('setGraph while running unconditionally resets, discarding in-progress state (documented contract)', async () => {
+    const store = new EngineStore(buildGraph('a'))
+    await store.dispatch({ type: 'start', filePath: 'task.md' })
+    expect(store.getState().status).toBe('running')
+
+    store.setGraph(buildGraph('b'))
+
+    expect(store.getState().status).toBe('stopped')
+    expect(store.getState().activeFilePath).toBeNull()
+  })
+
+  test('setGraph notifies subscribers', () => {
+    const store = new EngineStore(buildGraph('a'))
+    const counter = createCounter()
+    store.subscribe(() => counter.increment())
+
+    store.setGraph(buildGraph('b'))
+
+    expect(counter.count()).toBe(1)
+  })
+})
+
+describe('EngineStore queueExhausted sync', () => {
+  test('dispatch snapshots a fresh queue-empty reading before evaluating the action, so draining the queue between dispatches changes the outcome', async () => {
+    const { registry, setItems } = createFakeTaskSourceRegistry([buildQueueItem('rep-1')])
+    const store = new EngineStore(buildQueueExhaustedGraph(), { taskSourceRegistry: registry })
+    await store.dispatch({ type: 'start' })
+
+    await store.dispatch({ type: 'advance-phase' })
+    expect(store.getState().currentPhaseId).toBe(PhaseIdSchema.parse('set'))
+
+    setItems([])
+    await store.dispatch({ type: 'advance-phase' })
+    expect(store.getState().currentPhaseId).toBe(PhaseIdSchema.parse('done'))
+  })
+
+  test('omitting taskSourceRegistry leaves queueExhausted false, so the queueExhausted branch never fires', async () => {
+    const store = new EngineStore(buildQueueExhaustedGraph())
+    await store.dispatch({ type: 'start' })
+
+    await store.dispatch({ type: 'advance-phase' })
+
+    expect(store.getState().currentPhaseId).toBe(PhaseIdSchema.parse('set'))
+    expect(store.getState().queueExhausted).toBe(false)
+  })
+
+  test('a phase with no taskSourceId is never treated as exhausted, even with a registry supplied', async () => {
+    const { registry } = createFakeTaskSourceRegistry([])
+    const noQueueGraph = PhaseGraphSchema.parse({
+      id: 'no-queue',
+      name: 'No queue graph',
+      phases: [
+        PhaseSchema.parse({ ...phaseDefaults, id: 'warmup', label: 'Warmup', kind: 'warmup', duration: null, logTarget: { kind: 'activeItem' } }),
+        PhaseSchema.parse({ ...phaseDefaults, id: 'done', label: 'Done', kind: 'done', duration: null, logTarget: { kind: 'activeItem' } }),
+      ],
+      transitions: [
+        { fromPhaseId: 'warmup', toPhaseId: 'done', condition: { kind: 'queueExhausted' } },
+        { fromPhaseId: 'warmup', toPhaseId: 'warmup', condition: { kind: 'always' } },
+      ],
+    })
+    const store = new EngineStore(noQueueGraph, { taskSourceRegistry: registry })
+    await store.dispatch({ type: 'start' })
+
+    await store.dispatch({ type: 'advance-phase' })
+
+    expect(store.getState().currentPhaseId).toBe(PhaseIdSchema.parse('warmup'))
+  })
+
+  test('syncQueueExhausted automatically advances running phase when queue becomes empty and outgoing transition is guarded by queueExhausted', async () => {
+    const { registry, setItems } = createFakeTaskSourceRegistry([buildQueueItem('task-1')])
+    const blitzGraph = PhaseGraphSchema.parse({
+      id: 'blitz-timed',
+      name: 'Blitz timed graph',
+      phases: [
+        PhaseSchema.parse({
+          ...phaseDefaults,
+          id: 'blitz',
+          label: 'Blitz',
+          kind: 'focus',
+          duration: Temporal.Duration.from({ minutes: 15 }),
+          taskSourceId: exercisesTaskSourceId,
+          logTarget: { kind: 'activeItem' },
+        }),
+        PhaseSchema.parse({
+          ...phaseDefaults,
+          id: 'wrapup',
+          label: 'Wrap up',
+          kind: 'break',
+          duration: Temporal.Duration.from({ minutes: 5 }),
+          logTarget: { kind: 'activeItem' },
+        }),
+      ],
+      transitions: [
+        { fromPhaseId: 'blitz', toPhaseId: 'wrapup', condition: { kind: 'queueExhausted' } },
+        { fromPhaseId: 'blitz', toPhaseId: 'wrapup', condition: { kind: 'always' } },
+      ],
+    })
+
+    const store = new EngineStore(blitzGraph, { taskSourceRegistry: registry })
+    await store.dispatch({ type: 'start' })
+    expect(store.getState().status).toBe('running')
+    expect(store.getState().currentPhaseId).toBe(PhaseIdSchema.parse('blitz'))
+
+    setItems([])
+    await store.syncQueueExhausted()
+
+    expect(store.getState().currentPhaseId).toBe(PhaseIdSchema.parse('wrapup'))
+    expect(store.getState().queueExhausted).toBe(true)
+    expect(store.getState().session?.history.at(-1)?.endReason).toBe('completed')
+  })
+
+  test('tick dispatches evaluate queue exhaustion and advance running phase if queue is drained', async () => {
+    const { registry, setItems } = createFakeTaskSourceRegistry([buildQueueItem('task-1')])
+    const blitzGraph = PhaseGraphSchema.parse({
+      id: 'blitz-timed-tick',
+      name: 'Blitz timed tick graph',
+      phases: [
+        PhaseSchema.parse({
+          ...phaseDefaults,
+          id: 'blitz',
+          label: 'Blitz',
+          kind: 'focus',
+          duration: Temporal.Duration.from({ minutes: 15 }),
+          taskSourceId: exercisesTaskSourceId,
+          logTarget: { kind: 'activeItem' },
+        }),
+        PhaseSchema.parse({
+          ...phaseDefaults,
+          id: 'wrapup',
+          label: 'Wrap up',
+          kind: 'break',
+          duration: Temporal.Duration.from({ minutes: 5 }),
+          logTarget: { kind: 'activeItem' },
+        }),
+      ],
+      transitions: [
+        { fromPhaseId: 'blitz', toPhaseId: 'wrapup', condition: { kind: 'queueExhausted' } },
+        { fromPhaseId: 'blitz', toPhaseId: 'wrapup', condition: { kind: 'always' } },
+      ],
+    })
+
+    const store = new EngineStore(blitzGraph, { taskSourceRegistry: registry })
+    await store.dispatch({ type: 'start' })
+
+    setItems([])
+    await store.dispatch({ type: 'tick' })
+
+    expect(store.getState().currentPhaseId).toBe(PhaseIdSchema.parse('wrapup'))
+    expect(store.getState().queueExhausted).toBe(true)
+  })
+
+  test('normal countdown is preserved when queue is not exhausted', async () => {
+    const { registry } = createFakeTaskSourceRegistry([buildQueueItem('task-1')])
+    const blitzGraph = PhaseGraphSchema.parse({
+      id: 'blitz-countdown',
+      name: 'Blitz countdown graph',
+      phases: [
+        PhaseSchema.parse({
+          ...phaseDefaults,
+          id: 'blitz',
+          label: 'Blitz',
+          kind: 'focus',
+          duration: Temporal.Duration.from({ seconds: 10 }),
+          taskSourceId: exercisesTaskSourceId,
+          logTarget: { kind: 'activeItem' },
+        }),
+        PhaseSchema.parse({
+          ...phaseDefaults,
+          id: 'wrapup',
+          label: 'Wrap up',
+          kind: 'break',
+          duration: Temporal.Duration.from({ seconds: 5 }),
+          logTarget: { kind: 'activeItem' },
+        }),
+      ],
+      transitions: [
+        { fromPhaseId: 'blitz', toPhaseId: 'wrapup', condition: { kind: 'queueExhausted' } },
+        { fromPhaseId: 'blitz', toPhaseId: 'wrapup', condition: { kind: 'always' } },
+      ],
+    })
+
+    const store = new EngineStore(blitzGraph, { taskSourceRegistry: registry })
+    await store.dispatch({ type: 'start' })
+    await store.dispatch({ type: 'tick' })
+
+    expect(store.getState().currentPhaseId).toBe(PhaseIdSchema.parse('blitz'))
+    expect(store.getState().remaining?.total({ unit: 'seconds' })).toBe(9)
+    expect(store.getState().status).toBe('running')
+  })
+
+  test('starting a phase whose queue is already empty immediately advances along queueExhausted transition', async () => {
+    const { registry } = createFakeTaskSourceRegistry([])
+    const blitzGraph = PhaseGraphSchema.parse({
+      id: 'blitz-empty-start',
+      name: 'Blitz empty start graph',
+      phases: [
+        PhaseSchema.parse({
+          ...phaseDefaults,
+          id: 'blitz',
+          label: 'Blitz',
+          kind: 'focus',
+          duration: Temporal.Duration.from({ minutes: 15 }),
+          taskSourceId: exercisesTaskSourceId,
+          logTarget: { kind: 'activeItem' },
+        }),
+        PhaseSchema.parse({
+          ...phaseDefaults,
+          id: 'wrapup',
+          label: 'Wrap up',
+          kind: 'break',
+          duration: Temporal.Duration.from({ minutes: 5 }),
+          logTarget: { kind: 'activeItem' },
+        }),
+      ],
+      transitions: [
+        { fromPhaseId: 'blitz', toPhaseId: 'wrapup', condition: { kind: 'queueExhausted' } },
+        { fromPhaseId: 'blitz', toPhaseId: 'wrapup', condition: { kind: 'always' } },
+      ],
+    })
+
+    const store = new EngineStore(blitzGraph, { taskSourceRegistry: registry })
+    expect(store.getState().currentPhaseId).toBe(PhaseIdSchema.parse('blitz'))
+
+    await store.dispatch({ type: 'start' })
+
+    expect(store.getState().currentPhaseId).toBe(PhaseIdSchema.parse('wrapup'))
+    expect(store.getState().queueExhausted).toBe(true)
+  })
+
+  test('advancing into a phase whose queue is already empty sets queueExhausted true without advancing when stopped', async () => {
+    const { registry } = createFakeTaskSourceRegistry([])
+    const reviewGraph = PhaseGraphSchema.parse({
+      id: 'review-cadence',
+      name: 'Review cadence graph',
+      phases: [
+        PhaseSchema.parse({
+          ...phaseDefaults,
+          id: 'kickoff',
+          label: 'Kickoff',
+          kind: 'focus',
+          duration: Temporal.Duration.from({ minutes: 5 }),
+          taskSourceId: null,
+          logTarget: null,
+        }),
+        PhaseSchema.parse({
+          ...phaseDefaults,
+          id: 'inbox-review',
+          label: 'Inbox review',
+          kind: 'review',
+          duration: Temporal.Duration.from({ minutes: 10 }),
+          taskSourceId: exercisesTaskSourceId,
+          logTarget: null,
+        }),
+        PhaseSchema.parse({
+          ...phaseDefaults,
+          id: 'planning',
+          label: 'Planning',
+          kind: 'focus',
+          duration: Temporal.Duration.from({ minutes: 10 }),
+          taskSourceId: null,
+          logTarget: null,
+        }),
+      ],
+      transitions: [
+        { fromPhaseId: 'kickoff', toPhaseId: 'inbox-review', condition: { kind: 'always' } },
+        { fromPhaseId: 'inbox-review', toPhaseId: 'planning', condition: { kind: 'queueExhausted' } },
+        { fromPhaseId: 'inbox-review', toPhaseId: 'planning', condition: { kind: 'always' } },
+      ],
+    })
+
+    const store = new EngineStore(reviewGraph, { taskSourceRegistry: registry })
+    expect(store.getState().currentPhaseId).toBe(PhaseIdSchema.parse('kickoff'))
+
+    await store.dispatch({ type: 'advance-phase' })
+
+    expect(store.getState().currentPhaseId).toBe(PhaseIdSchema.parse('inbox-review'))
+    expect(store.getState().status).toBe('stopped')
+    expect(store.getState().queueExhausted).toBe(true)
+
+    // Starting the stopped empty phase triggers immediate queueExhausted transition to planning
+    await store.dispatch({ type: 'start' })
+    expect(store.getState().currentPhaseId).toBe(PhaseIdSchema.parse('planning'))
+  })
+})
+
+describe('EngineStore trackerFrontmatter sync', () => {
+  test('synchronously pre-reads tracker note frontmatter before engineReducer dispatch to evaluate tracker.stars >= 15', async () => {
+    let stars = 10
+    const frontmatterReader = {
+      readValue: (_path: string, prop: string) => (prop === 'stars' ? stars : undefined),
+      readAll: (path: string) => (path === 'rewards/star-jar.md' ? { stars } : null),
+    }
+    const predicateRegistry = createFormulaPredicateRegistry()
+    predicateRegistry.setFormulas([
+      { name: PredicateNameSchema.parse('star-jar-full'), formula: 'tracker.stars >= 15' },
+    ])
+
+    const starJarGraph = PhaseGraphSchema.parse({
+      id: 'star-jar',
+      name: 'Star jar routine',
+      trackerFilePath: 'rewards/star-jar.md',
+      phases: [
+        PhaseSchema.parse({ ...phaseDefaults, id: 'focus', label: 'Focus', kind: 'focus', duration: Temporal.Duration.from({ seconds: 10 }), logTarget: { kind: 'activeItem' } }),
+        PhaseSchema.parse({ ...phaseDefaults, id: 'short-break', label: 'Short break', kind: 'break', duration: Temporal.Duration.from({ seconds: 5 }), logTarget: { kind: 'activeItem' } }),
+        PhaseSchema.parse({ ...phaseDefaults, id: 'prize-break', label: 'Prize break', kind: 'break', duration: Temporal.Duration.from({ seconds: 20 }), logTarget: { kind: 'activeItem' } }),
+      ],
+      transitions: [
+        { fromPhaseId: 'focus', toPhaseId: 'prize-break', condition: { kind: 'custom', predicate: 'star-jar-full' } },
+        { fromPhaseId: 'focus', toPhaseId: 'short-break', condition: { kind: 'always' } },
+        { fromPhaseId: 'short-break', toPhaseId: 'focus', condition: { kind: 'always' } },
+        { fromPhaseId: 'prize-break', toPhaseId: 'focus', condition: { kind: 'always' } },
+      ],
+    })
+
+    const store = new EngineStore(starJarGraph, { predicateRegistry, frontmatterReader })
+    await store.dispatch({ type: 'start' })
+
+    // Below threshold (10 < 15) -> transitions to short-break
+    await store.dispatch({ type: 'advance-phase' })
+    expect(store.getState().currentPhaseId).toBe(PhaseIdSchema.parse('short-break'))
+    expect(store.getState().trackerFrontmatter).toEqual({ stars: 10 })
+
+    // Return to focus
+    await store.dispatch({ type: 'advance-phase' })
+    expect(store.getState().currentPhaseId).toBe(PhaseIdSchema.parse('focus'))
+
+    // Update cached tracker frontmatter to meet threshold (15 >= 15)
+    stars = 15
+    await store.dispatch({ type: 'advance-phase' })
+    expect(store.getState().currentPhaseId).toBe(PhaseIdSchema.parse('prize-break'))
+    expect(store.getState().trackerFrontmatter).toEqual({ stars: 15 })
+  })
+})
+
+describe('EngineStore item-touch snapshotting', () => {
+  test('activating a queue item appends a lightweight snapshot to itemsTouched', async () => {
+    const item = buildQueueItem('rep-1')
+    const { registry } = createFakeTaskSourceRegistry([item])
+    const store = new EngineStore(buildQueueExhaustedGraph(), { taskSourceRegistry: registry })
+
+    await store.dispatch({ type: 'start' })
+    await store.dispatch({ type: 'set-active-file', filePath: 'rep-1.md' })
+
+    expect(store.getState().session?.currentInstance?.itemsTouched).toEqual([
+      { id: item.id, sourcePath: item.sourcePath, displayName: item.displayName, status: 'viewed', completedAt: null },
+    ])
+  })
+
+  test('a later change to that item\'s mutable fields doesn\'t alter the recorded snapshot', async () => {
+    const item = buildQueueItem('rep-1')
+    const { registry, setItems } = createFakeTaskSourceRegistry([item])
+    const store = new EngineStore(buildQueueExhaustedGraph(), { taskSourceRegistry: registry })
+
+    await store.dispatch({ type: 'start' })
+    await store.dispatch({ type: 'set-active-file', filePath: 'rep-1.md' })
+
+    setItems([{ ...item, cycleStatus: 'done', timeSpent: Temporal.Duration.from({ seconds: 60 }) }])
+    await store.dispatch({ type: 'tick' }) // any later dispatch re-runs syncItemTouch against the mutated item
+
+    expect(store.getState().session?.currentInstance?.itemsTouched).toEqual([
+      { id: item.id, sourcePath: item.sourcePath, displayName: item.displayName, status: 'viewed', completedAt: null },
+    ])
+  })
+})
+
+describe('DEFAULT_PHASE_GRAPH write-back wiring', () => {
+  test('focus phase declares write-back script hook handler', () => {
+    expect(DEFAULT_PHASE_GRAPH.phases[0]?.handlers.onComplete).toEqual([
+      { kind: 'script', scriptPath: 'write-back' },
+    ])
+  })
+
+  test('every phase targets activeItem -- no phase references an unregistered callback resolver', () => {
+    for (const phase of DEFAULT_PHASE_GRAPH.phases) {
+      expect(phase.logTarget).toEqual({ kind: 'activeItem' })
+    }
+  })
+})
+
+function hookRef(name: string): HookReference {
+  return HookReferenceSchema.parse({ name: HookNameSchema.parse(name), params: {} })
+}
+
+function createNoopPort(): FileMutationPort {
+  return {
+    writeFrontmatter: async () => {},
+    appendText: async () => {},
+    reorderQueueItem: async () => {},
+    changeQueueItemStatus: async () => {},
+  }
+}
+
+/** Two-phase (focus -> break) graph with configurable onComplete/onExit/onEnter hook references, for exercising invocation-failure isolation and hook-outcome folding. */
+function buildIsolationGraph(overrides: { onComplete?: HookReference | null, onExit?: HookReference | null, onEnter?: HookReference | null } = {}): PhaseGraph {
+  return PhaseGraphSchema.parse({
+    id: 'isolation',
+    name: 'Isolation graph',
+    phases: [
+      PhaseSchema.parse({
+        ...phaseDefaults,
+        id: 'focus',
+        label: 'Focus',
+        kind: 'focus',
+        duration: Temporal.Duration.from({ seconds: 10 }),
+        logTarget: { kind: 'activeItem' },
+        onComplete: overrides.onComplete ?? null,
+        onExit: overrides.onExit ?? null,
+      }),
+      PhaseSchema.parse({
+        ...phaseDefaults,
+        id: 'break',
+        label: 'Break',
+        kind: 'break',
+        duration: Temporal.Duration.from({ seconds: 5 }),
+        logTarget: { kind: 'activeItem' },
+        onEnter: overrides.onEnter ?? null,
+      }),
+    ],
+    transitions: [
+      { fromPhaseId: 'focus', toPhaseId: 'break', condition: { kind: 'always' } },
+      { fromPhaseId: 'break', toPhaseId: 'focus', condition: { kind: 'always' } },
+    ],
+  })
+}
+
+describe('EngineStore hook invocation isolation', () => {
+  test('a throwing onExit hook does not suppress the paired onEnter hook', async () => {
+    const enterHook: Hook = async () => []
+    const throwingExit: Hook = () => {
+      throw new Error('onExit blew up')
+    }
+    const registry: HookRegistry = {
+      resolve: name => (name === 'exit' ? throwingExit : name === 'enter' ? enterHook : undefined),
+    }
+    const graph = buildIsolationGraph({ onExit: hookRef('exit'), onEnter: hookRef('enter') })
+    const store = new EngineStore(graph, { hookRegistry: registry, port: createNoopPort() })
+    await store.dispatch({ type: 'start' })
+
+    const applications = await store.dispatch({ type: 'advance-phase' })
+
+    expect(applications.map(a => a.event)).toEqual(['onExit', 'onEnter'])
+    expect(applications[1]?.outcome).toEqual({ stage: 'applied', mutations: [], result: { success: true } })
+  })
+
+  test('a rejecting hook promise does not suppress a later event\'s hook in the same dispatch', async () => {
+    const enterHook: Hook = async () => []
+    const rejectingExit: Hook = async () => Promise.reject(new Error('onExit rejected'))
+    const registry: HookRegistry = {
+      resolve: name => (name === 'exit' ? rejectingExit : name === 'enter' ? enterHook : undefined),
+    }
+    const graph = buildIsolationGraph({ onExit: hookRef('exit'), onEnter: hookRef('enter') })
+    const store = new EngineStore(graph, { hookRegistry: registry, port: createNoopPort() })
+    await store.dispatch({ type: 'start' })
+
+    const applications = await store.dispatch({ type: 'advance-phase' })
+
+    expect(applications.map(a => a.event)).toEqual(['onExit', 'onEnter'])
+    expect(applications[1]?.outcome).toEqual({ stage: 'applied', mutations: [], result: { success: true } })
+  })
+
+  test('dispatch\'s resolved result reflects a hook invocation failure without throwing', async () => {
+    const throwingExit: Hook = () => {
+      throw new Error('boom')
+    }
+    const registry: HookRegistry = { resolve: name => (name === 'exit' ? throwingExit : undefined) }
+    const graph = buildIsolationGraph({ onExit: hookRef('exit') })
+    const store = new EngineStore(graph, { hookRegistry: registry, port: createNoopPort() })
+    await store.dispatch({ type: 'start' })
+
+    const applications = await store.dispatch({ type: 'advance-phase' })
+
+    expect(applications).toHaveLength(1)
+    const exitApplication = applications[0]
+    expect(exitApplication?.event).toBe('onExit')
+    expect(exitApplication?.outcome.stage).toBe('invocationFailed')
+    expect(exitApplication?.outcome).toEqual({ stage: 'invocationFailed', cause: expect.any(Error) })
+  })
+})
+
+function appendMutation(text: string): FileMutation {
+  return FileMutationSchema.parse({ kind: 'append', filePath: 'daily-note.md', text })
+}
+
+function frontmatterMutation(property: string): FileMutation {
+  return FileMutationSchema.parse({ kind: 'frontmatter', filePath: 'task.md', property, value: true })
+}
+
+/** A manualClear-policy focus phase (onComplete/onExit configurable) followed by a plain break phase. */
+function buildManualClearGraph(overrides: { onComplete?: HookReference | null, onExit?: HookReference | null } = {}): PhaseGraph {
+  return PhaseGraphSchema.parse({
+    id: 'manual-clear',
+    name: 'Manual clear graph',
+    phases: [
+      PhaseSchema.parse({
+        ...phaseDefaults,
+        id: 'focus',
+        label: 'Focus',
+        kind: 'focus',
+        duration: Temporal.Duration.from({ seconds: 10 }),
+        logTarget: { kind: 'activeItem' },
+        completionPolicy: { kind: 'manualClear' },
+        onComplete: overrides.onComplete ?? null,
+        onExit: overrides.onExit ?? null,
+      }),
+      PhaseSchema.parse({ ...phaseDefaults, id: 'break', label: 'Break', kind: 'break', duration: Temporal.Duration.from({ seconds: 5 }), logTarget: { kind: 'activeItem' } }),
+    ],
+    transitions: [
+      { fromPhaseId: 'focus', toPhaseId: 'break', condition: { kind: 'always' } },
+      { fromPhaseId: 'break', toPhaseId: 'focus', condition: { kind: 'always' } },
+    ],
+  })
+}
+
+describe('EngineStore hook-outcome folding', () => {
+  test('onEnter\'s outcome accumulates onto the newly-opened currentInstance', async () => {
+    const mutation = appendMutation('entered break')
+    const enterHook: Hook = async () => [mutation]
+    const registry: HookRegistry = { resolve: name => (name === 'enter' ? enterHook : undefined) }
+    const graph = buildIsolationGraph({ onEnter: hookRef('enter') })
+    const store = new EngineStore(graph, { hookRegistry: registry, port: createNoopPort() })
+    await store.dispatch({ type: 'start' })
+
+    await store.dispatch({ type: 'advance-phase' })
+
+    expect(store.getState().session?.currentInstance?.phaseId).toBe(PhaseIdSchema.parse('break'))
+    expect(store.getState().session?.currentInstance?.mutationsApplied).toEqual([mutation])
+  })
+
+  test('onComplete and onExit both firing in one dispatch accumulate onto the same closed instance, in firing order', async () => {
+    const completeMutation = appendMutation('completed focus')
+    const exitMutation = appendMutation('exited focus')
+    const completeHook: Hook = async () => [completeMutation]
+    const exitHook: Hook = async () => [exitMutation]
+    const registry: HookRegistry = {
+      resolve: name => (name === 'complete' ? completeHook : name === 'exit' ? exitHook : undefined),
+    }
+    const graph = buildIsolationGraph({ onComplete: hookRef('complete'), onExit: hookRef('exit') })
+    const store = new EngineStore(graph, { hookRegistry: registry, port: createNoopPort() })
+    await store.dispatch({ type: 'start' })
+
+    await store.dispatch({ type: 'finish-phase' })
+
+    const closed = store.getState().session?.history.at(-1)
+    expect(closed?.phaseId).toBe(PhaseIdSchema.parse('focus'))
+    expect(closed?.mutationsApplied).toEqual([completeMutation, exitMutation])
+  })
+
+  test('a manualClear phase\'s onComplete outcome lands on currentInstance, and its later onExit accumulates onto the same instance once closed', async () => {
+    const completeMutation = appendMutation('completed focus')
+    const exitMutation = appendMutation('exited focus')
+    const completeHook: Hook = async () => [completeMutation]
+    const exitHook: Hook = async () => [exitMutation]
+    const registry: HookRegistry = {
+      resolve: name => (name === 'complete' ? completeHook : name === 'exit' ? exitHook : undefined),
+    }
+    const graph = buildManualClearGraph({ onComplete: hookRef('complete'), onExit: hookRef('exit') })
+    const store = new EngineStore(graph, { hookRegistry: registry, port: createNoopPort() })
+    await store.dispatch({ type: 'start' })
+    const openInstanceId = store.getState().session?.currentInstance?.id
+
+    await store.dispatch({ type: 'finish-phase' })
+
+    // The instance is still open (manualClear halts, doesn't close) -- onComplete's outcome landed on currentInstance, not history.
+    expect(store.getState().status).toBe('completed')
+    expect(store.getState().session?.history).toEqual([])
+    expect(store.getState().session?.currentInstance?.id).toBe(openInstanceId)
+    expect(store.getState().session?.currentInstance?.mutationsApplied).toEqual([completeMutation])
+
+    await store.dispatch({ type: 'advance-phase' })
+
+    const closed = store.getState().session?.history.at(-1)
+    expect(closed?.id).toBe(openInstanceId)
+    expect(closed?.mutationsApplied).toEqual([completeMutation, exitMutation])
+  })
+
+  test('an invocationFailed outcome is recorded in hookFailures, leaving mutationsApplied unchanged', async () => {
+    const throwingExit: Hook = () => {
+      throw new Error('onExit blew up')
+    }
+    const registry: HookRegistry = { resolve: name => (name === 'exit' ? throwingExit : undefined) }
+    const graph = buildIsolationGraph({ onExit: hookRef('exit') })
+    const store = new EngineStore(graph, { hookRegistry: registry, port: createNoopPort() })
+    await store.dispatch({ type: 'start' })
+
+    await store.dispatch({ type: 'advance-phase' })
+
+    const closed = store.getState().session?.history.at(-1)
+    expect(closed?.mutationsApplied).toEqual([])
+    expect(closed?.hookFailures).toEqual([{ event: 'onExit', kind: 'invocationFailed', cause: expect.any(Error) }])
+  })
+
+  test('a partial mutation-apply failure records the successful prefix in mutationsApplied and the failure in hookFailures', async () => {
+    const succeeding = appendMutation('this one writes')
+    const failing = frontmatterMutation('sessions')
+    const exitHook: Hook = async () => [succeeding, failing]
+    const registry: HookRegistry = { resolve: name => (name === 'exit' ? exitHook : undefined) }
+    const graph = buildIsolationGraph({ onExit: hookRef('exit') })
+    const failingPort: FileMutationPort = {
+      ...createNoopPort(),
+      writeFrontmatter: async () => {
+        throw new Error('frontmatter write failed')
+      },
+    }
+    const store = new EngineStore(graph, { hookRegistry: registry, port: failingPort })
+    await store.dispatch({ type: 'start' })
+
+    await store.dispatch({ type: 'advance-phase' })
+
+    const closed = store.getState().session?.history.at(-1)
+    expect(closed?.mutationsApplied).toEqual([succeeding])
+    expect(closed?.hookFailures).toEqual([{ event: 'onExit', kind: 'mutationFailed', mutation: failing, cause: expect.any(Error) }])
+  })
+
+  test('a stop mid-phase\'s onExit outcome does not throw, and there is no PhaseInstance left to fold it onto', async () => {
+    const exitHook: Hook = async () => [appendMutation('exiting via stop')]
+    const registry: HookRegistry = { resolve: name => (name === 'exit' ? exitHook : undefined) }
+    const graph = buildIsolationGraph({ onExit: hookRef('exit') })
+    const store = new EngineStore(graph, { hookRegistry: registry, port: createNoopPort() })
+    await store.dispatch({ type: 'start' })
+
+    const applications = await store.dispatch({ type: 'stop' })
+
+    expect(applications.map(a => a.event)).toEqual(['onExit'])
+    expect(applications[0]?.outcome.stage).toBe('applied')
+    expect(store.getState().session).toBeNull()
+  })
+})
+
+describe('EngineStore action execution', () => {
+  test('returns null when activeFilePath is null or port is undefined', async () => {
+    const action = QueueItemActionSchema.parse({
+      id: 'mark-done',
+      label: 'Done',
+      payload: { kind: 'markDone' },
+    })
+    const storeWithoutPort = new EngineStore(buildGraph('a'))
+    expect(await storeWithoutPort.executeAction(action)).toBeNull()
+
+    const port = createNoopPort()
+    const storeWithPort = new EngineStore(buildGraph('a'), { port })
+    expect(await storeWithPort.executeAction(action)).toBeNull()
+  })
+
+  test('derives mutations and applies them via FileMutationPort when activeFilePath is set', async () => {
+    const action = QueueItemActionSchema.parse({
+      id: 'custom-priority',
+      label: 'Priority 1',
+      style: 'primary',
+      payload: { kind: 'setFrontmatter', property: 'priority', value: 1 },
+    })
+    let mutationsApplied: readonly FileMutation[] = []
+    const port: FileMutationPort = {
+      ...createNoopPort(),
+      writeFrontmatter: async (mutation) => {
+        mutationsApplied = [...mutationsApplied, mutation]
+      },
+    }
+    const store = new EngineStore(buildGraph('a'), { port })
+    await store.dispatch({ type: 'start', filePath: 'tasks/item-1.md' })
+
+    const result = await store.executeAction(action)
+
+    expect(result).toEqual({ success: true })
+    expect(mutationsApplied).toEqual([
+      { kind: 'frontmatter', filePath: 'tasks/item-1.md', property: 'priority', value: 1 },
+    ])
+  })
+
+  test('executes action against specified targetPath when supplied', async () => {
+    const action = QueueItemActionSchema.parse({
+      id: 'mark-done',
+      label: 'Done',
+      payload: { kind: 'markDone' },
+    })
+    let mutationsApplied: readonly FileMutation[] = []
+    const port: FileMutationPort = {
+      ...createNoopPort(),
+      changeQueueItemStatus: async (mutation) => {
+        mutationsApplied = [...mutationsApplied, mutation]
+      },
+    }
+    const store = new EngineStore(buildGraph('a'), { port })
+
+    const result = await store.executeAction(action, 'tasks/item-2.md')
+
+    expect(result).toEqual({ success: true })
+    expect(mutationsApplied).toEqual([
+      { kind: 'queueStatusChange', itemId: TaskQueueItemIdSchema.parse('tasks/item-2.md'), status: 'done' },
+    ])
+  })
+
+  test('executeAction and reorderQueueItem serialize through pendingDispatch behind in-flight dispatches', async () => {
+    let events: readonly string[] = []
+    let notifyStarted!: () => void
+    const hookStarted = new Promise<void>((resolve) => {
+      notifyStarted = resolve
+    })
+    let releaseDispatch!: () => void
+    const dispatchGate = new Promise<void>((resolve) => {
+      releaseDispatch = resolve
+    })
+
+    const port: FileMutationPort = {
+      ...createNoopPort(),
+      writeFrontmatter: async (mutation) => {
+        events = [...events, `execute:${mutation.filePath}`]
+      },
+      reorderQueueItem: async (mutation) => {
+        events = [...events, `reorder:${mutation.itemId}`]
+      },
+    }
+    const graph = buildIsolationGraph({ onEnter: hookRef('async-gate') })
+    const store = new EngineStore(graph, {
+      port,
+      hookRegistry: {
+        resolve: id => id === 'async-gate'
+          ? async () => {
+            events = [...events, 'dispatch-start']
+            notifyStarted()
+            await dispatchGate
+            events = [...events, 'dispatch-end']
+            return []
+          }
+          : undefined,
+      },
+    })
+
+    const action = QueueItemActionSchema.parse({
+      id: 'priority-1',
+      label: 'Priority 1',
+      payload: { kind: 'setFrontmatter', property: 'priority', value: 1 },
+    })
+
+    await store.dispatch({ type: 'start', filePath: 'tasks/from-dispatch.md' })
+
+    // Start an async dispatch, then immediately queue executeAction and reorderQueueItem.
+    const dispatchPromise = store.dispatch({ type: 'advance-phase' })
+    const executePromise = store.executeAction(action)
+    const reorderPromise = store.reorderQueueItem(TaskQueueItemIdSchema.parse('tasks/from-dispatch.md'), 'front')
+
+    // Neither executeAction nor reorderQueueItem should run before the in-flight dispatch finishes.
+    await hookStarted
+    expect(events).toEqual(['dispatch-start'])
+
+    releaseDispatch()
+    const [execResult, reorderResult] = await Promise.all([executePromise, reorderPromise, dispatchPromise])
+
+    expect(execResult).toEqual({ success: true })
+    expect(reorderResult).toEqual({ success: true })
+    expect(events).toEqual([
+      'dispatch-start',
+      'dispatch-end',
+      'execute:tasks/from-dispatch.md',
+      'reorder:tasks/from-dispatch.md',
+    ])
+  })
+})
+
+describe('EngineStore notifications', () => {
+  test('dispatches in-app Notice on phase transition', async () => {
+    let inAppMessages: readonly string[] = []
+    let systemNotifications: readonly { title: string, body: string }[] = []
+    const notificationPort = {
+      notifyInApp: (msg: string) => {
+        inAppMessages = [...inAppMessages, msg]
+      },
+      notifySystem: (title: string, body: string) => {
+        systemNotifications = [...systemNotifications, { title, body }]
+      },
+    }
+    const store = new EngineStore(buildGraph('a'), { notificationPort })
+    await store.dispatch({ type: 'start' })
+
+    expect(inAppMessages).toEqual([])
+    expect(systemNotifications).toEqual([])
+
+    await store.dispatch({ type: 'advance-phase' })
+
+    expect(inAppMessages).toEqual(['Routine Flow: Break phase started'])
+  })
+
+  test('dispatches system notification when phase systemNotification policy is enabled on transition', async () => {
+    let systemNotifications: readonly { title: string, body: string }[] = []
+    const notificationPort = {
+      notifyInApp: () => {},
+      notifySystem: (title: string, body: string) => {
+        systemNotifications = [...systemNotifications, { title, body }]
+      },
+    }
+    const graphWithNotification = PhaseGraphSchema.parse({
+      id: 'notif-graph',
+      name: 'Notification Graph',
+      phases: [
+        PhaseSchema.parse({
+          ...phaseDefaults,
+          id: 'focus',
+          label: 'Focus',
+          kind: 'focus',
+          duration: Temporal.Duration.from({ seconds: 10 }),
+          notification: { sound: null, systemNotification: false },
+          logTarget: { kind: 'activeItem' },
+        }),
+        PhaseSchema.parse({
+          ...phaseDefaults,
+          id: 'break',
+          label: 'Break',
+          kind: 'break',
+          duration: Temporal.Duration.from({ seconds: 5 }),
+          logTarget: { kind: 'activeItem' },
+          notification: { sound: null, systemNotification: true },
+        }),
+      ],
+      transitions: [
+        { fromPhaseId: 'focus', toPhaseId: 'break', condition: { kind: 'always' } },
+      ],
+    })
+    const store = new EngineStore(graphWithNotification, { notificationPort })
+    await store.dispatch({ type: 'start' })
+
+    expect(systemNotifications).toEqual([])
+
+    await store.dispatch({ type: 'advance-phase' })
+
+    // Break phase has systemNotification: true, so system notification is emitted when entering Break
+    expect(systemNotifications).toEqual([{ title: 'Routine Flow', body: 'Break phase started' }])
+  })
+
+  test('emits in-app Notice toast on early exit due to queue exhaustion via syncQueueExhausted', async () => {
+    let inAppMessages: readonly string[] = []
+    const notificationPort = {
+      notifyInApp: (msg: string) => {
+        inAppMessages = [...inAppMessages, msg]
+      },
+      notifySystem: () => {},
+    }
+    const { registry, setItems } = createFakeTaskSourceRegistry([buildQueueItem('task-1')])
+    const blitzGraph = PhaseGraphSchema.parse({
+      id: 'blitz-timed-notification',
+      name: 'Blitz timed notification graph',
+      phases: [
+        PhaseSchema.parse({
+          ...phaseDefaults,
+          id: 'blitz',
+          label: 'Blitz',
+          kind: 'focus',
+          duration: Temporal.Duration.from({ minutes: 15 }),
+          taskSourceId: exercisesTaskSourceId,
+          logTarget: { kind: 'activeItem' },
+        }),
+        PhaseSchema.parse({
+          ...phaseDefaults,
+          id: 'wrapup',
+          label: 'Wrap up',
+          kind: 'break',
+          duration: Temporal.Duration.from({ minutes: 5 }),
+          logTarget: { kind: 'activeItem' },
+        }),
+      ],
+      transitions: [
+        { fromPhaseId: 'blitz', toPhaseId: 'wrapup', condition: { kind: 'queueExhausted' } },
+        { fromPhaseId: 'blitz', toPhaseId: 'wrapup', condition: { kind: 'always' } },
+      ],
+    })
+
+    const store = new EngineStore(blitzGraph, { taskSourceRegistry: registry, notificationPort })
+    await store.dispatch({ type: 'start' })
+    expect(inAppMessages).toEqual([])
+
+    setItems([])
+    await store.syncQueueExhausted()
+
+    expect(inAppMessages).toEqual([
+      'Routine Flow: Blitz completed early — all tasks finished',
+      'Routine Flow: Wrap up phase started',
+    ])
+  })
+
+  test('emits in-app Notice toast on early exit triggered during runDispatch when queue becomes empty', async () => {
+    let inAppMessages: readonly string[] = []
+    const notificationPort = {
+      notifyInApp: (msg: string) => {
+        inAppMessages = [...inAppMessages, msg]
+      },
+      notifySystem: () => {},
+    }
+    const { registry, setItems } = createFakeTaskSourceRegistry([buildQueueItem('task-1')])
+    const blitzGraph = PhaseGraphSchema.parse({
+      id: 'blitz-timed-notification-tick',
+      name: 'Blitz timed notification graph',
+      phases: [
+        PhaseSchema.parse({
+          ...phaseDefaults,
+          id: 'blitz',
+          label: 'Blitz',
+          kind: 'focus',
+          duration: Temporal.Duration.from({ minutes: 15 }),
+          taskSourceId: exercisesTaskSourceId,
+          logTarget: { kind: 'activeItem' },
+        }),
+        PhaseSchema.parse({
+          ...phaseDefaults,
+          id: 'wrapup',
+          label: 'Wrap up',
+          kind: 'break',
+          duration: Temporal.Duration.from({ minutes: 5 }),
+          logTarget: { kind: 'activeItem' },
+        }),
+      ],
+      transitions: [
+        { fromPhaseId: 'blitz', toPhaseId: 'wrapup', condition: { kind: 'queueExhausted' } },
+        { fromPhaseId: 'blitz', toPhaseId: 'wrapup', condition: { kind: 'always' } },
+      ],
+    })
+
+    const store = new EngineStore(blitzGraph, { taskSourceRegistry: registry, notificationPort })
+    await store.dispatch({ type: 'start' })
+    setItems([])
+    await store.dispatch({ type: 'tick' })
+
+    expect(inAppMessages).toContain('Routine Flow: Blitz completed early — all tasks finished')
+  })
+
+  test('focus sandwich routine lifecycle records activeItem write-back mutations in session history', async () => {
+    const writeBackMutation: FileMutation = {
+      kind: 'frontmatter',
+      filePath: 'focus-sandwich/task.md',
+      property: 'sessions',
+      value: 1,
+    }
+    const writeBackHook: Hook = async () => [writeBackMutation]
+    const registry: HookRegistry = {
+      resolve: name => (name === 'write-back' ? writeBackHook : undefined),
+    }
+
+    let appliedMutations: readonly FileMutation[] = []
+    const port: FileMutationPort = {
+      ...createNoopPort(),
+      writeFrontmatter: async (mutation) => {
+        appliedMutations = [...appliedMutations, mutation]
+      },
+    }
+
+    const focusSandwichGraph: PhaseGraph = PhaseGraphSchema.parse({
+      id: 'focus-sandwich',
+      name: 'Focus sandwich',
+      phases: [
+        PhaseSchema.parse({
+          ...phaseDefaults,
+          id: 'warmup',
+          label: 'Intention warm-up',
+          kind: 'warmup',
+          duration: null,
+          completionPolicy: { kind: 'manualClear' },
+        }),
+        PhaseSchema.parse({
+          ...phaseDefaults,
+          id: 'focus',
+          label: 'Deep focus',
+          kind: 'focus',
+          duration: Temporal.Duration.from({ minutes: 25 }),
+        }),
+        PhaseSchema.parse({
+          ...phaseDefaults,
+          id: 'cooldown',
+          label: 'Cooldown reflection',
+          kind: 'cooldown',
+          duration: null,
+          completionPolicy: { kind: 'manualClear' },
+          logTarget: { kind: 'activeItem' },
+          handlers: {
+            onEnter: [],
+            onComplete: [
+              {
+                kind: 'script',
+                scriptPath: 'write-back',
+              },
+            ],
+            onSkip: [],
+            onExit: [],
+          },
+        }),
+      ],
+      transitions: [
+        { fromPhaseId: 'warmup', toPhaseId: 'focus', condition: { kind: 'always' } },
+        { fromPhaseId: 'focus', toPhaseId: 'cooldown', condition: { kind: 'always' } },
+      ],
+    })
+
+    const store = new EngineStore(focusSandwichGraph, { hookRegistry: registry, port })
+    await store.dispatch({ type: 'set-active-file', filePath: 'focus-sandwich/task.md' })
+
+    // Start in warmup phase
+    await store.dispatch({ type: 'start' })
+    expect(store.getState().currentPhaseId).toBe(PhaseIdSchema.parse('warmup'))
+    expect(store.getState().status).toBe('running')
+
+    // Finish warmup phase (Done) -> status completed
+    await store.dispatch({ type: 'finish-phase' })
+    expect(store.getState().status).toBe('completed')
+
+    // Advance warmup phase (Clear) -> advances to focus
+    await store.dispatch({ type: 'advance-phase' })
+    expect(store.getState().currentPhaseId).toBe(PhaseIdSchema.parse('focus'))
+    expect(store.getState().status).toBe('stopped')
+
+    // Start focus phase
+    await store.dispatch({ type: 'start' })
+    expect(store.getState().status).toBe('running')
+
+    // Finish focus phase -> advances to cooldown
+    await store.dispatch({ type: 'finish-phase' })
+    expect(store.getState().currentPhaseId).toBe(PhaseIdSchema.parse('cooldown'))
+    expect(store.getState().status).toBe('stopped')
+
+    // Start cooldown phase
+    await store.dispatch({ type: 'start' })
+    expect(store.getState().status).toBe('running')
+
+    // Cooldown completes (Done) -> executes onComplete write-back hook
+    await store.dispatch({ type: 'finish-phase' })
+    expect(store.getState().status).toBe('completed')
+    expect(appliedMutations).toEqual([writeBackMutation])
+
+    // Advance cooldown phase (Clear) -> closes cooldown and ends session
+    await store.dispatch({ type: 'advance-phase' })
+    expect(store.getState().status).toBe('ended')
+
+    // Verify session history has recorded mutations on the closed cooldown phase instance
+    const sessionHistory = store.getState().session?.history
+    expect(sessionHistory).toBeDefined()
+    expect(sessionHistory).toHaveLength(3)
+
+    const cooldownHistoryEntry = sessionHistory?.find(p => p.phaseId === PhaseIdSchema.parse('cooldown'))
+    expect(cooldownHistoryEntry).toBeDefined()
+    expect(cooldownHistoryEntry?.mutationsApplied).toEqual([writeBackMutation])
+    expect(cooldownHistoryEntry?.endReason).toBe('completed')
+  })
+
+  test('reorderQueueItem applies queueReorder mutation through FileMutationPort', async () => {
+    let reorderedMutation: unknown = null
+    const port: FileMutationPort = {
+      writeFrontmatter: async () => {},
+      appendText: async () => {},
+      reorderQueueItem: async (mutation) => {
+        reorderedMutation = mutation
+      },
+      changeQueueItemStatus: async () => {},
+    }
+
+    const store = new EngineStore(DEFAULT_PHASE_GRAPH, { port })
+    const itemId = TaskQueueItemIdSchema.parse('tasks/task-1.md')
+    const result = await store.reorderQueueItem(itemId, 'front')
+
+    expect(result).toEqual({ success: true })
+    expect(reorderedMutation).toEqual({
+      kind: 'queueReorder',
+      itemId,
+      position: 'front',
+    })
+  })
+
+  test('reorderQueueItem returns null when no mutation port is configured', async () => {
+    const store = new EngineStore(DEFAULT_PHASE_GRAPH)
+    const itemId = TaskQueueItemIdSchema.parse('tasks/task-1.md')
+    const result = await store.reorderQueueItem(itemId, 'front')
+    expect(result).toBeNull()
+  })
+
+  test('handleSelectorWinner dispatches set-active-file, updates frontmatter priority, and auto-advances', async () => {
+    const selectorPhase = PhaseSchema.parse({
+      ...phaseDefaults,
+      id: 'select',
+      name: 'Task selector',
+      label: 'Task selector',
+      kind: SELECTOR_PHASE_KIND,
+      duration: null,
+      onCompletion: 'autoAdvance',
+      selector: { autoSpin: false, promoteToFront: true },
+    })
+    const focusPhase = PhaseSchema.parse({
+      ...phaseDefaults,
+      id: 'focus',
+      name: 'Focus',
+      label: 'Focus',
+      kind: FOCUS_PHASE_KIND,
+      duration: Temporal.Duration.from({ minutes: 25 }),
+      onCompletion: 'autoAdvance',
+    })
+
+    const selectorGraph: PhaseGraph = PhaseGraphSchema.parse({
+      id: 'selector-graph',
+      name: 'Selector routine',
+      phases: [selectorPhase, focusPhase],
+      transitions: [{ fromPhaseId: selectorPhase.id, toPhaseId: focusPhase.id, condition: { kind: 'always' } }],
+    })
+
+    let reorderedMutation: unknown = null
+    const port: FileMutationPort = {
+      writeFrontmatter: async () => {},
+      appendText: async () => {},
+      reorderQueueItem: async (mutation) => {
+        reorderedMutation = mutation
+      },
+      changeQueueItemStatus: async () => {},
+    }
+
+    const store = new EngineStore(selectorGraph, { port })
+    expect(store.getState().currentPhaseId).toBe(selectorPhase.id)
+    expect(store.getState().activeFilePath).toBeNull()
+
+    const winnerPath = 'tasks/winning-task.md'
+    const result = await handleSelectorWinner(store, selectorPhase, winnerPath)
+
+    expect(result).toEqual({ success: true })
+    expect(store.getState().activeFilePath).toBe(winnerPath)
+    expect(reorderedMutation).toEqual({
+      kind: 'queueReorder',
+      itemId: TaskQueueItemIdSchema.parse(winnerPath),
+      position: 'front',
+    })
+    expect(store.getState().currentPhaseId).toBe(focusPhase.id)
+  })
+})
