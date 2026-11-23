@@ -1,0 +1,730 @@
+import * as fs from 'node:fs/promises'
+import * as os from 'node:os'
+import * as path from 'node:path'
+import { describe, expect, test } from 'bun:test'
+import { parseRoutineFile } from '../../src/domain/routine/routine-file'
+import {
+  ANCHOR_DATE,
+  DEFAULT_VAULT_SEED,
+  GENERATED_VAULT_FOLDERS,
+  generateLeitnerBoxNotes,
+  generateRandomSelectorNotes,
+  generateChoreBlitzNotes,
+  generateReviewCadencesNotes,
+  generateStarJarEconomyNotes,
+  generateVault,
+  rebuildGeneratedVault,
+  resolveVaultSeed,
+} from '../../e2e/vault/generator'
+import { serializeFrontmatter } from '../../e2e/vault/serializer'
+import { NoteDefinitionSchema } from '../../e2e/vault/schema'
+
+const isString = (m: unknown): m is string => typeof m === 'string'
+
+function getNotePath(note: ReturnType<typeof generateVault>[number]): string {
+  return path.posix.join(note.relativePath.dir, note.relativePath.base)
+}
+
+function getNoteContent(note: ReturnType<typeof generateVault>[number]): string {
+  const frontmatterStr = serializeFrontmatter(note.frontmatter)
+  return note.body !== undefined ? `${frontmatterStr}\n${note.body}` : frontmatterStr
+}
+
+describe('example vault validation', () => {
+  test('Leitner cards cover every box and relation to the anchor date', () => {
+    const cards = generateLeitnerBoxNotes(DEFAULT_VAULT_SEED)
+      .filter(note => note.relativePath.dir === 'leitner-box' && note.relativePath.base !== 'README.md' && !note.relativePath.base.endsWith('-routine.md'))
+    const boxes = cards.map(card => card.frontmatter.box)
+    const dueDates = cards.map(card => card.frontmatter['routine-due'])
+
+    expect(boxes).toEqual(expect.arrayContaining([1, 2, 3, 4, 5]))
+    expect(dueDates.some(dueDate => dueDate instanceof Temporal.PlainDate && Temporal.PlainDate.compare(dueDate, ANCHOR_DATE) < 0)).toBe(true)
+    expect(dueDates.some(dueDate => dueDate instanceof Temporal.PlainDate && Temporal.PlainDate.compare(dueDate, ANCHOR_DATE) === 0)).toBe(true)
+    expect(dueDates.some(dueDate => dueDate instanceof Temporal.PlainDate && Temporal.PlainDate.compare(dueDate, ANCHOR_DATE) > 0)).toBe(true)
+  })
+
+  test('Leitner generation is deterministic across seeds and serializes card frontmatter', () => {
+    const seeds = [101, 202, 303, 404] as const
+    const decks = seeds.map(generateLeitnerBoxNotes)
+
+    for (const [index, seed] of seeds.entries()) {
+      expect(decks[index]).toEqual(generateLeitnerBoxNotes(seed))
+    }
+    expect(new Set(decks.map(deck => deck.map(getNoteContent).join('\n'))).size).toBeGreaterThan(1)
+
+    for (const note of decks[0] ?? []) {
+      expect(NoteDefinitionSchema.safeParse(note).success).toBe(true)
+      expect(() => serializeFrontmatter(note.frontmatter)).not.toThrow()
+      expect(getNoteContent(note)).not.toContain('undefined')
+    }
+
+    const expectedCards = [
+      { filename: '01-binary-search-complexity.md', box: 1, status: 'pending', dueDate: '2025-12-31' },
+      { filename: '02-difference-between-tcp-and-udp.md', box: 2, status: 'pending', dueDate: '2026-01-01' },
+      { filename: '03-react-useeffect-cleanup.md', box: 3, status: 'deferred', dueDate: '2026-01-02' },
+      { filename: '04-photosynthesis-equation.md', box: 4, status: 'deferred', dueDate: '2026-01-04' },
+      { filename: '05-spanish-word-for-bridge.md', box: 5, status: 'deferred', dueDate: '2026-01-08' },
+    ] as const
+    for (const expected of expectedCards) {
+      const card = (decks[0] ?? []).find(note => note.relativePath.base === expected.filename)
+      expect(card).toBeDefined()
+      if (card !== undefined) {
+        const serialized = serializeFrontmatter(card.frontmatter)
+        expect(serialized).toContain(`box: ${expected.box}`)
+        expect(serialized).toContain(`routine-status: "${expected.status}"`)
+        expect(serialized).toContain(`routine-due: ${expected.dueDate}`)
+      }
+    }
+  })
+
+  test('random selector generation is deterministic across seeds and matches Bases query schema', () => {
+    const seeds = [101, 202, 303, 404] as const
+    const routines = seeds.map(generateRandomSelectorNotes)
+
+    for (const [index, seed] of seeds.entries()) {
+      expect(routines[index]).toEqual(generateRandomSelectorNotes(seed))
+    }
+    expect(new Set(routines.map(deck => deck.map(getNoteContent).join('\n'))).size).toBeGreaterThan(1)
+
+    for (const note of routines[0] ?? []) {
+      expect(NoteDefinitionSchema.safeParse(note).success).toBe(true)
+      expect(() => serializeFrontmatter(note.frontmatter)).not.toThrow()
+      expect(getNoteContent(note)).not.toContain('undefined')
+    }
+
+    const defaultNotes = generateRandomSelectorNotes(DEFAULT_VAULT_SEED)
+    const readmeNote = defaultNotes.find(note => note.relativePath.base === 'README.md')
+    expect(readmeNote).toBeDefined()
+
+    const routineNote = defaultNotes.find(note => note.relativePath.base === 'random-selector-routine.md')
+    expect(routineNote).toBeDefined()
+    if (routineNote !== undefined) {
+      const parseResult = parseRoutineFile(getNoteContent(routineNote))
+      expect(parseResult.success).toBe(true)
+      if (parseResult.success) {
+        expect(String(parseResult.graph.id)).toBe('random-selector')
+        expect(parseResult.graph.phases).toHaveLength(3)
+        const selectorPhase = parseResult.graph.phases.find(phase => phase.id === 'selector')
+        expect(selectorPhase).toBeDefined()
+        expect(String(selectorPhase?.kind)).toBe('selector')
+        expect(selectorPhase?.selector).toEqual({ autoSpin: false, promoteToFront: true })
+        expect(selectorPhase?.queryFilter).toEqual({
+          property: 'note.type',
+          value: 'random-selector-task',
+        })
+      }
+    }
+
+    const taskNotes = defaultNotes.filter(
+      note => note.relativePath.dir === 'random-selector' && note.relativePath.base !== 'README.md' && !note.relativePath.base.endsWith('-routine.md'),
+    )
+    expect(taskNotes.length).toBeGreaterThan(0)
+    for (const task of taskNotes) {
+      expect(task.frontmatter.type).toBe('random-selector-task')
+      expect(typeof task.frontmatter['routine-priority']).toBe('number')
+      expect(task.frontmatter.due).toBeInstanceOf(Temporal.PlainDate)
+      if (task.frontmatter.due instanceof Temporal.PlainDate) {
+        expect(Temporal.PlainDate.compare(task.frontmatter.due, ANCHOR_DATE)).toBeGreaterThanOrEqual(0)
+      }
+    }
+  })
+
+  test('chore blitz generation is deterministic across seeds and matches Bases query schema', () => {
+    const seeds = [101, 202, 303, 404] as const
+    const routines = seeds.map(generateChoreBlitzNotes)
+
+    for (const [index, seed] of seeds.entries()) {
+      expect(routines[index]).toEqual(generateChoreBlitzNotes(seed))
+    }
+    expect(new Set(routines.map(deck => deck.map(getNoteContent).join('\n'))).size).toBeGreaterThan(1)
+
+    for (const note of routines[0] ?? []) {
+      expect(NoteDefinitionSchema.safeParse(note).success).toBe(true)
+      expect(() => serializeFrontmatter(note.frontmatter)).not.toThrow()
+      expect(getNoteContent(note)).not.toContain('undefined')
+    }
+
+    const defaultNotes = generateChoreBlitzNotes(DEFAULT_VAULT_SEED)
+    const readmeNote = defaultNotes.find(note => note.relativePath.base === 'README.md')
+    expect(readmeNote).toBeDefined()
+
+    const routineNote = defaultNotes.find(note => note.relativePath.base === 'chore-blitz-routine.md')
+    expect(routineNote).toBeDefined()
+    if (routineNote !== undefined) {
+      const parseResult = parseRoutineFile(getNoteContent(routineNote))
+      expect(parseResult.success).toBe(true)
+      if (parseResult.success) {
+        expect(String(parseResult.graph.id)).toBe('chore-blitz')
+        expect(parseResult.graph.phases).toHaveLength(3)
+        const blitzPhase = parseResult.graph.phases.find(phase => phase.id === 'blitz')
+        expect(blitzPhase).toBeDefined()
+        expect(blitzPhase?.logTarget).toEqual({ kind: 'completedItems' })
+        expect(blitzPhase?.actions).toHaveLength(1)
+        expect(blitzPhase?.actions[0]?.payload.kind).toBe('markDone')
+
+        const exhaustedTransition = parseResult.graph.transitions.find(
+          t => t.from === 'blitz' && t.to === 'wrap-up' && t.guard.kind === 'queueExhausted',
+        )
+        expect(exhaustedTransition).toBeDefined()
+      }
+    }
+
+    const choreNotes = defaultNotes.filter(
+      note => note.relativePath.dir === 'chore-blitz' && note.relativePath.base !== 'README.md' && !note.relativePath.base.endsWith('-routine.md'),
+    )
+    expect(choreNotes.length).toBeGreaterThan(0)
+    for (const chore of choreNotes) {
+      expect(chore.frontmatter.type).toBe('chore')
+      expect(typeof chore.frontmatter.priority).toBe('number')
+      expect(chore.frontmatter.due).toBeInstanceOf(Temporal.PlainDate)
+      if (chore.frontmatter.due instanceof Temporal.PlainDate) {
+        expect(Temporal.PlainDate.compare(chore.frontmatter.due, ANCHOR_DATE)).toBeGreaterThanOrEqual(0)
+      }
+    }
+  })
+
+  test('review cadences generation is deterministic across seeds and covers cadence routine graphs', () => {
+    const seeds = [101, 202, 303, 404] as const
+    const decks = seeds.map(generateReviewCadencesNotes)
+
+    for (const [index, seed] of seeds.entries()) {
+      expect(decks[index]).toEqual(generateReviewCadencesNotes(seed))
+    }
+    expect(new Set(decks.map(deck => deck.map(getNoteContent).join('\n'))).size).toBeGreaterThan(1)
+
+    for (const note of decks[0] ?? []) {
+      expect(NoteDefinitionSchema.safeParse(note).success).toBe(true)
+      expect(() => serializeFrontmatter(note.frontmatter)).not.toThrow()
+      expect(getNoteContent(note)).not.toContain('undefined')
+    }
+
+    const defaultNotes = generateReviewCadencesNotes(DEFAULT_VAULT_SEED)
+    const readmeNote = defaultNotes.find(note => note.relativePath.base === 'README.md')
+    expect(readmeNote).toBeDefined()
+
+    const expectedRoutines = [
+      'daily-kickoff-routine.md',
+      'workday-shutdown-routine.md',
+      'weekly-gtd-routine.md',
+    ] as const
+
+    for (const routineFilename of expectedRoutines) {
+      const routineNote = defaultNotes.find(note => note.relativePath.base === routineFilename)
+      expect(routineNote).toBeDefined()
+      if (routineNote !== undefined) {
+        const parseResult = parseRoutineFile(getNoteContent(routineNote))
+        expect(parseResult.success).toBe(true)
+        if (parseResult.success) {
+          expect(parseResult.graph.phases.length).toBeGreaterThan(2)
+          expect(parseResult.graph.transitions.some(t => t.guard.kind === 'queueExhausted')).toBe(true)
+          expect(parseResult.graph.phases.some(p => p.guidance !== undefined && p.guidance.length > 0)).toBe(true)
+        }
+      }
+    }
+
+    const taskNotes = defaultNotes.filter(
+      note => note.relativePath.dir === 'review-cadences' && note.relativePath.base !== 'README.md' && !note.relativePath.base.endsWith('-routine.md'),
+    )
+    expect(taskNotes.length).toBe(9)
+    for (const task of taskNotes) {
+      expect(task.frontmatter.type).toBe('review-task')
+      expect(isString(task.frontmatter.status)).toBe(true)
+      if (isString(task.frontmatter.status)) {
+        expect(['inbox', 'active', 'waiting']).toContain(task.frontmatter.status)
+      }
+      expect(task.frontmatter.due).toBeInstanceOf(Temporal.PlainDate)
+    }
+  })
+
+  test('star jar economy generation is deterministic across seeds and covers routine, tracker, and sized tasks', () => {
+    const seeds = [101, 202, 303, 404] as const
+    const decks = seeds.map(generateStarJarEconomyNotes)
+
+    for (const [index, seed] of seeds.entries()) {
+      expect(decks[index]).toEqual(generateStarJarEconomyNotes(seed))
+    }
+    expect(new Set(decks.map(deck => deck.map(getNoteContent).join('\n'))).size).toBeGreaterThan(1)
+
+    for (const note of decks[0] ?? []) {
+      expect(NoteDefinitionSchema.safeParse(note).success).toBe(true)
+      expect(() => serializeFrontmatter(note.frontmatter)).not.toThrow()
+      expect(getNoteContent(note)).not.toContain('undefined')
+    }
+
+    const defaultNotes = generateStarJarEconomyNotes(DEFAULT_VAULT_SEED)
+    const readmeNote = defaultNotes.find(note => note.relativePath.base === 'README.md')
+    expect(readmeNote).toBeDefined()
+
+    const trackerNote = defaultNotes.find(note => note.relativePath.base === 'Star-Jar-Tracker.md')
+    expect(trackerNote).toBeDefined()
+    expect(trackerNote?.frontmatter).toEqual({ stars: 0, target: 15 })
+
+    const routineNote = defaultNotes.find(note => note.relativePath.base === 'star-jar-routine.md')
+    expect(routineNote).toBeDefined()
+    if (routineNote !== undefined) {
+      const parseResult = parseRoutineFile(getNoteContent(routineNote))
+      expect(parseResult.success).toBe(true)
+      if (parseResult.success) {
+        expect(String(parseResult.graph.id)).toBe('star-jar')
+        expect(parseResult.graph.trackerFilePath).toBe('star-jar-economy/Star-Jar-Tracker.md')
+        expect(parseResult.graph.phases).toHaveLength(3)
+        const focusPhase = parseResult.graph.phases.find(p => p.id === 'focus')
+        expect(focusPhase?.handlers.onComplete).toEqual([{ kind: 'preset', preset: 'accumulateReward' }])
+        const prizePhase = parseResult.graph.phases.find(p => p.id === 'prize-break')
+        expect(prizePhase?.handlers.onExit).toEqual([{ kind: 'preset', preset: 'resetReward' }])
+        const fullTransition = parseResult.graph.transitions.find(
+          t => t.from === 'focus' && t.to === 'prize-break' && t.guard.kind === 'custom',
+        )
+        expect(fullTransition).toBeDefined()
+      }
+    }
+
+    const taskNotes = defaultNotes.filter(
+      note =>
+        note.relativePath.dir === 'star-jar-economy'
+        && note.relativePath.base !== 'README.md'
+        && note.relativePath.base !== 'Star-Jar-Tracker.md'
+        && !note.relativePath.base.endsWith('-routine.md'),
+    )
+    expect(taskNotes).toHaveLength(6)
+    for (const task of taskNotes) {
+      expect(typeof task.frontmatter.stars).toBe('number')
+      if (typeof task.frontmatter.stars === 'number') {
+        expect([1, 2, 3, 5]).toContain(task.frontmatter.stars)
+      }
+      expect(typeof task.frontmatter.category).toBe('string')
+      expect(task.frontmatter.status).toBe('pending')
+      expect(typeof task.frontmatter.priority).toBe('number')
+    }
+  })
+
+  test('resolveVaultSeed uses default seed or parses numeric env override', () => {
+    expect(resolveVaultSeed({})).toBe(DEFAULT_VAULT_SEED)
+    expect(resolveVaultSeed({ VAULT_SEED: '12345' })).toBe(12_345)
+    expect(() => resolveVaultSeed({ VAULT_SEED: 'invalid' })).toThrow(/VAULT_SEED must be a finite number/)
+  })
+
+  test('generateVault produces all expected routine folders and files', () => {
+    const notes = generateVault(DEFAULT_VAULT_SEED)
+    expect(notes.length).toBeGreaterThan(20)
+
+    for (const folder of GENERATED_VAULT_FOLDERS) {
+      const folderNotes = notes.filter(n => getNotePath(n).startsWith(`${folder}/`))
+      expect(folderNotes.length).toBeGreaterThan(0)
+
+      // Each folder must have a README.md and a routine file
+      const readme = folderNotes.find(n => getNotePath(n) === `${folder}/README.md`)
+      expect(readme).toBeDefined()
+
+      const routineNote = folderNotes.find(n => getNotePath(n).endsWith('-routine.md'))
+      expect(routineNote).toBeDefined()
+    }
+    expect(notes.some(note => getNotePath(note).startsWith('leitner-box/'))).toBe(true)
+  })
+
+  test('all generated routine files parse as valid PhaseGraphs via parseRoutineFile', () => {
+    const notes = generateVault(DEFAULT_VAULT_SEED)
+    const routineNotes = notes.filter(n => getNotePath(n).endsWith('-routine.md'))
+
+    expect(routineNotes.length).toBe(GENERATED_VAULT_FOLDERS.length + 3)
+
+    for (const note of routineNotes) {
+      expect(note.frontmatter['is-routine']).toBe(true)
+
+      const parseResult = parseRoutineFile(getNoteContent(note))
+      expect(parseResult.success).toBe(true)
+      if (parseResult.success) {
+        expect(parseResult.graph.phases.length).toBeGreaterThan(0)
+        expect(parseResult.graph.id.length).toBeGreaterThan(0)
+        expect(parseResult.graph.name.length).toBeGreaterThan(0)
+      }
+    }
+  })
+
+  test('every routineFile in Tasks.base maps to a valid generated routine', async () => {
+    const tasksBasePath = path.resolve(__dirname, '../../routine-flow-example-vault/Tasks.base')
+    const content = await fs.readFile(tasksBasePath, 'utf-8')
+    const routineFileMatches = [...content.matchAll(/routineFile:\s*([^\s\n]+)/g)]
+      .map(m => m[1])
+      .filter(isString)
+
+    expect(routineFileMatches.length).toBeGreaterThan(0)
+
+    const notes = generateVault(DEFAULT_VAULT_SEED)
+    const routinePaths = new Set(notes.map(getNotePath))
+
+    for (const routineFile of routineFileMatches) {
+      expect(routinePaths.has(routineFile)).toBe(true)
+      const targetNote = notes.find(n => getNotePath(n) === routineFile)
+      expect(targetNote).toBeDefined()
+      if (targetNote !== undefined) {
+        const parseResult = parseRoutineFile(getNoteContent(targetNote))
+        expect(parseResult.success).toBe(true)
+      }
+    }
+  })
+
+  test('every routineFile in Dashboard.base maps to a valid generated routine', async () => {
+    const dashboardBasePath = path.resolve(__dirname, '../../routine-flow-example-vault/Dashboard.base')
+    const content = await fs.readFile(dashboardBasePath, 'utf-8')
+    const routineFileMatches = [...content.matchAll(/routineFile:\s*([^\s\n]+)/g)]
+      .map(m => m[1])
+      .filter(isString)
+
+    expect(routineFileMatches.length).toBeGreaterThan(0)
+
+    const notes = generateVault(DEFAULT_VAULT_SEED)
+    const routinePaths = new Set(notes.map(getNotePath))
+
+    for (const routineFile of routineFileMatches) {
+      expect(routinePaths.has(routineFile)).toBe(true)
+      const targetNote = notes.find(n => getNotePath(n) === routineFile)
+      expect(targetNote).toBeDefined()
+      if (targetNote !== undefined) {
+        const parseResult = parseRoutineFile(getNoteContent(targetNote))
+        expect(parseResult.success).toBe(true)
+      }
+    }
+  })
+
+  test('Focus-Dashboard.md embeds existing views from Dashboard.base', async () => {
+    const dashboardMdPath = path.resolve(__dirname, '../../routine-flow-example-vault/Focus-Dashboard.md')
+    const dashboardBasePath = path.resolve(__dirname, '../../routine-flow-example-vault/Dashboard.base')
+
+    const mdContent = await fs.readFile(dashboardMdPath, 'utf-8')
+    const baseContent = await fs.readFile(dashboardBasePath, 'utf-8')
+
+    const viewNameMatches = [...baseContent.matchAll(/name:\s*([^\s\n][^\n]*)/g)]
+      .map(m => m[1])
+      .filter(isString)
+      .map(s => s.trim())
+
+    expect(viewNameMatches.length).toBeGreaterThan(0)
+
+    const embedMatches = [...mdContent.matchAll(/!\[\[Dashboard\.base#([^\]]+)\]\]/g)]
+      .map(m => m[1])
+      .filter(isString)
+      .map(s => s.trim())
+
+    expect(embedMatches.length).toBeGreaterThan(0)
+
+    for (const embedView of embedMatches) {
+      expect(viewNameMatches).toContain(embedView)
+    }
+  })
+
+  test('every routineFile in Daily-Routines.base maps to a valid generated routine', async () => {
+    const dailyRoutinesBasePath = path.resolve(__dirname, '../../routine-flow-example-vault/Daily-Routines.base')
+    const content = await fs.readFile(dailyRoutinesBasePath, 'utf-8')
+    const routineFileMatches = [...content.matchAll(/routineFile:\s*([^\s\n]+)/g)]
+      .map(m => m[1])
+      .filter(isString)
+
+    expect(routineFileMatches.length).toBeGreaterThan(0)
+
+    const notes = generateVault(DEFAULT_VAULT_SEED)
+    const routinePaths = new Set(notes.map(getNotePath))
+
+    for (const routineFile of routineFileMatches) {
+      expect(routinePaths.has(routineFile)).toBe(true)
+      const targetNote = notes.find(n => getNotePath(n) === routineFile)
+      expect(targetNote).toBeDefined()
+      if (targetNote !== undefined) {
+        const parseResult = parseRoutineFile(getNoteContent(targetNote))
+        expect(parseResult.success).toBe(true)
+      }
+    }
+  })
+
+  test('Daily-Template.md embeds existing views from Daily-Routines.base', async () => {
+    const dailyTemplateMdPath = path.resolve(__dirname, '../../routine-flow-example-vault/Daily-Template.md')
+    const dailyRoutinesBasePath = path.resolve(__dirname, '../../routine-flow-example-vault/Daily-Routines.base')
+
+    const mdContent = await fs.readFile(dailyTemplateMdPath, 'utf-8')
+    const baseContent = await fs.readFile(dailyRoutinesBasePath, 'utf-8')
+
+    const viewNameMatches = [...baseContent.matchAll(/name:\s*([^\s\n][^\n]*)/g)]
+      .map(m => m[1])
+      .filter(isString)
+      .map(s => s.trim())
+
+    expect(viewNameMatches.length).toBeGreaterThan(0)
+
+    const embedMatches = [...mdContent.matchAll(/!\[\[Daily-Routines\.base#([^\]]+)\]\]/g)]
+      .map(m => m[1])
+      .filter(isString)
+      .map(s => s.trim())
+
+    expect(embedMatches.length).toBeGreaterThan(0)
+
+    for (const embedView of embedMatches) {
+      expect(viewNameMatches).toContain(embedView)
+    }
+  })
+
+  test('every routineFile in Priority-Queue.base maps to a valid generated routine', async () => {
+    const priorityQueueBasePath = path.resolve(__dirname, '../../routine-flow-example-vault/Priority-Queue.base')
+    const content = await fs.readFile(priorityQueueBasePath, 'utf-8')
+    const routineFileMatches = [...content.matchAll(/routineFile:\s*([^\s\n]+)/g)]
+      .map(m => m[1])
+      .filter(isString)
+
+    expect(routineFileMatches.length).toBeGreaterThan(0)
+
+    const notes = generateVault(DEFAULT_VAULT_SEED)
+    const routinePaths = new Set(notes.map(getNotePath))
+
+    for (const routineFile of routineFileMatches) {
+      expect(routinePaths.has(routineFile)).toBe(true)
+      const targetNote = notes.find(n => getNotePath(n) === routineFile)
+      expect(targetNote).toBeDefined()
+      if (targetNote !== undefined) {
+        const parseResult = parseRoutineFile(getNoteContent(targetNote))
+        expect(parseResult.success).toBe(true)
+      }
+    }
+  })
+
+  test('Priority-Dispatch.md embeds existing views from Priority-Queue.base', async () => {
+    const priorityDispatchMdPath = path.resolve(__dirname, '../../routine-flow-example-vault/Priority-Dispatch.md')
+    const priorityQueueBasePath = path.resolve(__dirname, '../../routine-flow-example-vault/Priority-Queue.base')
+
+    const mdContent = await fs.readFile(priorityDispatchMdPath, 'utf-8')
+    const baseContent = await fs.readFile(priorityQueueBasePath, 'utf-8')
+
+    const viewNameMatches = [...baseContent.matchAll(/name:\s*([^\s\n][^\n]*)/g)]
+      .map(m => m[1])
+      .filter(isString)
+      .map(s => s.trim())
+
+    expect(viewNameMatches.length).toBeGreaterThan(0)
+
+    const embedMatches = [...mdContent.matchAll(/!\[\[Priority-Queue\.base#([^\]]+)\]\]/g)]
+      .map(m => m[1])
+      .filter(isString)
+      .map(s => s.trim())
+
+    expect(embedMatches.length).toBeGreaterThan(0)
+
+    for (const embedView of embedMatches) {
+      expect(viewNameMatches).toContain(embedView)
+    }
+  })
+
+  test('every routineFile in Audio-Notifications.base maps to a valid generated routine', async () => {
+    const audioNotificationsBasePath = path.resolve(__dirname, '../../routine-flow-example-vault/Audio-Notifications.base')
+    const content = await fs.readFile(audioNotificationsBasePath, 'utf-8')
+    const routineFileMatches = [...content.matchAll(/routineFile:\s*([^\s\n]+)/g)]
+      .map(m => m[1])
+      .filter(isString)
+
+    expect(routineFileMatches.length).toBeGreaterThan(0)
+
+    const notes = generateVault(DEFAULT_VAULT_SEED)
+    const routinePaths = new Set(notes.map(getNotePath))
+
+    for (const routineFile of routineFileMatches) {
+      expect(routinePaths.has(routineFile)).toBe(true)
+      const targetNote = notes.find(n => getNotePath(n) === routineFile)
+      expect(targetNote).toBeDefined()
+      if (targetNote !== undefined) {
+        const parseResult = parseRoutineFile(getNoteContent(targetNote))
+        expect(parseResult.success).toBe(true)
+      }
+    }
+  })
+
+  test('Audio-Notifications-Dashboard.md embeds existing views from Audio-Notifications.base', async () => {
+    const audioDashboardMdPath = path.resolve(__dirname, '../../routine-flow-example-vault/Audio-Notifications-Dashboard.md')
+    const audioNotificationsBasePath = path.resolve(__dirname, '../../routine-flow-example-vault/Audio-Notifications.base')
+
+    const mdContent = await fs.readFile(audioDashboardMdPath, 'utf-8')
+    const baseContent = await fs.readFile(audioNotificationsBasePath, 'utf-8')
+
+    const viewNameMatches = [...baseContent.matchAll(/name:\s*([^\s\n][^\n]*)/g)]
+      .map(m => m[1])
+      .filter(isString)
+      .map(s => s.trim())
+
+    expect(viewNameMatches.length).toBeGreaterThan(0)
+
+    const embedMatches = [...mdContent.matchAll(/!\[\[Audio-Notifications\.base#([^\]]+)\]\]/g)]
+      .map(m => m[1])
+      .filter(isString)
+      .map(s => s.trim())
+
+    expect(embedMatches.length).toBeGreaterThan(0)
+
+    for (const embedView of embedMatches) {
+      expect(viewNameMatches).toContain(embedView)
+    }
+  })
+
+  test('every routineFile in Review-Cadences.base maps to a valid generated routine', async () => {
+    const reviewCadencesBasePath = path.resolve(__dirname, '../../routine-flow-example-vault/Review-Cadences.base')
+    const content = await fs.readFile(reviewCadencesBasePath, 'utf-8')
+    const routineFileMatches = [...content.matchAll(/routineFile:\s*([^\s\n]+)/g)]
+      .map(m => m[1])
+      .filter(isString)
+
+    expect(routineFileMatches.length).toBeGreaterThan(0)
+
+    const notes = generateVault(DEFAULT_VAULT_SEED)
+    const routinePaths = new Set(notes.map(getNotePath))
+
+    for (const routineFile of routineFileMatches) {
+      expect(routinePaths.has(routineFile)).toBe(true)
+      const targetNote = notes.find(n => getNotePath(n) === routineFile)
+      expect(targetNote).toBeDefined()
+      if (targetNote !== undefined) {
+        const parseResult = parseRoutineFile(getNoteContent(targetNote))
+        expect(parseResult.success).toBe(true)
+      }
+    }
+  })
+
+  test('Review-Cadences.md embeds existing views from Review-Cadences.base', async () => {
+    const reviewCadencesMdPath = path.resolve(__dirname, '../../routine-flow-example-vault/Review-Cadences.md')
+    const reviewCadencesBasePath = path.resolve(__dirname, '../../routine-flow-example-vault/Review-Cadences.base')
+
+    const mdContent = await fs.readFile(reviewCadencesMdPath, 'utf-8')
+    const baseContent = await fs.readFile(reviewCadencesBasePath, 'utf-8')
+
+    const viewNameMatches = [...baseContent.matchAll(/name:\s*([^\s\n][^\n]*)/g)]
+      .map(m => m[1])
+      .filter(isString)
+      .map(s => s.trim())
+
+    expect(viewNameMatches.length).toBeGreaterThan(0)
+
+    const embedMatches = [...mdContent.matchAll(/!\[\[Review-Cadences\.base#([^\]]+)\]\]/g)]
+      .map(m => m[1])
+      .filter(isString)
+      .map(s => s.trim())
+
+    expect(embedMatches.length).toBeGreaterThan(0)
+
+    for (const embedView of embedMatches) {
+      expect(viewNameMatches).toContain(embedView)
+    }
+  })
+
+  test('every routineFile in Star-Jar.base maps to a valid generated routine', async () => {
+    const starJarBasePath = path.resolve(__dirname, '../../routine-flow-example-vault/Star-Jar.base')
+    const content = await fs.readFile(starJarBasePath, 'utf-8')
+    const routineFileMatches = [...content.matchAll(/routineFile:\s*([^\s\n]+)/g)]
+      .map(m => m[1])
+      .filter(isString)
+
+    expect(routineFileMatches.length).toBeGreaterThan(0)
+
+    const notes = generateVault(DEFAULT_VAULT_SEED)
+    const routinePaths = new Set(notes.map(getNotePath))
+
+    for (const routineFile of routineFileMatches) {
+      expect(routinePaths.has(routineFile)).toBe(true)
+      const targetNote = notes.find(n => getNotePath(n) === routineFile)
+      expect(targetNote).toBeDefined()
+      if (targetNote !== undefined) {
+        const parseResult = parseRoutineFile(getNoteContent(targetNote))
+        expect(parseResult.success).toBe(true)
+      }
+    }
+  })
+
+  test('Star-Jar.md embeds existing views from Star-Jar.base', async () => {
+    const starJarMdPath = path.resolve(__dirname, '../../routine-flow-example-vault/Star-Jar.md')
+    const starJarBasePath = path.resolve(__dirname, '../../routine-flow-example-vault/Star-Jar.base')
+
+    const mdContent = await fs.readFile(starJarMdPath, 'utf-8')
+    const baseContent = await fs.readFile(starJarBasePath, 'utf-8')
+
+    const viewNameMatches = [...baseContent.matchAll(/name:\s*([^\s\n][^\n]*)/g)]
+      .map(m => m[1])
+      .filter(isString)
+      .map(s => s.trim())
+
+    expect(viewNameMatches.length).toBeGreaterThan(0)
+
+    const embedMatches = [...mdContent.matchAll(/!\[\[Star-Jar\.base#([^\]]+)\]\]/g)]
+      .map(m => m[1])
+      .filter(isString)
+      .map(s => s.trim())
+
+    expect(embedMatches.length).toBeGreaterThan(0)
+
+    for (const embedView of embedMatches) {
+      expect(viewNameMatches).toContain(embedView)
+    }
+  })
+
+  test('rebuildGeneratedVault creates and cleans folders in target directory', async () => {
+    const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'routine-flow-test-vault-'))
+    try {
+      const errors = await rebuildGeneratedVault(tempDir, 999)
+      expect(errors).toHaveLength(0)
+
+      for (const folder of GENERATED_VAULT_FOLDERS) {
+        const folderStat = await fs.stat(path.join(tempDir, folder))
+        expect(folderStat.isDirectory()).toBe(true)
+      }
+
+      // Second rebuild should succeed cleanly (idempotent clean & rebuild)
+      const secondErrors = await rebuildGeneratedVault(tempDir, 999)
+      expect(secondErrors).toHaveLength(0)
+    }
+    finally {
+      await fs.rm(tempDir, { recursive: true, force: true })
+    }
+  })
+
+  test('rebuildGeneratedVault preserves the static Leitner base configuration', async () => {
+    const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'routine-flow-test-vault-'))
+    const basePath = path.join(tempDir, 'leitner-box', 'leitner-box.base')
+    const baseContent = 'type: base\nviews: []\n'
+    try {
+      await fs.mkdir(path.dirname(basePath), { recursive: true })
+      await fs.writeFile(basePath, baseContent, 'utf-8')
+
+      const errors = await rebuildGeneratedVault(tempDir, 999)
+
+      expect(errors).toHaveLength(0)
+      expect(await fs.readFile(basePath, 'utf-8')).toBe(baseContent)
+    }
+    finally {
+      await fs.rm(tempDir, { recursive: true, force: true })
+    }
+  })
+
+  test('Kanban-Dashboard.md embeds existing views from Kanban-Workflow.base with routine-timer, kanban, and table views', async () => {
+    const dashboardPath = path.resolve(__dirname, '../../routine-flow-example-vault/Kanban-Dashboard.md')
+    const basePath = path.resolve(__dirname, '../../routine-flow-example-vault/Kanban-Workflow.base')
+
+    const mdContent = await fs.readFile(dashboardPath, 'utf-8')
+    const baseContent = await fs.readFile(basePath, 'utf-8')
+
+    expect(baseContent).toContain('type: routine-timer')
+    expect(baseContent).toContain('type: kanban')
+    expect(baseContent).toContain('type: table')
+    expect(baseContent).toContain('statusProperty: note.status')
+    expect(baseContent).toContain('doneStatusValue: Done')
+
+    const viewNameMatches = [...baseContent.matchAll(/name:\s*([^\s\n][^\n]*)/g)]
+      .map(m => m[1])
+      .filter(isString)
+      .map(s => s.trim())
+
+    expect(viewNameMatches).toEqual(['Focus timer', 'Task board', 'Active tasks'])
+
+    const embedMatches = [...mdContent.matchAll(/!\[\[Kanban-Workflow\.base#([^\]]+)\]\]/g)]
+      .map(m => m[1])
+      .filter(isString)
+      .map(s => s.trim())
+
+    expect(embedMatches.length).toBeGreaterThan(0)
+
+    for (const embedView of embedMatches) {
+      expect(viewNameMatches).toContain(embedView)
+    }
+  })
+})
