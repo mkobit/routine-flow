@@ -1,17 +1,19 @@
 #!/usr/bin/env bun
 // Capture a screenshot of the running `vault:dev` Obsidian window via
 // Obsidian's official CLI (https://obsidian.md/help/cli).
-// Usage: bun scripts/vault-screenshot.ts [output-path]
+// Usage: bun scripts/vault/screenshot.ts [output-path]
 // Default output: ./.test-output/vault-screenshot.png
 // Ported from bases-chartkit's scripts/vault-screenshot.ts.
 
 import * as fs from 'node:fs/promises'
 import * as path from 'node:path'
-import { runObsidianCli } from './obsidian-cli'
+import { Command } from 'commander'
+import { runCli, runObsidianCli } from './shared'
 
-const outputPath = path.resolve(process.argv[2] ?? path.join('.test-output', 'vault-screenshot.png'))
+const DEFAULT_OUTPUT = path.join('.test-output', 'vault-screenshot.png')
 
-async function main(): Promise<void> {
+async function runScreenshot(rawOutputPath: string): Promise<void> {
+  const outputPath = path.resolve(rawOutputPath)
   await fs.mkdir(path.dirname(outputPath), { recursive: true })
   const { stderr, exitCode } = await runObsidianCli(['dev:screenshot', `path=${outputPath}`])
   if (exitCode !== 0) {
@@ -22,7 +24,10 @@ async function main(): Promise<void> {
   console.log(`Screenshot written: ${outputPath} (${size} bytes)`)
 }
 
-main().catch((err: unknown) => {
-  console.error('Fatal error in vault-screenshot:', err instanceof Error ? err.message : String(err))
-  process.exit(1)
-})
+const program = new Command()
+  .name('vault-screenshot')
+  .description('Capture a screenshot of the running `vault:dev` Obsidian window via Obsidian\'s official CLI.')
+  .argument('[output-path]', 'path to write the PNG screenshot', DEFAULT_OUTPUT)
+  .action(runScreenshot)
+
+runCli('vault-screenshot', () => program.parseAsync())

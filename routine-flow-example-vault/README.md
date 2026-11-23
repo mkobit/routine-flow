@@ -9,5 +9,5 @@ The `pomodoro/`, `standup/`, `workout/`, `spaced-repetition/`, `stretch-break/`,
 They're written by `e2e/vault/generator.ts` using `fast-check` with a fixed, deterministic default seed, so content is reproducible across runs and machines.
 
 - E2E runs regenerate them automatically once per run via `e2e/global-setup.ts`.
-- For manual dev testing, run `bun scripts/vault-dev.ts --generated` to regenerate before launch.
+- For manual dev testing, run `bun scripts/vault/dev.ts --generated` to regenerate before launch.
 - Override the seed with `VAULT_SEED=<n>` to reproduce a specific run (e.g. while debugging a flaky test).

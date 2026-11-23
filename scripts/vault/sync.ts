@@ -1,13 +1,15 @@
 #!/usr/bin/env bun
 import { spawn } from 'node:child_process'
-import * as fs from 'node:fs/promises'
 import * as path from 'node:path'
-
-const ROOT_DIR = path.resolve(import.meta.dirname, '..')
-const SRC_VAULT = path.join(ROOT_DIR, 'routine-flow-example-vault')
-const PLUGIN_ID = 'routine-flow'
-const PLUGIN_ARTIFACTS = ['main.js', 'manifest.json', 'styles.css'] as const
-const VAULT_BASENAME = 'routine-flow-example-vault'
+import { Command } from 'commander'
+import {
+  PLUGIN_ID,
+  VAULT_BASENAME,
+  VAULT_PATH,
+  assertBuiltArtifacts,
+  copyPluginArtifacts,
+  runCli,
+} from './shared'
 
 function run(cmd: string, args: readonly string[], stdio: 'inherit' | 'pipe' = 'inherit'): Promise<{ readonly stdout: string }> {
   return new Promise((resolve, reject) => {
@@ -46,10 +48,9 @@ async function detectDefaultDest(): Promise<string | null> {
   }
 }
 
-async function resolveDest(): Promise<string> {
-  const arg = process.argv[2]
-  if (arg) {
-    return arg
+async function resolveDest(destination?: string): Promise<string> {
+  if (destination) {
+    return destination
   }
   const detected = await detectDefaultDest()
   if (!detected) {
@@ -61,19 +62,9 @@ async function resolveDest(): Promise<string> {
   return detected
 }
 
-async function main(): Promise<void> {
-  const dest = await resolveDest()
-
-  // Verify the plugin is built
-  await Promise.all(PLUGIN_ARTIFACTS.map(async (f) => {
-    try {
-      await fs.access(path.join(ROOT_DIR, f))
-    }
-    catch {
-      console.error(`Missing ${f} at repo root — run \`bun run build\` first`)
-      process.exit(1)
-    }
-  }))
+async function runSync(destination?: string): Promise<void> {
+  const dest = await resolveDest(destination)
+  await assertBuiltArtifacts('run `bun run build` first')
 
   // Sync vault content. Excludes preserve Obsidian's per-machine workspace
   // state on the destination so the user's open tabs survive re-syncs;
@@ -85,16 +76,13 @@ async function main(): Promise<void> {
     '--exclude=/.obsidian/workspace-mobile.json',
     '--exclude=/.obsidian/cache',
     '--exclude=/.obsidian/plugins',
-    `${SRC_VAULT}/`,
+    `${VAULT_PATH}/`,
     `${dest}/`,
   ])
 
   // Install built plugin artifacts
   const pluginDir = path.join(dest, '.obsidian', 'plugins', PLUGIN_ID)
-  await fs.mkdir(pluginDir, { recursive: true })
-  await Promise.all(PLUGIN_ARTIFACTS.map(f =>
-    fs.cp(path.join(ROOT_DIR, f), path.join(pluginDir, f)),
-  ))
+  await copyPluginArtifacts(pluginDir)
 
   console.log(`\nVault synced to: ${dest}`)
   console.log(`Plugin installed at: ${pluginDir}`)
@@ -105,7 +93,10 @@ async function main(): Promise<void> {
   console.log(`     obsidian --vault=${path.basename(dest)} vault`)
 }
 
-main().catch((err: unknown) => {
-  console.error(err)
-  process.exit(1)
-})
+const program = new Command()
+  .name('vault-sync')
+  .description('Sync the example vault and built plugin artifacts to a local or Windows Obsidian vault.')
+  .argument('[destination]', 'destination vault path (auto-detected from Windows Documents on WSL if omitted)')
+  .action(runSync)
+
+runCli('vault-sync', () => program.parseAsync())
