@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test'
 import { TaskSourceIdSchema } from '../../src/domain/queue/task-source'
-import { FallbackTaskSourceManager } from '../../src/timer/fallback-task-sources'
+import { FallbackTaskSourceManager } from '../../src/adapters/obsidian/bases/fallback-task-sources'
 import { createTaskSourceRegistry } from '../../src/timer/task-source-registry'
 
 const focusId = TaskSourceIdSchema.parse('focus-queue')
