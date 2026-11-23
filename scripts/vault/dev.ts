@@ -5,6 +5,7 @@
 // Requires copying the vault first -- see the setupVault call below.
 import ObsidianLauncher from 'obsidian-launcher'
 import * as fs from 'node:fs/promises'
+import * as net from 'node:net'
 import { Command, Option } from 'commander'
 import { rebuildGeneratedVault, resolveVaultSeed, stripGitignoredVaultState } from '../../e2e/vault'
 import { applyViewMode } from '../appearance'
@@ -13,10 +14,7 @@ import { applyInitialWorkspace } from '../initial-workspace'
 import { CACHE_DIR, ROOT_DIR, VAULT_PATH, runCli } from './shared'
 
 import obsidianVersion from '../../e2e/obsidian-version.json' with { type: 'json' }
-// Only used for the CDP window-resize workaround below -- this repo has no
-// Obsidian-CLI-based dev scripts (unlike bases-chartkit's vault-eval.ts/
-// vault-screenshot.ts), so nothing else talks to this port.
-const CDP_PORT = 9222
+
 // Electron ignores the `--window-size` Chromium switch and always opens at
 // its own ~1024x800 default for a fresh profile -- resizing via the
 // renderer's `window.resizeTo` (which Electron forwards to the
@@ -38,9 +36,31 @@ function isCdpPage(value: unknown): value is CdpPage {
     && 'webSocketDebuggerUrl' in value && typeof value.webSocketDebuggerUrl === 'string'
 }
 
-async function findObsidianPage(): Promise<CdpPage | undefined> {
+/** Allocates an ephemeral loopback port for the CDP window-resize workaround. */
+function getFreePort(): Promise<number> {
+  return new Promise((resolve, reject) => {
+    const server = net.createServer()
+    server.on('error', reject)
+    server.listen(0, '127.0.0.1', () => {
+      const address = server.address()
+      server.close((closeErr) => {
+        if (closeErr) {
+          reject(closeErr)
+          return
+        }
+        if (address !== null && typeof address === 'object') {
+          resolve(address.port)
+          return
+        }
+        reject(new Error('Failed to allocate ephemeral CDP port'))
+      })
+    })
+  })
+}
+
+async function findObsidianPage(cdpPort: number): Promise<CdpPage | undefined> {
   try {
-    const res = await fetch(`http://127.0.0.1:${CDP_PORT}/json/list`)
+    const res = await fetch(`http://127.0.0.1:${cdpPort}/json/list`)
     const pages: unknown = await res.json()
     return Array.isArray(pages) ? pages.find(isCdpPage) : undefined
   }
@@ -67,8 +87,8 @@ function resizeOverWebsocket(wsUrl: string): Promise<void> {
   })
 }
 
-async function resizeWindowWhenReady(attemptsRemaining = 20): Promise<void> {
-  const page = await findObsidianPage()
+async function resizeWindowWhenReady(cdpPort: number, attemptsRemaining = 20): Promise<void> {
+  const page = await findObsidianPage(cdpPort)
   if (page) {
     await resizeOverWebsocket(page.webSocketDebuggerUrl)
     return
@@ -78,7 +98,7 @@ async function resizeWindowWhenReady(attemptsRemaining = 20): Promise<void> {
     return
   }
   await Bun.sleep(500)
-  await resizeWindowWhenReady(attemptsRemaining - 1)
+  await resizeWindowWhenReady(cdpPort, attemptsRemaining - 1)
 }
 
 interface DevOptions {
@@ -114,6 +134,7 @@ async function runDev({ generated, headless, theme, open }: DevOptions): Promise
   await applyViewMode(copiedVault, theme)
   await applyInitialWorkspace(copiedVault, open)
 
+  const cdpPort = await getFreePort()
   const { proc, configDir, vault } = await launcher.launch({
     appVersion: obsidianVersion.appVersion,
     installerVersion: obsidianVersion.installerVersion,
@@ -133,7 +154,7 @@ async function runDev({ generated, headless, theme, open }: DevOptions): Promise
       '--disable-gpu-compositing',
       '--disable-software-rasterizer',
       '--disable-gpu-sandbox',
-      `--remote-debugging-port=${CDP_PORT}`,
+      `--remote-debugging-port=${cdpPort}`,
       '--remote-allow-origins=*',
     ],
     // Headless (under xvfb-run) stays attached to the same process group so
@@ -142,7 +163,7 @@ async function runDev({ generated, headless, theme, open }: DevOptions): Promise
     spawnOptions: { stdio: 'ignore', detached: !headless },
   })
 
-  void resizeWindowWhenReady()
+  void resizeWindowWhenReady(cdpPort)
 
   if (headless) {
     // xvfb-run tears down its virtual display as soon as the command it
