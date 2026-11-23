@@ -41,10 +41,18 @@ const context = await esbuild.context({
   minify: prod,
 })
 
+const cssContext = await esbuild.context({
+  entryPoints: ['styles/index.css'],
+  bundle: true,
+  outfile: 'styles.css',
+  minify: false,
+  logLevel: 'info',
+})
+
 if (prod) {
-  await context.rebuild()
+  await Promise.all([context.rebuild(), cssContext.rebuild()])
   process.exit(0)
 }
 else {
-  await context.watch()
+  await Promise.all([context.watch(), cssContext.watch()])
 }
