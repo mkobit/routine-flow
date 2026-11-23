@@ -114,4 +114,7 @@ You can embed views from a `.base` file into any Markdown dashboard note with st
 ![[Kanban-Workflow.base#Task board]]
 ```
 
+Set `layout: compact` in the view options (or in the `.base` YAML under the `routine-timer` view) to render the timer as a slim horizontal bar (`[timer] [controls + gear]`) without the queue, stage progress, star jar, or guidance checklist.
+You can also right-click any Markdown task note in the file explorer or editor and choose **Start routine for task** (when stopped) or **Focus in active routine** (when running or paused) to start or focus that task in the sidebar.
+
 See `Kanban-Workflow.base` and `Kanban-Dashboard.md` in the example vault for a complete working example.

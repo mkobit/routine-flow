@@ -37,6 +37,15 @@ class MockElement {
     this.className = current.filter(c => c !== cls).join(' ')
   }
 
+  toggleClass(cls: string, value: boolean): void {
+    if (value) {
+      this.addClass(cls)
+    }
+    else {
+      this.removeClass(cls)
+    }
+  }
+
   hasClass(cls: string): boolean {
     return this.className.split(' ').filter(Boolean).includes(cls)
   }
@@ -464,7 +473,20 @@ describe('Timer view decomposition', () => {
         'routineFile',
         'statusProperty',
         'doneStatusValue',
+        'layout',
       ])
+
+      const layoutOption = options.find(opt => opt.key === 'layout')
+      expect(layoutOption).toEqual({
+        key: 'layout',
+        type: 'dropdown',
+        displayName: 'Layout',
+        default: 'standard',
+        options: {
+          standard: 'Standard',
+          compact: 'Compact bar',
+        },
+      })
 
       const statusPropertyOption = options.find(opt => opt.key === 'statusProperty')
       expect(statusPropertyOption?.type).toBe('property')
@@ -2383,6 +2405,134 @@ describe('Timer view decomposition', () => {
       const defaultResult = setupView([])
       const defaultTaskNames = findAllDescendants(defaultResult.containerEl, 'routine-task-name').map(el => el.getText())
       expect(defaultTaskNames).toEqual(['First', 'Second'])
+    })
+
+    test('compact layout adds is-compact class, omits queue/stage/star-jar/guidance, and places config bar in controls', async () => {
+      const { EngineStore: StoreClass } = await import('../src/timer/store')
+      const { PhaseGraphSchema: GraphSchema } = await import('../src/domain/phase/phase-graph')
+      const { PhaseSchema: PhaseSchemaClass } = await import('../src/domain/phase/phase')
+      const { TaskSourceIdSchema } = await import('../src/domain/queue/task-source')
+      const { DEFAULT_SETTINGS: DefaultSettings } = await import('../src/settings/settings-types')
+
+      const findDescendant = (root: MockElement, cls: string): MockElement | undefined => {
+        for (const child of root.children) {
+          if (child.hasClass(cls)) {
+            return child
+          }
+          const found = findDescendant(child, cls)
+          if (found !== undefined) {
+            return found
+          }
+        }
+        return undefined
+      }
+
+      const taskSourceId = TaskSourceIdSchema.parse('focus-queue')
+      const p1 = PhaseSchemaClass.parse({
+        id: PhaseIdSchemaParse('focus-1'),
+        label: 'Focus',
+        kind: FOCUS_PHASE_KIND_VAL,
+        duration: Temporal.Duration.from({ minutes: 25 }),
+        taskSourceId,
+        guidance: ['Check task'],
+        logTarget: { kind: 'activeItem' as const },
+        completionPolicy: null,
+        notification: null,
+        onEnter: null,
+        onComplete: null,
+        onSkip: null,
+        onExit: null,
+      })
+      const p2 = PhaseSchemaClass.parse({
+        id: PhaseIdSchemaParse('break-1'),
+        label: 'Break',
+        kind: BREAK_PHASE_KIND_VAL,
+        duration: Temporal.Duration.from({ minutes: 5 }),
+        taskSourceId: null,
+        logTarget: { kind: 'activeItem' as const },
+        completionPolicy: null,
+        notification: null,
+        onEnter: null,
+        onComplete: null,
+        onSkip: null,
+        onExit: null,
+      })
+      const graph = GraphSchema.parse({
+        id: 'default',
+        name: 'Default',
+        phases: [p1, p2],
+        transitions: [{ fromPhaseId: p1.id, toPhaseId: p2.id, condition: { kind: 'always' } }],
+      })
+
+      const store = new StoreClass(graph)
+      const mockPlugin = {
+        app: new MockApp(),
+        store,
+        settings: DefaultSettings,
+        taskSourceRegistry: {
+          register: () => {},
+          unregisterScope: () => {},
+          replaceScope: () => {},
+          resolve: () => undefined,
+        },
+        formulaPredicateRegistry: { get: () => undefined },
+        activateView: async () => {},
+      }
+
+      let layoutValue: string | null = 'compact'
+      const containerEl = new MockElement()
+      containerEl.addClass('bases-view-container')
+      // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- mock view creation
+      const timerView = new RoutineTimerViewClass({} as unknown as QueryController, asElement(containerEl), mockPlugin as unknown as RoutineFlowPlugin)
+      Reflect.set(timerView, 'config', {
+        get: (key: string) => (key === 'layout' ? layoutValue : undefined),
+        set: (key: string, val: unknown) => {
+          if (key === 'layout') {
+            layoutValue = typeof val === 'string' ? val : null
+          }
+        },
+        getAsPropertyId: () => null,
+        getSort: () => [],
+        getOrder: () => [],
+      })
+
+      timerView.onload()
+
+      expect(containerEl.hasClass('bases-view-container')).toBe(true)
+      expect(containerEl.hasClass('routine-timer-view')).toBe(true)
+      expect(containerEl.hasClass('is-compact')).toBe(true)
+      expect(findDescendant(containerEl, 'routine-countdown')).toBeDefined()
+      expect(findDescendant(containerEl, 'routine-queue')).toBeUndefined()
+      expect(findDescendant(containerEl, 'routine-stage-progress')).toBeUndefined()
+      expect(findDescendant(containerEl, 'routine-star-jar-meter')).toBeUndefined()
+      expect(findDescendant(containerEl, 'routine-guidance-checklist')).toBeUndefined()
+
+      const controls = findDescendant(containerEl, 'routine-controls')
+      expect(controls).toBeDefined()
+      expect(controls ? findDescendant(controls, 'routine-config-bar') : undefined).toBeDefined()
+
+      // Toggle config panel open in compact mode -> config panel renders as direct child of containerEl
+      const toggleBtn = controls ? findDescendant(controls, 'routine-config-toggle-btn') : undefined
+      expect(toggleBtn).toBeDefined()
+      toggleBtn?.click()
+      expect(containerEl.children.some(c => c.hasClass('routine-config-panel'))).toBe(true)
+
+      // Tick updates countdown digits in-place without DOM teardown
+      await store.dispatch({ type: 'start' })
+      const timeEl = findDescendant(containerEl, 'routine-countdown-time')
+      const panelBefore = findDescendant(containerEl, 'routine-timer-panel')
+      await store.dispatch({ type: 'tick' })
+      expect(findDescendant(containerEl, 'routine-timer-panel')).toBe(panelBefore)
+      expect(timeEl?.getText()).toBe('24:59')
+
+      // Switch back to standard layout -> removes is-compact and restores queue + stage progress
+      layoutValue = 'standard'
+      timerView.onDataUpdated()
+      expect(containerEl.hasClass('bases-view-container')).toBe(true)
+      expect(containerEl.hasClass('is-compact')).toBe(false)
+      expect(findDescendant(containerEl, 'routine-queue')).toBeDefined()
+      expect(findDescendant(containerEl, 'routine-stage-progress')).toBeDefined()
+      expect(findDescendant(containerEl, 'routine-guidance-checklist')).toBeDefined()
     })
   })
 })
