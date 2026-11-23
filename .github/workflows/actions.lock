@@ -17,9 +17,6 @@ workflows:
         - 'actions/deploy-pages@v5.0.1'
         - 'actions/upload-pages-artifact@v5.0.0'
         - 'oven-sh/setup-bun@v2.2.0'
-    '.github/workflows/openspec.yml':
-        - 'actions/checkout@v7.0.1'
-        - 'oven-sh/setup-bun@v2.2.0'
     '.github/workflows/pr-title.yml':
         - 'amannn/action-semantic-pull-request@v6.1.2'
     '.github/workflows/release-please.yml':

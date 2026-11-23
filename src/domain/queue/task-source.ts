@@ -42,8 +42,7 @@ export interface TaskQueueItem {
  * Extension point: abstraction over where a phase's items come from.
  * Optional per-Phase, not core to Phase — several use cases (stretch
  * routine, standup) have no queue at all. BaseQuerySource (src/timer/) is the
- * concrete Bases-backed implementation; see openspec/changes/archive's
- * base-query-task-source change (once archived) for the design.
+ * concrete Bases-backed implementation.
  */
 export interface TaskSource {
   readonly getQueue: () => readonly TaskQueueItem[]

@@ -39,13 +39,12 @@ export class RoutineFlowSettingTab extends PluginSettingTab {
   }
 
   /**
-   * Declarative replacement for the deprecated imperative display() — see
-   * openspec/changes/declarative-settings-api/design.md. writeBackProperty/
-   * progressMeterStyle/scriptsFolder bind through PluginSettingTab's
-   * inherited getControlValue/setControlValue (no override needed: both
-   * already read/write this.plugin.settings[key]). The two add-rows stay
-   * imperative `render` escape hatches so their existing two-field-plus-
-   * validation UX carries over unchanged.
+   * Declarative replacement for the deprecated imperative display().
+   * writeBackProperty/progressMeterStyle/scriptsFolder bind through
+   * PluginSettingTab's inherited getControlValue/setControlValue (no override
+   * needed: both already read/write this.plugin.settings[key]). The two
+   * add-rows stay imperative `render` escape hatches so their existing
+   * two-field-plus-validation UX carries over unchanged.
    */
   getSettingDefinitions(): SettingDefinitionItem[] {
     return [

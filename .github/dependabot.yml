@@ -19,7 +19,6 @@ updates:
       test-tooling:
         patterns:
           - "fast-check"
-          - "@fission-ai/openspec"
       lint-tooling:
         patterns:
           - "eslint*"

@@ -15,14 +15,11 @@ The project enforces strict Functional Programming principles via `eslint`.
 
 ## Design and planning workflow
 
-> [!NOTE]
-> **OpenSpec is deprecated in this repository.**
-> Do not create new OpenSpec proposals or changes; existing files under `openspec/` will be pruned in a follow-up chore.
-> Use the **Elephant Goldfish Model (EGM)** (`egm-*` subagents) for design reviews and architectural brainstorming, and use **Beads (`bd`)** as the canonical tracking system for plans, blockers, labels, and decisions.
+Use the **Elephant Goldfish Model (EGM)** (`egm-*` subagents) for design reviews and architectural brainstorming, and use **Beads (`bd`)** as the canonical tracking system for plans, blockers, labels, and decisions.
 
 ## Commands
 
-Run devDependency binaries (e.g. `openspec`) via `bun x <name>`.
+Run devDependency binaries via `bun x <name>`.
 `bd` (beads) is managed via `mise` and is installed on system `PATH` — run `bd` directly (e.g. `bd ready`), never run `bun x bd` or install `bd` via `bun`.
 Query modern web guidance offline with `bun x modern-web-guidance search <query>` and `bun x modern-web-guidance retrieve <id>`.
 
@@ -41,7 +38,6 @@ Query modern web guidance offline with `bun x modern-web-guidance search <query>
 | `bun run vault:eval '<js>'` | Evaluates a JS expression in the running `vault:dev` instance via Obsidian's official CLI (no CDP) -- e.g. drive/inspect app state without clicking. |
 | `bun run vault:screenshot [path]` | Screenshots the running `vault:dev` window via the same CLI (default `.test-output/vault-screenshot.png`) -- the way to actually see rendered UI when driving Obsidian headlessly or agent-side. |
 | `bun run vault:reload` | Copies freshly built `main.js`/`manifest.json`/`styles.css` into the *running* vault's plugin dir and reloads it via CLI, no relaunch needed. Pair with `bun run dev` (esbuild watch). |
-| `bun x openspec` | Runs the OpenSpec CLI (proposal/apply/archive workflow). `bun x openspec validate --all` runs as a PR check on changes under `openspec/**`. |
 | `bun x modern-web-guidance search <query>` | Searches modern web guidance topics offline. |
 | `bun x modern-web-guidance retrieve <id>` | Retrieves modern web guidance content for specified topic IDs. |
 
@@ -53,8 +49,8 @@ Stitch is the MCP design tool (`mcp__stitch__*`) for generating UI mockups and d
 Use it for UI-facing design work: mocking a new screen or restyling an existing surface before writing any CSS.
 Skip it for logic, state, or non-visual changes.
 
-The shared visual language lives in `openspec/changes/design-foundations/DESIGN.md` — semantic state colors, typography, spacing, iconography, all as Obsidian CSS custom-property references, never resolved hex/px.
-Per-surface briefs live in `openspec/changes/ui-surface-inventory/design.md` and `surface-model.md`, numbered #1–#12.
+The shared visual language lives in `design/DESIGN.md` — semantic state colors, typography, spacing, iconography, all as Obsidian CSS custom-property references, never resolved hex/px.
+Per-surface briefs live in `design/ui-surface-inventory/design.md` and `surface-model.md`, numbered #1–#12.
 Build every Stitch prompt from the surface's brief plus DESIGN.md's vocabulary, so screens stay consistent instead of 12 one-off designs.
 
 ### Per-surface workflow

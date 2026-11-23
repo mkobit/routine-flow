@@ -9,7 +9,7 @@ Repeats until the user stops the session.
 ## Domain mapping
 
 This is the plugin's actual shipped default graph — `DEFAULT_PHASE_GRAPH` in `src/timer/phase-graph.ts:127`.
-Every phase has a `taskSourceId` (`focus-queue`/`break-queue`), resolved by `RoutineTimerView` to a real `BaseQuerySource` built from whichever Bases entries match `focusProperty`/`focusValue` (or `breakProperty`/`breakValue`) — see `openspec/specs/base-query-task-source/spec.md`.
+Every phase has a `taskSourceId` (`focus-queue`/`break-queue`), resolved by `RoutineTimerView` to a real `BaseQuerySource` built from whichever Bases entries match `focusProperty`/`focusValue` (or `breakProperty`/`breakValue`).
 `completionPolicy` is still `null` on every phase, though: nothing in the shipped graph triggers `queueCycle` yet (see "Where it strains").
 
 | Phase | id | kind | duration | taskSourceId | completionPolicy | logTarget | hooks |

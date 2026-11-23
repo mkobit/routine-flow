@@ -4,7 +4,7 @@
  * Every value below references an Obsidian CSS custom property (theme-native) or a plugin-scoped
  * custom property that itself resolves to one — no hardcoded hex/px literals — so a user CSS snippet
  * can override any class or var and restyle the whole surface.
- * See openspec/changes/design-foundations/DESIGN.md.
+ * See design/DESIGN.md.
  */
 
 /* Plugin-scoped custom properties, resolved against the active theme. Kept overridable: a snippet

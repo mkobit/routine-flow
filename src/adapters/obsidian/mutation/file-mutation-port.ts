@@ -65,8 +65,7 @@ export function resolveFile(vault: { getFileByPath(path: string): VaultFile | nu
 }
 
 /**
- * Real, Obsidian-backed `FileMutationPort`. See
- * openspec/specs/obsidian-file-mutation-port/spec.md.
+ * Real, Obsidian-backed `FileMutationPort`.
  *
  * A class, not a factory function, so `functional/immutable-data`'s
  * `ignoreClasses` exemption (see eslint.config.mts's `src/timer/**`
