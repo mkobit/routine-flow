@@ -315,8 +315,8 @@ export default tseslint.config(
     },
   },
   // script-hook.ts deliberately uses `new Function` to execute vault-authored
-  // script hooks in-process, per openspec/changes/transition-hook-script-runner's
-  // 2026-07-28 design decision (no runtime isolation; the bind-time
+  // script hooks in-process, per the 2026-07-28 transition-hook-script-runner
+  // design decision (no runtime isolation; the bind-time confirmation in
   // confirmation in script-hook-source is the trust boundary instead). This
   // is the one production file allowed to do this -- do not widen this glob.
   {

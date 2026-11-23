@@ -21,24 +21,11 @@
         ],
         "matcher": ""
       }
-    ],
-    "PostToolUse": [
-      {
-        "hooks": [
-          {
-            "command": "bun \"$CLAUDE_PROJECT_DIR/.claude/hooks/openspec-validate.ts\"",
-            "type": "command"
-          }
-        ],
-        "matcher": "Write|Edit"
-      }
     ]
   },
   "permissions": {
     "allow": [
       "Bash(bd *)",
-      "Bash(bun x openspec *)",
-      "Bash(bunx openspec *)",
       "Bash(git add *)",
       "Bash(git commit *)",
       "Bash(git rm *)",
