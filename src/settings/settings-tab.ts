@@ -67,6 +67,24 @@ export class RoutineFlowSettingTab extends PluginSettingTab {
         },
       },
       {
+        name: 'Status property',
+        desc: 'Frontmatter property used to read and write task completion status.',
+        control: {
+          type: 'text',
+          key: 'statusProperty',
+          placeholder: 'routine-status',
+        },
+      },
+      {
+        name: 'Done status value',
+        desc: 'Status value written when marking a task done and recognized as completed.',
+        control: {
+          type: 'text',
+          key: 'doneStatusValue',
+          placeholder: 'done',
+        },
+      },
+      {
         name: 'Progress meter style',
         desc: 'Visual style for the timer panel\'s progress meter.',
         control: {

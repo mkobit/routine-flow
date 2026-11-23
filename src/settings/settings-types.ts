@@ -22,6 +22,10 @@ export const RoutineFlowSettingsSchema = z.object({
   writeBackProperty: z.string().default('sessions'),
   /** Whether to show a confirmation modal before applying write-back mutations. */
   confirmWriteBack: z.boolean().default(true),
+  /** Frontmatter property used to read and write task completion status. */
+  statusProperty: z.string().default('routine-status'),
+  /** Status value written when marking a task done and recognized as completed. */
+  doneStatusValue: z.string().default('done'),
   /** Clock speedup multiplier for testing/dev fast-forwarding (1 to 60). */
   clockSpeedMultiplier: z.number().min(1).max(60).default(1),
   /** Active built-in progress-meter visualization for the timer panel's dial (see flow-gu1.19.15 family). */
@@ -41,6 +45,8 @@ export type RoutineFlowSettings = z.infer<typeof RoutineFlowSettingsSchema>
 export const DEFAULT_SETTINGS: RoutineFlowSettings = {
   writeBackProperty: 'sessions',
   confirmWriteBack: true,
+  statusProperty: 'routine-status',
+  doneStatusValue: 'done',
   clockSpeedMultiplier: 1,
   progressMeterStyle: 'radial',
   formulaPredicates: [],

@@ -152,6 +152,10 @@ export class RoutineTimerView extends BasesView {
     if (this.routineResolution.kind === 'default' || this.routineResolution.kind === 'loaded') {
       const viewGraph = this.routineResolution.graph
       if (this.plugin.store.getGraph().id === viewGraph.id) {
+        const owner = this.plugin.getActiveViewStatusConfigOwner?.() ?? null
+        if (this.plugin.store.getState().status !== 'stopped' && (owner === null || owner === this)) {
+          this.syncActiveViewStatusConfig()
+        }
         this.registerTaskSources(viewGraph)
       }
     }
@@ -466,6 +470,13 @@ export class RoutineTimerView extends BasesView {
   }
 
   private refreshQueueView(): void {
+    const viewGraphId = this.routineResolution.kind === 'default' || this.routineResolution.kind === 'loaded'
+      ? this.routineResolution.graph.id
+      : null
+    const owner = this.plugin.getActiveViewStatusConfigOwner?.() ?? null
+    if (owner === this || (viewGraphId !== null && this.plugin.store.getGraph().id === viewGraphId && this.plugin.store.getState().status !== 'stopped')) {
+      this.syncActiveViewStatusConfig()
+    }
     this.syncTaskSourcesIfActive()
     const state = this.plugin.store.getState()
     const graph = this.plugin.store.getGraph()
@@ -496,7 +507,14 @@ export class RoutineTimerView extends BasesView {
       activeFilePath: state.activeFilePath,
       queueItems,
       app: this.plugin.app,
-      actionExecutor: this.plugin.store,
+      actionExecutor: {
+        executeAction: (action, targetPath) => {
+          this.syncActiveViewStatusConfig()
+          return this.plugin.store.executeAction(action, targetPath)
+        },
+        reorderQueueItem: (itemId, position) => this.plugin.store.reorderQueueItem(itemId, position),
+        dispatch: action => this.plugin.store.dispatch(action),
+      },
       completedCount,
       completedPaths,
       renderItemProperties: (item, li) => {
@@ -506,6 +524,7 @@ export class RoutineTimerView extends BasesView {
         }
       },
       onSelectTask: (filePath) => {
+        this.syncActiveViewStatusConfig()
         if (isSelector) {
           void handleSelectorWinner(this.plugin.store, phase, filePath, msg => new Notice(msg))
         }
@@ -533,21 +552,30 @@ export class RoutineTimerView extends BasesView {
     }))
     const nextSources = new Map<TaskSourceId, TaskSource>()
     const preserveInputOrder = (typeof this.config?.getSort === 'function' ? this.config.getSort() : []).length > 0
+    const statusProperty = this.getConfiguredStatusProperty()
+    const doneStatusValue = this.getConfiguredDoneStatusValue()
     this.registeredSnapshots.clear()
     for (const phase of viewGraph.phases) {
       if (phase.taskSourceId !== null) {
         this.plugin.fallbackTaskSources?.clearForSource(phase.taskSourceId)
         const badgeProps = phase.badges?.map(b => b.property) ?? []
         const extraPropertiesLens = badgeProps.length > 0 ? badgeProps : undefined
-        const filteredEntries = filterQueueCandidates(phase, this.config, candidates)
+        const filteredEntries = filterQueueCandidates(phase, this.config, candidates, undefined, { statusProperty })
         this.registeredSnapshots.set(phase.taskSourceId, {
           entries: filteredEntries,
           extraPropertiesLens,
           preserveInputOrder,
+          statusProperty,
+          doneStatusValue,
         })
         nextSources.set(
           phase.taskSourceId,
-          createBaseQuerySource(filteredEntries, { extraPropertiesLens, preserveInputOrder }),
+          createBaseQuerySource(filteredEntries, {
+            extraPropertiesLens,
+            preserveInputOrder,
+            statusProperty,
+            doneStatusValue,
+          }),
         )
       }
     }
@@ -560,6 +588,41 @@ export class RoutineTimerView extends BasesView {
         this.plugin.taskSourceRegistry.register(id, source, this)
       }
     }
+  }
+
+  private getViewStatusOverride(key: 'statusProperty' | 'doneStatusValue'): string | undefined {
+    const raw = this.config?.get(key)
+    if (typeof raw !== 'string') {
+      return undefined
+    }
+    const trimmed = raw.trim()
+    return trimmed.length > 0 ? trimmed : undefined
+  }
+
+  private getConfiguredStatusProperty(): string {
+    const viewOverride = this.getViewStatusOverride('statusProperty')
+    if (viewOverride !== undefined) {
+      return viewOverride
+    }
+    const setting = this.plugin.settings?.statusProperty
+    return typeof setting === 'string' && setting.trim().length > 0 ? setting.trim() : 'routine-status'
+  }
+
+  private getConfiguredDoneStatusValue(): string {
+    const viewOverride = this.getViewStatusOverride('doneStatusValue')
+    if (viewOverride !== undefined) {
+      return viewOverride
+    }
+    const setting = this.plugin.settings?.doneStatusValue
+    return typeof setting === 'string' && setting.trim().length > 0 ? setting.trim() : 'done'
+  }
+
+  private syncActiveViewStatusConfig(): void {
+    this.plugin.setActiveViewStatusConfig?.({
+      owner: this,
+      statusProperty: this.getViewStatusOverride('statusProperty'),
+      doneStatusValue: this.getViewStatusOverride('doneStatusValue'),
+    })
   }
 
   private getConfiguredRoutineFilePath(): string | null {
@@ -599,6 +662,7 @@ export class RoutineTimerView extends BasesView {
     if (activeGraph.id !== graph.id) {
       this.plugin.store.setGraph(graph)
     }
+    this.syncActiveViewStatusConfig()
     this.registerTaskSources(graph)
     void this.plugin.store.dispatch({ type: 'start' })
     void this.plugin.activateView()

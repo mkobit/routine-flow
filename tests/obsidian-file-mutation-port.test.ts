@@ -188,4 +188,41 @@ describe('ObsidianFileMutationPort', () => {
     await expectToReject(port.writeFrontmatterBatch('missing.md', [frontmatterMutation]))
     expect(processFrontMatter).not.toHaveBeenCalled()
   })
+
+  test('changeQueueItemStatus writes custom statusProperty (stripping note. prefix) and maps done to doneStatusValue', async () => {
+    const { deps, getWrittenFrontmatter } = createFakeDeps(fakeFile('irrelevant.md'))
+    const port = new ObsidianFileMutationPort({
+      ...deps,
+      getStatusProperty: () => 'note.status',
+      getDoneStatusValue: () => 'Done',
+    })
+
+    await port.changeQueueItemStatus(statusChangeMutation)
+    expect(getWrittenFrontmatter()).toEqual({ status: 'Done' })
+
+    await port.changeQueueItemStatus({
+      kind: 'queueStatusChange',
+      itemId: TaskQueueItemIdSchema.parse('irrelevant.md'),
+      status: 'deferred',
+    })
+    expect(getWrittenFrontmatter()).toEqual({ status: 'deferred' })
+  })
+
+  test('writeFrontmatterBatch uses custom statusProperty and doneStatusValue for queueStatusChange', async () => {
+    const { deps, getWrittenFrontmatter } = createFakeDeps(fakeFile('tasks/a.md'))
+    const port = new ObsidianFileMutationPort({
+      ...deps,
+      getStatusProperty: () => 'note.kanban-status',
+      getDoneStatusValue: () => 'Completed',
+    })
+
+    await port.writeFrontmatterBatch('tasks/a.md', [
+      { kind: 'queueStatusChange', itemId: TaskQueueItemIdSchema.parse('tasks/a.md'), status: 'done' },
+      { kind: 'frontmatter', filePath: 'tasks/a.md', property: 'sessions', value: 2 },
+    ])
+
+    const fm = getWrittenFrontmatter()
+    expect(fm?.['kanban-status']).toBe('Completed')
+    expect(fm?.sessions).toBe(2)
+  })
 })

@@ -1,5 +1,5 @@
 import { test, expect, describe } from 'bun:test'
-import { createBaseQuerySource } from '../src/adapters/obsidian/bases/query-task-source'
+import { createBaseQuerySource, resolveFrontmatterKey } from '../src/adapters/obsidian/bases/query-task-source'
 import type { BaseQueryEntry } from '../src/adapters/obsidian/bases/query-task-source'
 import { TaskQueueItemIdSchema } from '../src/domain/queue/task-source'
 
@@ -298,6 +298,71 @@ describe('BaseQuerySource', () => {
 
       const defaultSource = createBaseQuerySource(entries)
       expect(defaultSource.getQueue().map(item => item.sourcePath)).toEqual(['a.md', 'c.md', 'b.md'])
+    })
+  })
+
+  describe('resolveFrontmatterKey', () => {
+    test('strips at most one leading note. prefix and falls back on empty, non-string, file., or formula.', () => {
+      expect(resolveFrontmatterKey('note.status')).toBe('status')
+      expect(resolveFrontmatterKey('  note.kanban-status  ')).toBe('kanban-status')
+      expect(resolveFrontmatterKey('note.note.type')).toBe('note.type')
+      expect(resolveFrontmatterKey('status')).toBe('status')
+      expect(resolveFrontmatterKey('')).toBe('routine-status')
+      expect(resolveFrontmatterKey('   ')).toBe('routine-status')
+      expect(resolveFrontmatterKey(null)).toBe('routine-status')
+      expect(resolveFrontmatterKey(undefined)).toBe('routine-status')
+      expect(resolveFrontmatterKey('note.')).toBe('routine-status')
+      expect(resolveFrontmatterKey('file.name')).toBe('routine-status')
+      expect(resolveFrontmatterKey('formula.status')).toBe('routine-status')
+      expect(resolveFrontmatterKey('file.path', 'custom-fallback')).toBe('custom-fallback')
+    })
+  })
+
+  describe('configurable statusProperty and doneStatusValue', () => {
+    test('reads cycleStatus from custom statusProperty (stripping note. prefix) and matches custom doneStatusValue', () => {
+      const source = createBaseQuerySource([
+        entry({ path: 'a.md', basename: 'a', frontmatter: { status: 'Completed' } }),
+        entry({ path: 'b.md', basename: 'b', frontmatter: { status: 'In Progress' } }),
+        entry({ path: 'c.md', basename: 'c', frontmatter: { status: 'active' } }),
+        entry({ path: 'd.md', basename: 'd', frontmatter: { 'routine-status': 'done' } }),
+      ], {
+        statusProperty: 'note.status',
+        doneStatusValue: 'Completed',
+      })
+
+      const items = source.getQueue()
+      expect(items.map(i => [i.sourcePath, i.cycleStatus])).toEqual([
+        ['a.md', 'done'],
+        ['b.md', 'pending'],
+        ['c.md', 'active'],
+        ['d.md', 'pending'],
+      ])
+    })
+
+    test('excludes future deferred items using custom statusProperty', () => {
+      const now = Temporal.Instant.from('2026-09-26T12:00:00Z')
+      const source = createBaseQuerySource([
+        entry({
+          path: 'deferred.md',
+          basename: 'deferred',
+          frontmatter: {
+            'status': 'deferred',
+            'routine-deferred-until': '2026-09-27T12:00:00Z',
+          },
+        }),
+        entry({
+          path: 'ready.md',
+          basename: 'ready',
+          frontmatter: {
+            status: 'todo',
+          },
+        }),
+      ], {
+        now,
+        statusProperty: 'note.status',
+      })
+
+      expect(source.getQueue().map(i => i.sourcePath)).toEqual(['ready.md'])
     })
   })
 })
