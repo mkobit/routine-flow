@@ -1,0 +1,306 @@
+/* ---- Queue (surface #1 tertiary; shared with the side panel) -------------------------------- */
+
+.routine-queue-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--size-4-2);
+}
+
+.routine-queue-header h3,
+.routine-queue h3 {
+  margin-block: var(--size-4-2);
+  font-size: var(--font-ui-medium);
+  color: var(--text-normal);
+}
+
+.routine-queue-completed-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--size-2-1);
+  font-size: var(--font-ui-smaller);
+  line-height: var(--line-height-tight);
+  padding: var(--size-2-1) var(--size-4-2);
+  border-radius: var(--radius-full);
+  background-color: var(--background-secondary);
+  color: var(--text-muted);
+  font-weight: var(--font-medium);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.routine-queue-header-toolbar {
+  display: flex;
+  align-items: center;
+  gap: var(--size-4-1);
+}
+
+.routine-queue-spin-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--size-4-1);
+  color: var(--text-muted);
+  border-radius: var(--radius-s);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+}
+
+.routine-queue-spin-btn:hover:not(:disabled) {
+  color: var(--text-normal);
+  background-color: var(--background-modifier-hover);
+}
+
+.routine-queue-spin-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.routine-queue ul {
+  display: flex;
+  flex-direction: column;
+  gap: var(--size-4-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.routine-queue li {
+  display: flex;
+  flex-direction: column;
+}
+
+.routine-queue-item-row {
+  display: flex;
+  align-items: center;
+  gap: var(--size-4-1);
+  width: 100%;
+}
+
+.routine-queue-item-row > button.routine-task-name {
+  flex: 1;
+  text-align: start;
+  transition: background-color 0.15s ease, color 0.15s ease, transform 0.15s ease;
+}
+
+.routine-open-file-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--size-4-1);
+  color: var(--text-muted);
+}
+
+.routine-open-file-btn:hover {
+  color: var(--text-normal);
+}
+
+.routine-queue-badges {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--size-4-1);
+}
+
+.routine-queue-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--size-4-1);
+  font-size: var(--font-ui-smaller);
+  color: var(--text-muted);
+  background-color: var(--background-secondary);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: var(--radius-s);
+  padding: 0 var(--size-4-1);
+  white-space: nowrap;
+}
+
+.routine-queue-badge.mod-accent {
+  color: var(--text-accent);
+  border-color: var(--interactive-accent);
+}
+
+.routine-queue-badge.mod-muted {
+  color: var(--text-faint);
+  border-color: var(--background-modifier-border);
+}
+
+.routine-queue-badge-icon svg {
+  width: var(--font-ui-smaller);
+  height: var(--font-ui-smaller);
+  vertical-align: middle;
+}
+
+.routine-queue-properties {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--size-4-1) var(--size-4-3);
+  padding-left: var(--size-4-2);
+  margin-top: var(--size-2-1);
+  font-size: var(--font-ui-smaller);
+  color: var(--text-muted);
+}
+
+.routine-queue-property {
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--size-4-1);
+  min-width: 0;
+}
+
+.routine-queue-property-label {
+  color: var(--text-faint);
+}
+
+.routine-queue-property-value {
+  color: var(--text-muted);
+}
+
+/* The active queue item is visually distinct, not just structurally marked (design.md #1). */
+.routine-queue li.is-active-task .routine-task-name {
+  font-weight: var(--font-bold);
+  color: var(--text-on-accent);
+  background-color: var(--interactive-accent);
+}
+
+/* Roulette animation stepping highlight */
+.routine-queue li.is-roulette-highlight .routine-task-name {
+  background-color: var(--background-modifier-hover);
+  color: var(--text-accent);
+  outline: 1px solid var(--text-accent);
+}
+
+/* Roulette animation winner celebration styling */
+.routine-queue li.is-roulette-winner .routine-task-name {
+  font-weight: var(--font-bold);
+  color: var(--text-on-accent);
+  background-color: var(--interactive-accent);
+  animation: routine-flow-roulette-pulse 0.4s ease-out 1;
+}
+
+@keyframes routine-flow-roulette-pulse {
+  0% {
+    transform: scale(0.98);
+  }
+  50% {
+    transform: scale(1.02);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .routine-queue-item-row > button.routine-task-name {
+    transition: none;
+  }
+  .routine-queue li.is-roulette-winner .routine-task-name {
+    animation: none;
+  }
+}
+
+/* Visually hidden announcer for screen readers (aria-live) */
+.routine-queue-announcer.sr-only,
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
+
+.routine-queue-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--size-4-1);
+  margin-top: var(--size-4-1);
+}
+
+.routine-action-btn {
+  font-size: var(--font-ui-smaller);
+  padding: var(--size-4-1) var(--size-4-2);
+}
+
+/* ---- Empty queue (surface #5) --------------------------------------------------------------- */
+
+.routine-queue-empty {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--size-4-2);
+  padding: var(--size-4-3);
+  color: var(--text-muted);
+  font-size: var(--font-ui-smaller);
+}
+
+.routine-queue-empty.is-queue-exhausted {
+  color: var(--text-success);
+}
+
+.routine-queue-empty.is-queue-exhausted .routine-state-icon {
+  color: var(--text-success);
+}
+
+.routine-queue-empty p {
+  margin: 0;
+}
+
+.routine-queue-empty .routine-queue-advance-btn {
+  margin-left: auto;
+}
+
+/* ---- Blitz queue exhaustion and celebration ------------------------------------------------- */
+
+.routine-timer-panel.routine-blitz-exhausted,
+.routine-timer-panel.rf-blitz-exhausted {
+  border-color: var(--text-success);
+}
+
+.routine-blitz-celebration {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--size-4-2);
+  margin-top: var(--size-4-2);
+  margin-bottom: var(--size-4-2);
+  padding: var(--size-4-1) var(--size-4-3);
+  font-size: var(--font-ui-small);
+  color: var(--text-success);
+  background-color: var(--background-modifier-success);
+  border-radius: var(--radius-s);
+  animation: routine-flow-celebrate-pulse 0.5s ease-out 1;
+}
+
+.routine-countdown-dial.is-exhausted .routine-progress-indicator,
+.routine-countdown-dial.is-exhausted .routine-progress-fill-bar-indicator,
+.routine-countdown-dial.is-exhausted .routine-progress-battery-drain-indicator,
+.routine-countdown-dial.is-exhausted .routine-progress-tick-marks-indicator {
+  stroke: var(--text-success);
+  background-color: var(--text-success);
+  transition: all 0.4s ease-in-out;
+}
+
+@keyframes routine-flow-celebrate-pulse {
+  0% {
+    transform: scale(0.96);
+    opacity: 0.8;
+  }
+  50% {
+    transform: scale(1.02);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .routine-blitz-celebration {
+    animation: none;
+  }
+}

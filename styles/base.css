@@ -1,0 +1,98 @@
+/*
+ * Routine Flow — timer panel + shared surface styling.
+ *
+ * Every value below references an Obsidian CSS custom property (theme-native) or a plugin-scoped
+ * custom property that itself resolves to one — no hardcoded hex/px literals — so a user CSS snippet
+ * can override any class or var and restyle the whole surface.
+ * See openspec/changes/design-foundations/DESIGN.md.
+ */
+
+/* Plugin-scoped custom properties, resolved against the active theme. Kept overridable: a snippet
+   can redefine any of these on .routine-timer-view / .routine-side-panel. */
+.routine-timer-view,
+.routine-side-panel {
+  --routine-flow-countdown-size: calc(var(--font-ui-large) * 1.8);
+  --routine-flow-accent-paused: var(--color-orange, var(--text-warning));
+  --routine-flow-ring-size: 150px;
+  --routine-flow-ring-stroke: 6;
+  --routine-flow-tick-count: 12;
+  --routine-flow-tick-mark-fraction: 0.6;
+
+  display: flex;
+  flex-direction: column;
+  gap: var(--size-4-4);
+  padding: var(--size-4-4);
+}
+
+/* ---- Controls (shared with the side panel) -------------------------------------------------- */
+
+.routine-controls {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--size-4-2);
+}
+
+/* ---- Inert banner (surface #4) -------------------------------------------------------------- */
+
+.routine-inert {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--size-4-1);
+  margin: 0;
+  padding: var(--size-4-2) var(--size-4-3);
+  border-radius: var(--radius-m);
+  background-color: var(--background-secondary);
+  color: var(--text-muted);
+  font-size: var(--font-ui-smaller);
+}
+
+/* ---- Loading (surface #2) and error (surface #3) states ------------------------------------- */
+
+.routine-loading,
+.routine-error {
+  display: flex;
+  align-items: center;
+  gap: var(--size-4-2);
+  padding: var(--size-4-3);
+}
+
+.routine-loading {
+  color: var(--text-muted);
+  font-size: var(--font-ui-medium);
+}
+
+.routine-error {
+  border-radius: var(--radius-m);
+  background-color: var(--background-modifier-error);
+  color: var(--text-error);
+  font-size: var(--font-ui-small);
+}
+
+.routine-loading p,
+.routine-error p {
+  margin: 0;
+}
+
+/* Loading spinner: rotate the Lucide loader icon. */
+.routine-loading .routine-state-icon {
+  display: inline-flex;
+  animation: routine-flow-spin 1s linear infinite;
+}
+
+@keyframes routine-flow-spin {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* State icons inherit their container's color via currentColor (Lucide default). */
+.routine-state-icon {
+  display: inline-flex;
+  color: inherit;
+}
