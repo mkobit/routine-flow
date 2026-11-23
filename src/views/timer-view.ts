@@ -159,7 +159,8 @@ export class RoutineTimerView extends BasesView {
   }
 
   private applyContainerLayoutClass(layout: TimerViewLayout): void {
-    this.containerEl.className = layout === 'compact' ? 'routine-timer-view is-compact' : 'routine-timer-view'
+    this.containerEl.addClass('routine-timer-view')
+    this.containerEl.toggleClass('is-compact', layout === 'compact')
   }
 
   private syncTaskSourcesIfActive(): void {

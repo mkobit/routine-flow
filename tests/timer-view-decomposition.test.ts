@@ -37,6 +37,15 @@ class MockElement {
     this.className = current.filter(c => c !== cls).join(' ')
   }
 
+  toggleClass(cls: string, value: boolean): void {
+    if (value) {
+      this.addClass(cls)
+    }
+    else {
+      this.removeClass(cls)
+    }
+  }
+
   hasClass(cls: string): boolean {
     return this.className.split(' ').filter(Boolean).includes(cls)
   }
@@ -2472,6 +2481,7 @@ describe('Timer view decomposition', () => {
 
       let layoutValue: string | null = 'compact'
       const containerEl = new MockElement()
+      containerEl.addClass('bases-view-container')
       // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- mock view creation
       const timerView = new RoutineTimerViewClass({} as unknown as QueryController, asElement(containerEl), mockPlugin as unknown as RoutineFlowPlugin)
       Reflect.set(timerView, 'config', {
@@ -2488,6 +2498,7 @@ describe('Timer view decomposition', () => {
 
       timerView.onload()
 
+      expect(containerEl.hasClass('bases-view-container')).toBe(true)
       expect(containerEl.hasClass('routine-timer-view')).toBe(true)
       expect(containerEl.hasClass('is-compact')).toBe(true)
       expect(findDescendant(containerEl, 'routine-countdown')).toBeDefined()
@@ -2517,6 +2528,7 @@ describe('Timer view decomposition', () => {
       // Switch back to standard layout -> removes is-compact and restores queue + stage progress
       layoutValue = 'standard'
       timerView.onDataUpdated()
+      expect(containerEl.hasClass('bases-view-container')).toBe(true)
       expect(containerEl.hasClass('is-compact')).toBe(false)
       expect(findDescendant(containerEl, 'routine-queue')).toBeDefined()
       expect(findDescendant(containerEl, 'routine-stage-progress')).toBeDefined()
