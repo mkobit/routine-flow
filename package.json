@@ -17,12 +17,12 @@
     "test:e2e": "bun x playwright test",
     "test:e2e:headless": "xvfb-run --auto-servernum --server-args=\"-screen 0 2560x1440x24\" bun x playwright test",
     "typecheck": "tsc --noEmit",
-    "vault:dev": "bun scripts/vault-dev.ts",
-    "vault:dev:headless": "xvfb-run --auto-servernum --server-args=\"-screen 0 2560x1440x24\" bun scripts/vault-dev.ts --headless",
-    "vault:eval": "bun scripts/vault-eval.ts",
-    "vault:reload": "bun scripts/vault-reload.ts",
-    "vault:screenshot": "bun scripts/vault-screenshot.ts",
-    "vault:sync": "bun scripts/vault-sync.ts"
+    "vault:dev": "bun scripts/vault/dev.ts",
+    "vault:dev:headless": "xvfb-run --auto-servernum --server-args=\"-screen 0 2560x1440x24\" bun scripts/vault/dev.ts --headless",
+    "vault:eval": "bun scripts/vault/eval.ts",
+    "vault:reload": "bun scripts/vault/reload.ts",
+    "vault:screenshot": "bun scripts/vault/screenshot.ts",
+    "vault:sync": "bun scripts/vault/sync.ts"
   },
   "keywords": [],
   "license": "MIT",

@@ -7,7 +7,7 @@
 // Iteration loop: `bun run dev` (esbuild watch) -> edit -> `bun run vault:reload`
 //
 // Adapted from bases-chartkit's scripts/vault-reload.ts: that version copies
-// artifacts into its tracked example-vault path directly, but vault-dev.ts
+// artifacts into its tracked example-vault path directly, but dev.ts
 // (in both repos) actually launches against a fresh tmpdir copy each run --
 // writing to the tracked path would silently miss the vault Obsidian is
 // really running against. This asks the live instance for its actual base
@@ -18,38 +18,23 @@
 // once, which instance responds is undefined. Same single-instance
 // assumption the sibling repo's scripts make implicitly.
 
-import * as fs from 'node:fs/promises'
 import * as path from 'node:path'
-import { runObsidianCli } from './obsidian-cli'
+import { Command } from 'commander'
+import {
+  PLUGIN_ID,
+  assertBuiltArtifacts,
+  copyPluginArtifacts,
+  resolveRunningVaultPath,
+  runCli,
+  runObsidianCli,
+} from './shared'
 
-const PLUGIN_ID = 'routine-flow'
-const PLUGIN_ARTIFACTS = ['main.js', 'manifest.json', 'styles.css'] as const
-const ROOT_DIR = path.resolve(import.meta.dirname, '..')
-
-async function resolveRunningVaultPath(): Promise<string> {
-  const { stdout, stderr, exitCode } = await runObsidianCli(['eval', 'code=app.vault.adapter.getBasePath()'])
-  if (exitCode !== 0 || !stdout) {
-    throw new Error(stderr || 'Could not resolve the running vault\'s path — is `bun run vault:dev` running?')
-  }
-  // obsidian-cli prints eval results as `=> <value>`.
-  return stdout.replace(/^=>\s*/, '')
-}
-
-async function main(): Promise<void> {
+async function runReload(): Promise<void> {
   const vaultPath = await resolveRunningVaultPath()
+  await assertBuiltArtifacts('run `bun run build` or `bun run dev` first')
+
   const pluginDir = path.join(vaultPath, '.obsidian', 'plugins', PLUGIN_ID)
-  await fs.mkdir(pluginDir, { recursive: true })
-  await Promise.all(PLUGIN_ARTIFACTS.map(async (f) => {
-    const src = path.join(ROOT_DIR, f)
-    try {
-      await fs.access(src)
-    }
-    catch {
-      console.error(`Missing ${f} at repo root — run \`bun run build\` or \`bun run dev\` first`)
-      process.exit(1)
-    }
-    await fs.cp(src, path.join(pluginDir, f))
-  }))
+  await copyPluginArtifacts(pluginDir)
 
   const { stdout, stderr, exitCode } = await runObsidianCli(['plugin:reload', `id=${PLUGIN_ID}`])
   if (exitCode !== 0) {
@@ -59,7 +44,9 @@ async function main(): Promise<void> {
   console.log(stdout || `Reloaded ${PLUGIN_ID}`)
 }
 
-main().catch((err: unknown) => {
-  console.error('Fatal error in vault-reload:', err instanceof Error ? err.message : String(err))
-  process.exit(1)
-})
+const program = new Command()
+  .name('vault-reload')
+  .description('Copy built plugin artifacts into the running `vault:dev` vault and reload the plugin.')
+  .action(runReload)
+
+runCli('vault-reload', () => program.parseAsync())

@@ -4,19 +4,15 @@
 // bases-chartkit's scripts/vault-dev.ts, same obsidian-launcher harness).
 // Requires copying the vault first -- see the setupVault call below.
 import ObsidianLauncher from 'obsidian-launcher'
-import * as path from 'node:path'
 import * as fs from 'node:fs/promises'
 import { Command, Option } from 'commander'
-import { rebuildGeneratedVault, resolveVaultSeed, stripGitignoredVaultState } from '../e2e/vault'
-import { applyViewMode } from './appearance'
-import type { ViewMode } from './appearance'
-import { applyInitialWorkspace } from './initial-workspace'
+import { rebuildGeneratedVault, resolveVaultSeed, stripGitignoredVaultState } from '../../e2e/vault'
+import { applyViewMode } from '../appearance'
+import type { ViewMode } from '../appearance'
+import { applyInitialWorkspace } from '../initial-workspace'
+import { CACHE_DIR, ROOT_DIR, VAULT_PATH, runCli } from './shared'
 
-import obsidianVersion from '../e2e/obsidian-version.json' with { type: 'json' }
-
-const ROOT_DIR = path.resolve(import.meta.dirname, '..')
-const VAULT_PATH = path.join(ROOT_DIR, 'routine-flow-example-vault')
-const CACHE_DIR = path.join(ROOT_DIR, '.obsidian-cache')
+import obsidianVersion from '../../e2e/obsidian-version.json' with { type: 'json' }
 // Only used for the CDP window-resize workaround below -- this repo has no
 // Obsidian-CLI-based dev scripts (unlike bases-chartkit's vault-eval.ts/
 // vault-screenshot.ts), so nothing else talks to this port.
@@ -85,17 +81,14 @@ async function resizeWindowWhenReady(attemptsRemaining = 20): Promise<void> {
   await resizeWindowWhenReady(attemptsRemaining - 1)
 }
 
-async function main(): Promise<void> {
-  const program = new Command()
-  program
-    .description('Launch a provisioned Obsidian against the example vault. Opens on the real display -- for headless (Xvfb) launches, run `bun run vault:dev:headless` instead.')
-    .option('--generated', 'rebuild the vault\'s per-routine notes (dev-docs/examples/) before launching', false)
-    .option('--headless', 'wait for Obsidian to exit instead of detaching -- required under xvfb-run, which tears down the virtual display as soon as the wrapped command exits', false)
-    .addOption(new Option('--theme <mode>', 'preset Obsidian\'s color scheme before launch').choices(['light', 'dark']).default('dark'))
-    .addOption(new Option('--open <target>', 'preset initial open view or file on launch (e.g. default, standup, workout, chore-list, manual-clear, table, shared-routines, or a vault path)').default('default'))
-  program.parse()
-  const { generated, headless, theme, open } = program.opts<{ generated: boolean, headless: boolean, theme: ViewMode, open: string }>()
+interface DevOptions {
+  readonly generated: boolean
+  readonly headless: boolean
+  readonly theme: ViewMode
+  readonly open: string
+}
 
+async function runDev({ generated, headless, theme, open }: DevOptions): Promise<void> {
   if (generated) {
     const seed = resolveVaultSeed()
     const errors = await rebuildGeneratedVault(VAULT_PATH, seed)
@@ -184,7 +177,13 @@ async function main(): Promise<void> {
   console.log(`Obsidian launched in the background (pid ${proc.pid}) — vault: ${vault ?? copiedVault}`)
 }
 
-main().catch((err: unknown) => {
-  console.error(err)
-  process.exit(1)
-})
+const program = new Command()
+  .name('vault-dev')
+  .description('Launch a provisioned Obsidian against the example vault. Opens on the real display -- for headless (Xvfb) launches, run `bun run vault:dev:headless` instead.')
+  .option('--generated', 'rebuild the vault\'s per-routine notes (dev-docs/examples/) before launching', false)
+  .option('--headless', 'wait for Obsidian to exit instead of detaching -- required under xvfb-run, which tears down the virtual display as soon as the wrapped command exits', false)
+  .addOption(new Option('--theme <mode>', 'preset Obsidian\'s color scheme before launch').choices(['light', 'dark']).default('dark'))
+  .addOption(new Option('--open <target>', 'preset initial open view or file on launch (e.g. default, standup, workout, chore-list, manual-clear, table, shared-routines, or a vault path)').default('default'))
+  .action(runDev)
+
+runCli('vault-dev', () => program.parseAsync())
