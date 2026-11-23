@@ -8,6 +8,8 @@ export interface FallbackTaskSourceSnapshot {
   readonly entries: readonly BaseQueryEntry[]
   readonly extraPropertiesLens?: ExtraPropertiesLens
   readonly preserveInputOrder?: boolean
+  readonly statusProperty?: string
+  readonly doneStatusValue?: string
 }
 
 /**
@@ -26,7 +28,8 @@ export class FallbackTaskSourceManager {
       return
     }
     const entries = snapshot.entries.map(entry => ({ ...entry }))
-    this.updateSource(id, entries, snapshot.extraPropertiesLens, snapshot.preserveInputOrder)
+    const { entries: _entries, ...options } = snapshot
+    this.updateSource(id, entries, options)
   }
 
   clearForSource(id: TaskSourceId): void {
@@ -53,7 +56,8 @@ export class FallbackTaskSourceManager {
       const nextEntries = snapshot.entries.map(entry =>
         entry.path === path ? { ...entry, frontmatter: copiedFrontmatter } : entry,
       )
-      this.updateSource(id, nextEntries, snapshot.extraPropertiesLens, snapshot.preserveInputOrder)
+      const { entries: _entries, ...options } = snapshot
+      this.updateSource(id, nextEntries, options)
       changed = true
     }
     return changed
@@ -66,7 +70,8 @@ export class FallbackTaskSourceManager {
       if (nextEntries.length === snapshot.entries.length) {
         continue
       }
-      this.updateSource(id, nextEntries, snapshot.extraPropertiesLens, snapshot.preserveInputOrder)
+      const { entries: _entries, ...options } = snapshot
+      this.updateSource(id, nextEntries, options)
       changed = true
     }
     return changed
@@ -81,7 +86,8 @@ export class FallbackTaskSourceManager {
       const nextEntries = snapshot.entries.map(entry =>
         entry.path === oldPath ? { ...entry, path: newPath, basename: newBasename } : entry,
       )
-      this.updateSource(id, nextEntries, snapshot.extraPropertiesLens, snapshot.preserveInputOrder)
+      const { entries: _entries, ...options } = snapshot
+      this.updateSource(id, nextEntries, options)
       changed = true
     }
     return changed
@@ -90,17 +96,18 @@ export class FallbackTaskSourceManager {
   private updateSource(
     id: TaskSourceId,
     entries: readonly BaseQueryEntry[],
-    extraPropertiesLens: ExtraPropertiesLens | undefined,
-    preserveInputOrder: boolean | undefined,
+    options: Omit<FallbackTaskSourceSnapshot, 'entries'>,
   ): void {
     this.snapshots.set(id, {
       entries,
-      ...(extraPropertiesLens !== undefined ? { extraPropertiesLens } : {}),
-      ...(preserveInputOrder !== undefined ? { preserveInputOrder } : {}),
+      ...(options.extraPropertiesLens !== undefined ? { extraPropertiesLens: options.extraPropertiesLens } : {}),
+      ...(options.preserveInputOrder !== undefined ? { preserveInputOrder: options.preserveInputOrder } : {}),
+      ...(options.statusProperty !== undefined ? { statusProperty: options.statusProperty } : {}),
+      ...(options.doneStatusValue !== undefined ? { doneStatusValue: options.doneStatusValue } : {}),
     })
     this.registry.register(
       id,
-      createBaseQuerySource(entries, { extraPropertiesLens, preserveInputOrder }),
+      createBaseQuerySource(entries, options),
       this.fallbackScope,
     )
   }

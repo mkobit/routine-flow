@@ -37,6 +37,7 @@ export function filterQueueCandidates(
   config: QueueFilterConfigSource | undefined,
   candidates: readonly QueueFilterCandidate[],
   now?: Temporal.Instant | (() => Temporal.Instant),
+  options?: { readonly statusProperty?: string },
 ): BaseQueryEntry[] {
   const isFocus = phase.kind === FOCUS_PHASE_KIND || phase.kind === SELECTOR_PHASE_KIND || phase.kind === 'review'
   const targetValFallback = isFocus ? 'work' : 'break'
@@ -54,7 +55,7 @@ export function filterQueueCandidates(
 
   return candidates
     .filter((candidate) => {
-      if (isDeferredInFuture(candidate.frontmatter, evaluationTime)) {
+      if (isDeferredInFuture(candidate.frontmatter, evaluationTime, options?.statusProperty)) {
         return false
       }
       const valObj = candidate.getValue(propId)

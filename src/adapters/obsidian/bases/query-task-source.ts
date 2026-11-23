@@ -107,11 +107,35 @@ export function resolveNow(now?: Temporal.Instant | (() => Temporal.Instant)): T
   return typeof now === 'function' ? now() : now
 }
 
+/**
+ * Normalizes a Bases property ID or bare frontmatter key into a raw YAML frontmatter key.
+ * Strips at most one leading `note.` prefix and falls back when empty, non-string, or `file.` / `formula.`.
+ */
+export function resolveFrontmatterKey(
+  raw: string | null | undefined,
+  fallback = STATUS_KEY,
+): string {
+  if (typeof raw !== 'string') {
+    return fallback
+  }
+  const trimmed = raw.trim()
+  if (trimmed.length === 0 || trimmed.startsWith('file.') || trimmed.startsWith('formula.')) {
+    return fallback
+  }
+  if (trimmed.startsWith('note.')) {
+    const stripped = trimmed.slice('note.'.length)
+    return stripped.length > 0 ? stripped : fallback
+  }
+  return trimmed
+}
+
 export function isDeferredInFuture(
   frontmatter: Record<string, unknown> | undefined,
   now: Temporal.Instant,
+  statusProperty?: string,
 ): boolean {
-  if (frontmatter?.[STATUS_KEY] !== 'deferred') {
+  const statusKey = resolveFrontmatterKey(statusProperty, STATUS_KEY)
+  if (frontmatter?.[statusKey] !== 'deferred') {
     return false
   }
   const reviewDate = readReviewDate(frontmatter)
@@ -124,8 +148,16 @@ export function isDeferredInFuture(
 function readCycleStatus(
   frontmatter: Record<string, unknown> | undefined,
   now: Temporal.Instant,
+  statusProperty?: string,
+  doneStatusValue?: string,
 ): TaskQueueItem['cycleStatus'] {
-  const result = TaskQueueItemCycleStatusSchema.safeParse(frontmatter?.[STATUS_KEY])
+  const statusKey = resolveFrontmatterKey(statusProperty, STATUS_KEY)
+  const raw = frontmatter?.[statusKey]
+  const doneValue = typeof doneStatusValue === 'string' ? doneStatusValue.trim() : ''
+  if (doneValue.length > 0 && raw === doneValue) {
+    return 'done'
+  }
+  const result = TaskQueueItemCycleStatusSchema.safeParse(raw)
   const status = result.success ? result.data : 'pending'
   if (status === 'deferred') {
     const reviewDate = readReviewDate(frontmatter)
@@ -176,6 +208,8 @@ export interface BaseQuerySourceOptions {
   readonly now?: Temporal.Instant | (() => Temporal.Instant)
   readonly extraPropertiesLens?: ExtraPropertiesLens
   readonly preserveInputOrder?: boolean
+  readonly statusProperty?: string
+  readonly doneStatusValue?: string
 }
 
 function resolveExtraProperties(
@@ -202,6 +236,8 @@ function toTaskQueueItem(
   entry: BaseQueryEntry,
   now: Temporal.Instant,
   lens?: ExtraPropertiesLens,
+  statusProperty?: string,
+  doneStatusValue?: string,
 ): TaskQueueItem {
   const id = TaskQueueItemIdSchema.parse(entry.path)
   const extraProperties = resolveExtraProperties(entry, lens)
@@ -209,7 +245,7 @@ function toTaskQueueItem(
     id,
     sourcePath: entry.path,
     displayName: entry.basename,
-    cycleStatus: readCycleStatus(entry.frontmatter, now),
+    cycleStatus: readCycleStatus(entry.frontmatter, now, statusProperty, doneStatusValue),
     timeSpent: readTimeSpent(entry.frontmatter),
     lastCycledAt: readLastCycledAt(entry.frontmatter),
     ...(extraProperties !== undefined ? { extraProperties } : {}),
@@ -231,14 +267,16 @@ export function createBaseQuerySource(
   const effectiveOptions = isOptionsObject ? nowOrOptions : options
   const extraPropertiesLens = effectiveOptions?.extraPropertiesLens
   const preserveInputOrder = effectiveOptions?.preserveInputOrder ?? false
+  const statusProperty = effectiveOptions?.statusProperty
+  const doneStatusValue = effectiveOptions?.doneStatusValue
 
   return {
     getQueue: () => {
       const evaluationTime = resolveNow(effectiveNow)
       const projected = entries
-        .filter(entry => !isDeferredInFuture(entry.frontmatter, evaluationTime))
+        .filter(entry => !isDeferredInFuture(entry.frontmatter, evaluationTime, statusProperty))
         .map((entry, index) => ({
-          item: toTaskQueueItem(entry, evaluationTime, extraPropertiesLens),
+          item: toTaskQueueItem(entry, evaluationTime, extraPropertiesLens, statusProperty, doneStatusValue),
           priority: readPriority(entry.frontmatter),
           index,
         }))

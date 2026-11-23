@@ -462,7 +462,20 @@ describe('Timer view decomposition', () => {
         'breakProperty',
         'breakValue',
         'routineFile',
+        'statusProperty',
+        'doneStatusValue',
       ])
+
+      const statusPropertyOption = options.find(opt => opt.key === 'statusProperty')
+      expect(statusPropertyOption?.type).toBe('property')
+      if (statusPropertyOption?.type === 'property' && statusPropertyOption.filter) {
+        expect(statusPropertyOption.filter('note.status')).toBe(true)
+        expect(statusPropertyOption.filter('file.name')).toBe(false)
+        expect(statusPropertyOption.filter('formula.done')).toBe(false)
+      }
+
+      const doneStatusValueOption = options.find(opt => opt.key === 'doneStatusValue')
+      expect(doneStatusValueOption?.type).toBe('text')
 
       const routineFileOption = options.find(opt => opt.key === 'routineFile')
       expect(routineFileOption).toBeDefined()

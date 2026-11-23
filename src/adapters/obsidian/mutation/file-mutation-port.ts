@@ -1,5 +1,6 @@
 import type { FileMutation } from '../../../domain/mutation/file-mutation'
 import type { FileMutationPort, FrontmatterMutation } from '../../../domain/mutation/apply-mutations'
+import { resolveFrontmatterKey } from '../bases/query-task-source'
 
 /**
  * Only the field this port actually reads off a resolved file. Deliberately
@@ -32,6 +33,27 @@ export interface ObsidianFileMutationPortDeps {
   readonly fileManager: {
     processFrontMatter(file: VaultFile, fn: (frontmatter: Record<string, unknown>) => void): Promise<void>
   }
+  readonly getStatusProperty?: () => string
+  readonly getDoneStatusValue?: () => string
+}
+
+function nonEmpty(value: string | undefined): string | undefined {
+  if (typeof value !== 'string') {
+    return undefined
+  }
+  const trimmed = value.trim()
+  return trimmed.length > 0 ? trimmed : undefined
+}
+
+function resolveStatusWriteTarget(deps: ObsidianFileMutationPortDeps, status: string): {
+  readonly key: string
+  readonly value: string
+} {
+  const key = resolveFrontmatterKey(deps.getStatusProperty?.(), 'routine-status')
+  const value = status === 'done'
+    ? (nonEmpty(deps.getDoneStatusValue?.()) ?? 'done')
+    : status
+  return { key, value }
 }
 
 export function resolveFile(vault: { getFileByPath(path: string): VaultFile | null }, filePath: string): VaultFile {
@@ -83,8 +105,9 @@ export class ObsidianFileMutationPort implements FileMutationPort {
 
   async changeQueueItemStatus(mutation: Extract<FileMutation, { kind: 'queueStatusChange' }>): Promise<void> {
     const file = resolveFile(this.deps.vault, mutation.itemId)
+    const { key, value } = resolveStatusWriteTarget(this.deps, mutation.status)
     await this.deps.fileManager.processFrontMatter(file, (frontmatter) => {
-      frontmatter['routine-status'] = mutation.status
+      frontmatter[key] = value
     })
   }
 
@@ -100,7 +123,8 @@ export class ObsidianFileMutationPort implements FileMutationPort {
           frontmatter['routine-priority'] = mutation.position === 'back' ? epochMillis : -epochMillis
         }
         else {
-          frontmatter['routine-status'] = mutation.status
+          const { key, value } = resolveStatusWriteTarget(this.deps, mutation.status)
+          frontmatter[key] = value
         }
       }
     })

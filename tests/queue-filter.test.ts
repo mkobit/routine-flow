@@ -448,4 +448,37 @@ describe('filterQueueCandidates', () => {
       expect(registry.resolve(waitingPhase.taskSourceId)?.getQueue().map(c => c.sourcePath)).toEqual(['waiting-task.md'])
     })
   })
+
+  describe('custom statusProperty deferral', () => {
+    test('excludes notes deferred in the future using configured statusProperty (including note. prefix)', () => {
+      const evalTime = Temporal.Instant.from('2026-09-26T12:00:00Z')
+      const candidates = [
+        candidate({
+          path: 'deferred-custom.md',
+          frontmatter: {
+            'kanban-status': 'deferred',
+            'routine-deferred-until': '2026-09-26T14:00:00Z',
+          },
+          getValue: () => ({ toString: () => 'work' }),
+        }),
+        candidate({
+          path: 'active-custom.md',
+          frontmatter: {
+            'kanban-status': 'todo',
+          },
+          getValue: () => ({ toString: () => 'work' }),
+        }),
+      ]
+
+      const result = filterQueueCandidates(
+        { kind: FOCUS_PHASE_KIND },
+        undefined,
+        candidates,
+        evalTime,
+        { statusProperty: 'note.kanban-status' },
+      )
+
+      expect(result.map(c => c.path)).toEqual(['active-custom.md'])
+    })
+  })
 })

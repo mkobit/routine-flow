@@ -1,0 +1,37 @@
+type: base
+properties:
+  note.status:
+    displayName: Status
+  note.type:
+    displayName: Task type
+  note.sessions:
+    displayName: Sessions
+  note.routine-priority:
+    displayName: Queue priority
+  note.routine-deferred-until:
+    displayName: Deferred until
+views:
+  - type: routine-timer
+    name: Focus timer
+    focusProperty: note.type
+    focusValue: work
+    statusProperty: note.status
+    doneStatusValue: Done
+    filters:
+      and:
+        - note.type == "work"
+        - note.status != "Done"
+  - type: kanban
+    name: Task board
+    groupBy:
+      property: note.status
+      direction: ASC
+    filters:
+      and:
+        - note.type == "work"
+  - type: table
+    name: Active tasks
+    filters:
+      and:
+        - note.type == "work"
+        - note.status != "Done"

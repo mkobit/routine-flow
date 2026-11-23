@@ -35,5 +35,18 @@ export function getViewOptions(app: App): BasesOptions[] {
       displayName: 'Routine file',
       filter: (file: TFile) => app.metadataCache.getFileCache(file)?.frontmatter?.['is-routine'] === true,
     },
+    {
+      key: 'statusProperty',
+      type: 'property',
+      displayName: 'Status property',
+      placeholder: 'note.routine-status',
+      filter: prop => prop.startsWith('note.'),
+    },
+    {
+      key: 'doneStatusValue',
+      type: 'text',
+      displayName: 'Done status value',
+      placeholder: 'done',
+    },
   ]
 }

@@ -46,6 +46,20 @@ function reportFailedHookApplications(applications: readonly HookEventApplicatio
 
 const describeCause = (cause: unknown): string => cause instanceof Error ? cause.message : String(cause)
 
+function nonEmpty(value: string | undefined): string | undefined {
+  if (typeof value !== 'string') {
+    return undefined
+  }
+  const trimmed = value.trim()
+  return trimmed.length > 0 ? trimmed : undefined
+}
+
+export interface ActiveViewStatusConfig {
+  readonly owner: unknown
+  readonly statusProperty?: string
+  readonly doneStatusValue?: string
+}
+
 export default class RoutineFlowPlugin extends Plugin {
   public settings: RoutineFlowSettings = DEFAULT_SETTINGS
   public store!: EngineStore
@@ -56,6 +70,27 @@ export default class RoutineFlowPlugin extends Plugin {
   public scriptHookRegistry!: MutableScriptHookRegistry
   public hookRegistry!: HookRegistry
   private statusBarItem!: RoutineStatusBarItem
+  private activeViewStatusConfig: ActiveViewStatusConfig | null = null
+
+  public setActiveViewStatusConfig(config: ActiveViewStatusConfig | null): void {
+    this.activeViewStatusConfig = config
+  }
+
+  public getActiveViewStatusConfigOwner(): unknown {
+    return this.activeViewStatusConfig?.owner ?? null
+  }
+
+  public getEffectiveStatusProperty(): string {
+    return nonEmpty(this.activeViewStatusConfig?.statusProperty)
+      ?? nonEmpty(this.settings.statusProperty)
+      ?? 'routine-status'
+  }
+
+  public getEffectiveDoneStatusValue(): string {
+    return nonEmpty(this.activeViewStatusConfig?.doneStatusValue)
+      ?? nonEmpty(this.settings.doneStatusValue)
+      ?? 'done'
+  }
 
   async onload() {
     await this.loadSettings()
@@ -63,7 +98,12 @@ export default class RoutineFlowPlugin extends Plugin {
     const frontmatterReader = new ObsidianFrontmatterReader(this.app)
     this.scriptHookRegistry = createScriptHookRegistry({ frontmatterReader })
     this.scriptHookRegistry.setBindings(this.settings.scriptHookBindings)
-    const port = new ObsidianFileMutationPort(this.app)
+    const port = new ObsidianFileMutationPort({
+      vault: this.app.vault,
+      fileManager: this.app.fileManager,
+      getStatusProperty: () => this.getEffectiveStatusProperty(),
+      getDoneStatusValue: () => this.getEffectiveDoneStatusValue(),
+    })
 
     const writeBackHook = createWriteBackHook({
       // No built-in named log-target resolver ships — DEFAULT_PHASE_GRAPH only uses
@@ -122,6 +162,7 @@ export default class RoutineFlowPlugin extends Plugin {
       }
       if (state.status === 'stopped') {
         this.fallbackTaskSources.clearAll()
+        this.activeViewStatusConfig = null
       }
     })
 
@@ -226,6 +267,7 @@ export default class RoutineFlowPlugin extends Plugin {
               return new RoutineReplaceModal(this.app, currentRoutineName, nextRoutineName).waitForResult()
             },
             setGraph: (graph) => {
+              this.activeViewStatusConfig = null
               this.store.setGraph(graph)
             },
             dispatch: async (action) => {

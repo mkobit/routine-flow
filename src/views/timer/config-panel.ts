@@ -125,5 +125,35 @@ export function renderConfigPanel(parent: HTMLElement, options: ConfigPanelOptio
       })
     })
 
+  new Setting(panel)
+    .setClass('routine-config-status-prop')
+    .setName('Status property')
+    .setDesc('Frontmatter property used to read and write task status')
+    .addText((text) => {
+      text.setPlaceholder('note.routine-status')
+      const raw = options.config?.get('statusProperty')
+      text.setValue(typeof raw === 'string' ? raw : '')
+      text.onChange((value) => {
+        const val = value.trim()
+        options.config?.set('statusProperty', val.length > 0 ? val : null)
+        options.onFilterConfigChange()
+      })
+    })
+
+  new Setting(panel)
+    .setClass('routine-config-done-val')
+    .setName('Done status value')
+    .setDesc('Status value written and recognized as done')
+    .addText((text) => {
+      text.setPlaceholder('done')
+      const raw = options.config?.get('doneStatusValue')
+      text.setValue(typeof raw === 'string' ? raw : '')
+      text.onChange((value) => {
+        const val = value.trim()
+        options.config?.set('doneStatusValue', val.length > 0 ? val : null)
+        options.onFilterConfigChange()
+      })
+    })
+
   return panel
 }

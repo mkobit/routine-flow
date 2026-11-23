@@ -695,4 +695,36 @@ describe('example vault validation', () => {
       await fs.rm(tempDir, { recursive: true, force: true })
     }
   })
+
+  test('Kanban-Dashboard.md embeds existing views from Kanban-Workflow.base with routine-timer, kanban, and table views', async () => {
+    const dashboardPath = path.resolve(__dirname, '../routine-flow-example-vault/Kanban-Dashboard.md')
+    const basePath = path.resolve(__dirname, '../routine-flow-example-vault/Kanban-Workflow.base')
+
+    const mdContent = await fs.readFile(dashboardPath, 'utf-8')
+    const baseContent = await fs.readFile(basePath, 'utf-8')
+
+    expect(baseContent).toContain('type: routine-timer')
+    expect(baseContent).toContain('type: kanban')
+    expect(baseContent).toContain('type: table')
+    expect(baseContent).toContain('statusProperty: note.status')
+    expect(baseContent).toContain('doneStatusValue: Done')
+
+    const viewNameMatches = [...baseContent.matchAll(/name:\s*([^\s\n][^\n]*)/g)]
+      .map(m => m[1])
+      .filter(isString)
+      .map(s => s.trim())
+
+    expect(viewNameMatches).toEqual(['Focus timer', 'Task board', 'Active tasks'])
+
+    const embedMatches = [...mdContent.matchAll(/!\[\[Kanban-Workflow\.base#([^\]]+)\]\]/g)]
+      .map(m => m[1])
+      .filter(isString)
+      .map(s => s.trim())
+
+    expect(embedMatches.length).toBeGreaterThan(0)
+
+    for (const embedView of embedMatches) {
+      expect(viewNameMatches).toContain(embedView)
+    }
+  })
 })
