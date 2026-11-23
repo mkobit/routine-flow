@@ -426,6 +426,49 @@ export default tseslint.config(
       '@typescript-eslint/no-unsafe-return': 'off',
     },
   },
+  // Enforce layer import boundaries for domain and timer engine
+  {
+    files: ['src/domain/**/*.ts'],
+    rules: {
+      'no-restricted-imports': ['error', {
+        paths: [{
+          name: 'obsidian',
+          message: 'Domain modules must not import from obsidian.',
+        }],
+        patterns: [
+          {
+            group: ['**/index', '**/index.ts', '**/index.js'],
+            message: 'Barrel imports are disallowed.',
+          },
+          {
+            regex: '^\\.\\./(?:\\.\\./)*(?:timer|adapters|views|settings|onboarding|templates|main)(?:/|$)',
+            message: 'Domain modules must not import from timer, adapters, views, settings, onboarding, templates, or main.',
+          },
+        ],
+      }],
+    },
+  },
+  {
+    files: ['src/timer/**/*.ts'],
+    rules: {
+      'no-restricted-imports': ['error', {
+        paths: [{
+          name: 'obsidian',
+          message: 'Timer engine modules must not import from obsidian.',
+        }],
+        patterns: [
+          {
+            group: ['**/index', '**/index.ts', '**/index.js'],
+            message: 'Barrel imports are disallowed.',
+          },
+          {
+            regex: '^\\.\\./(?:\\.\\./)*(?:adapters|views|settings|onboarding|templates|main)(?:/|$)',
+            message: 'Timer engine modules must not import from adapters, views, settings, onboarding, templates, or main.',
+          },
+        ],
+      }],
+    },
+  },
   {
     // e2e tests should never need `as unknown as T` casts — augment the Obsidian
     // App interface in e2e/obsidian-internal.d.ts instead.

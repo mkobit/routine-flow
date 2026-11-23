@@ -1,5 +1,4 @@
 import { z } from 'zod'
-import type { BasesPropertyId } from 'obsidian'
 import { PositiveDurationSchema } from '../duration'
 import { TaskSourceIdSchema } from '../queue/task-source'
 import { QueueItemActionSchema } from '../action/queue-item-action'
@@ -52,13 +51,17 @@ export const TimeFormatSchema = z.enum(['mm:ss', 'hh:mm:ss', 'ss.s', 'ms'])
 export type TimeFormat = z.infer<typeof TimeFormatSchema>
 
 /**
- * Schema validating and parsing a valid BasesPropertyId string (`note.${string}` | `file.${string}` | `formula.${string}`).
+ * Property identifier prefixed with `note.`, `file.`, or `formula.`.
  */
-export const PropertyIdSchema = z.custom<BasesPropertyId>(
+export type PropertyId = `note.${string}` | `file.${string}` | `formula.${string}`
+
+/**
+ * Schema validating and parsing a valid PropertyId string (`note.${string}` | `file.${string}` | `formula.${string}`).
+ */
+export const PropertyIdSchema = z.custom<PropertyId>(
   val => typeof val === 'string' && (val.startsWith('note.') || val.startsWith('file.') || val.startsWith('formula.')),
-  { message: 'Expected a BasesPropertyId prefixed with note., file., or formula.' },
+  { message: 'Expected a PropertyId prefixed with note., file., or formula.' },
 )
-export type PropertyId = BasesPropertyId
 
 function normalizePropertyId(rawProp: unknown): unknown {
   return typeof rawProp !== 'string' || rawProp.length === 0

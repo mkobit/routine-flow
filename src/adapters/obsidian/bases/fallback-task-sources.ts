@@ -1,7 +1,7 @@
-import { createBaseQuerySource } from '../adapters/obsidian/bases/query-task-source'
-import type { BaseQueryEntry, ExtraPropertiesLens } from '../adapters/obsidian/bases/query-task-source'
-import type { TaskSourceId } from '../domain/queue/task-source'
-import type { MutableTaskSourceRegistry } from './task-source-registry'
+import { createBaseQuerySource } from './query-task-source'
+import type { BaseQueryEntry, ExtraPropertiesLens } from './query-task-source'
+import type { TaskSourceId } from '../../../domain/queue/task-source'
+import type { MutableTaskSourceRegistry } from '../../../timer/task-source-registry'
 
 /** Snapshot of a TaskSource's filtered entries and lens, retained when no RoutineTimerView is mounted. */
 export interface FallbackTaskSourceSnapshot {
