@@ -28,7 +28,10 @@ import { RoutineSidePanelView, SIDE_PANEL_VIEW_TYPE } from './views/side-panel-v
 import { RoutineGalleryModal } from './views/routine-gallery-modal'
 import { EXAMPLE_FOLDER_PATH, scaffoldExampleRoutine } from './onboarding/scaffold-example'
 import { RoutineReplaceModal } from './views/routine-replace-modal'
+import { RoutinePickerModal } from './views/routine-picker-modal'
 import { runCadenceRoutine } from './timer/routine-selection'
+import { decideFileMenuAction, focusTaskInActiveRoutine, startRoutineForTask } from './timer/file-menu-action'
+import type { PhaseGraph } from './domain/phase/phase-graph'
 
 /** Surfaces a dispatched hook's invocation failures and failed FileMutation applications — mirrors the reporting main.ts's old write-back subscriber did inline. */
 function reportFailedHookApplications(applications: readonly HookEventApplication[]): void {
@@ -186,6 +189,72 @@ export default class RoutineFlowPlugin extends Plugin {
         if (this.fallbackTaskSources.handleFileRenamed(oldPath, file.path, basename)) {
           this.syncAfterFallbackChange()
         }
+      }),
+    )
+
+    this.registerEvent(
+      this.app.workspace.on('file-menu', (menu, file) => {
+        if (!(file instanceof TFile) || file.extension !== 'md') {
+          return
+        }
+        if (this.app.metadataCache.getFileCache(file)?.frontmatter?.['is-routine'] === true) {
+          return
+        }
+        const actionKind = decideFileMenuAction(this.store.getState().status)
+        if (actionKind === 'focus') {
+          menu.addItem((item) => {
+            item
+              .setTitle('Focus in active routine')
+              .setIcon('timer')
+              .onClick(() => {
+                void focusTaskInActiveRoutine(file.path, {
+                  dispatchStart: filePath => this.store.dispatch({ type: 'start', filePath }),
+                  activateView: () => this.activateView(),
+                })
+              })
+          })
+          return
+        }
+
+        menu.addItem((item) => {
+          item
+            .setTitle('Start routine for task')
+            .setIcon('timer')
+            .onClick(() => {
+              const routineFiles = this.app.vault.getMarkdownFiles().filter((candidate) => {
+                return this.app.metadataCache.getFileCache(candidate)?.frontmatter?.['is-routine'] === true
+              })
+              const deps = {
+                clearActiveViewStatusConfig: () => {
+                  this.activeViewStatusConfig = null
+                },
+                setGraph: (graph: PhaseGraph) => {
+                  this.store.setGraph(graph)
+                },
+                dispatchStart: (filePath: string) => this.store.dispatch({ type: 'start', filePath }),
+                activateView: () => this.activateView(),
+                readRoutineFile: async (path: string) => {
+                  const target = this.app.vault.getFileByPath(path)
+                  return target !== null ? this.app.vault.cachedRead(target) : ''
+                },
+                showNotice: (message: string) => {
+                  new Notice(message)
+                },
+              }
+
+              if (routineFiles.length === 0) {
+                void startRoutineForTask(file.path, null, deps)
+                return
+              }
+
+              new RoutinePickerModal(this.app, routineFiles, (choice) => {
+                const candidate = choice.kind === 'file'
+                  ? { path: choice.file.path, label: choice.file.basename }
+                  : null
+                void startRoutineForTask(file.path, candidate, deps)
+              }).open()
+            })
+        })
       }),
     )
 

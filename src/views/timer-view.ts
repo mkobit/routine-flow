@@ -29,6 +29,8 @@ import { renderStageProgress, renderGuidanceChecklist } from './timer/stage-prog
 import { deriveStarJarState, resolveGraphTrackerFilePath } from '../domain/reward/star-jar'
 import { renderStarJarMeter } from './timer/star-jar-meter'
 
+export type TimerViewLayout = 'standard' | 'compact'
+
 interface TimerRenderSnapshot {
   readonly viewGraphId: string
   readonly activeGraphId: string
@@ -38,6 +40,7 @@ interface TimerRenderSnapshot {
   readonly activeFilePath: string | null
   readonly queueExhausted: boolean
   readonly isConfigOpen: boolean
+  readonly layout: TimerViewLayout
   readonly progressMeterStyle: ProgressMeterStyle
   readonly trackerFrontmatter: EngineState['trackerFrontmatter']
   readonly itemsTouchedCount: number
@@ -54,6 +57,7 @@ function timerSnapshotsMatch(a: TimerRenderSnapshot, b: TimerRenderSnapshot): bo
     && a.activeFilePath === b.activeFilePath
     && a.queueExhausted === b.queueExhausted
     && a.isConfigOpen === b.isConfigOpen
+    && a.layout === b.layout
     && a.progressMeterStyle === b.progressMeterStyle
     && a.trackerFrontmatter === b.trackerFrontmatter
     && a.itemsTouchedCount === b.itemsTouchedCount
@@ -72,6 +76,7 @@ export class RoutineTimerView extends BasesView {
   private timerSectionEl: HTMLElement | null = null
   private controlsSectionEl: HTMLElement | null = null
   private queueEl: HTMLElement | null = null
+  private compactConfigPanelEl: HTMLElement | null = null
   private dialEl: HTMLElement | null = null
   private countdownTimeEl: HTMLElement | null = null
   private lastRenderSnapshot: TimerRenderSnapshot | null = null
@@ -143,9 +148,18 @@ export class RoutineTimerView extends BasesView {
     this.timerSectionEl = null
     this.controlsSectionEl = null
     this.queueEl = null
+    this.compactConfigPanelEl = null
     this.dialEl = null
     this.countdownTimeEl = null
     this.lastRenderSnapshot = null
+  }
+
+  private getConfiguredLayout(): TimerViewLayout {
+    return this.config?.get('layout') === 'compact' ? 'compact' : 'standard'
+  }
+
+  private applyContainerLayoutClass(layout: TimerViewLayout): void {
+    this.containerEl.className = layout === 'compact' ? 'routine-timer-view is-compact' : 'routine-timer-view'
   }
 
   private syncTaskSourcesIfActive(): void {
@@ -203,10 +217,13 @@ export class RoutineTimerView extends BasesView {
       delete this.containerEl.dataset.viewGraphId
     }
 
+    const layout = this.getConfiguredLayout()
+    const isCompact = layout === 'compact'
+
     if (this.routineResolution.kind === 'error') {
       this.resetPersistentContainers()
       this.containerEl.empty()
-      this.containerEl.className = 'routine-timer-view'
+      this.applyContainerLayoutClass(layout)
       const errorEl = this.containerEl.createDiv({ cls: 'routine-error' })
       renderStateIcon(errorEl, ['circle-alert', 'alert-circle'])
       errorEl.createEl('p', { text: `Routine error: ${this.routineResolution.error.message}` })
@@ -220,7 +237,7 @@ export class RoutineTimerView extends BasesView {
     if (this.routineResolution.kind === 'loading') {
       this.resetPersistentContainers()
       this.containerEl.empty()
-      this.containerEl.className = 'routine-timer-view'
+      this.applyContainerLayoutClass(layout)
       const loadingEl = this.containerEl.createDiv({ cls: 'routine-loading' })
       renderStateIcon(loadingEl, ['loader-circle', 'loader-2'])
       loadingEl.createEl('p', { text: 'Loading routine…' })
@@ -251,6 +268,7 @@ export class RoutineTimerView extends BasesView {
       activeFilePath: state.activeFilePath,
       queueExhausted: state.queueExhausted,
       isConfigOpen: this.isConfigOpen,
+      layout,
       progressMeterStyle: this.plugin.settings.progressMeterStyle,
       trackerFrontmatter: state.trackerFrontmatter,
       itemsTouchedCount: state.session?.currentInstance?.itemsTouched.length ?? 0,
@@ -270,10 +288,19 @@ export class RoutineTimerView extends BasesView {
 
     if (this.timerSectionEl === null || this.controlsSectionEl === null) {
       this.containerEl.empty()
-      this.containerEl.className = 'routine-timer-view'
+      this.applyContainerLayoutClass(layout)
       this.timerSectionEl = this.containerEl.createDiv({ cls: 'routine-timer-panel' })
       this.controlsSectionEl = this.containerEl.createDiv({ cls: 'routine-controls' })
       this.queueEl = null
+      this.compactConfigPanelEl = null
+    }
+    else {
+      this.applyContainerLayoutClass(layout)
+    }
+
+    if (this.compactConfigPanelEl !== null) {
+      this.compactConfigPanelEl.remove()
+      this.compactConfigPanelEl = null
     }
 
     // Timer Panel
@@ -287,9 +314,11 @@ export class RoutineTimerView extends BasesView {
       timerPanel.addClass('rf-blitz-exhausted')
     }
 
-    this.renderConfigBar(timerPanel)
-    if (this.isConfigOpen) {
-      this.renderConfigPanel(timerPanel)
+    if (!isCompact) {
+      this.renderConfigBar(timerPanel)
+      if (this.isConfigOpen) {
+        this.renderConfigPanel(timerPanel)
+      }
     }
 
     if (state.queueExhausted) {
@@ -343,48 +372,50 @@ export class RoutineTimerView extends BasesView {
       inertEl.createSpan({ text: `"${graph.name}" is currently active instead of this view's routine ("${viewGraph.name}").` })
     }
 
-    const stageProgress = deriveStageProgress(graph, state)
-    if (stageProgress.totalCount > 1) {
-      renderStageProgress(timerPanel, stageProgress)
-    }
-
-    const activeGraph = isViewRoutineActive ? graph : (viewGraph ?? graph)
-    const trackerFilePath = resolveGraphTrackerFilePath(activeGraph)
-    if (trackerFilePath !== null || state.trackerFrontmatter !== undefined) {
-      let trackerFrontmatter = state.trackerFrontmatter
-      if (trackerFrontmatter === undefined && trackerFilePath !== null) {
-        try {
-          const file = this.plugin.app.vault.getFileByPath(trackerFilePath)
-          if (file !== null) {
-            trackerFrontmatter = this.plugin.app.metadataCache.getFileCache(file)?.frontmatter
-          }
-        }
-        catch {
-          // Ignore cache lookup failure
-        }
+    if (!isCompact) {
+      const stageProgress = deriveStageProgress(graph, state)
+      if (stageProgress.totalCount > 1) {
+        renderStageProgress(timerPanel, stageProgress)
       }
-      const starJarState = deriveStarJarState(trackerFrontmatter)
-      renderStarJarMeter(timerPanel, {
-        current: starJarState.current,
-        target: starJarState.target,
-        progressFraction: starJarState.progressFraction,
-        isFull: starJarState.isFull,
-        trackerFilePath,
-      })
-    }
 
-    if (phase.guidance && phase.guidance.length > 0) {
-      renderGuidanceChecklist(timerPanel, phase.guidance, {
-        checkedItems: this.checkedGuidanceItems,
-        onToggle: (item, checked) => {
-          if (checked) {
-            this.checkedGuidanceItems.add(item)
+      const activeGraph = isViewRoutineActive ? graph : (viewGraph ?? graph)
+      const trackerFilePath = resolveGraphTrackerFilePath(activeGraph)
+      if (trackerFilePath !== null || state.trackerFrontmatter !== undefined) {
+        let trackerFrontmatter = state.trackerFrontmatter
+        if (trackerFrontmatter === undefined && trackerFilePath !== null) {
+          try {
+            const file = this.plugin.app.vault.getFileByPath(trackerFilePath)
+            if (file !== null) {
+              trackerFrontmatter = this.plugin.app.metadataCache.getFileCache(file)?.frontmatter
+            }
           }
-          else {
-            this.checkedGuidanceItems.delete(item)
+          catch {
+            // Ignore cache lookup failure
           }
-        },
-      })
+        }
+        const starJarState = deriveStarJarState(trackerFrontmatter)
+        renderStarJarMeter(timerPanel, {
+          current: starJarState.current,
+          target: starJarState.target,
+          progressFraction: starJarState.progressFraction,
+          isFull: starJarState.isFull,
+          trackerFilePath,
+        })
+      }
+
+      if (phase.guidance && phase.guidance.length > 0) {
+        renderGuidanceChecklist(timerPanel, phase.guidance, {
+          checkedItems: this.checkedGuidanceItems,
+          onToggle: (item, checked) => {
+            if (checked) {
+              this.checkedGuidanceItems.add(item)
+            }
+            else {
+              this.checkedGuidanceItems.delete(item)
+            }
+          },
+        })
+      }
     }
 
     // Controls
@@ -415,8 +446,16 @@ export class RoutineTimerView extends BasesView {
     const stopBtn = controls.createEl('button', { text: 'Reset' })
     stopBtn.addEventListener('click', () => void this.handleReset(graph.name))
 
+    if (isCompact) {
+      this.renderConfigBar(controls)
+      if (this.isConfigOpen) {
+        this.compactConfigPanelEl = this.renderConfigPanel(this.containerEl)
+      }
+    }
+
     // A phase with no taskSourceId has no queue at all (e.g. a rep-based workout phase) — nothing to render.
-    if (phase.taskSourceId === null) {
+    // Compact bar layout also omits the queue so the embed stays a slim transport bar.
+    if (phase.taskSourceId === null || isCompact) {
       if (this.queueEl !== null) {
         this.queueEl.remove()
         this.queueEl = null
@@ -446,8 +485,8 @@ export class RoutineTimerView extends BasesView {
     })
   }
 
-  private renderConfigPanel(parent: HTMLElement): void {
-    renderConfigPanel(parent, {
+  private renderConfigPanel(parent: HTMLElement): HTMLElement {
+    return renderConfigPanel(parent, {
       app: this.plugin.app,
       config: this.config,
       configuredRoutinePath: this.getConfiguredRoutineFilePath(),
@@ -466,6 +505,7 @@ export class RoutineTimerView extends BasesView {
         this.render(this.plugin.store.getState())
       },
       onFilterConfigChange: () => this.refreshQueueView(),
+      onLayoutChange: () => this.render(this.plugin.store.getState()),
     })
   }
 

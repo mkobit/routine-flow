@@ -48,5 +48,15 @@ export function getViewOptions(app: App): BasesOptions[] {
       displayName: 'Done status value',
       placeholder: 'done',
     },
+    {
+      key: 'layout',
+      type: 'dropdown',
+      displayName: 'Layout',
+      default: 'standard',
+      options: {
+        standard: 'Standard',
+        compact: 'Compact bar',
+      },
+    },
   ]
 }

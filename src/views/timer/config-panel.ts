@@ -13,6 +13,7 @@ export interface ConfigPanelOptions {
   readonly configuredRoutinePath: string | null
   readonly onRoutineFileChange: (path: string | null) => Promise<void> | void
   readonly onFilterConfigChange: () => void
+  readonly onLayoutChange?: () => void
 }
 
 /**
@@ -152,6 +153,21 @@ export function renderConfigPanel(parent: HTMLElement, options: ConfigPanelOptio
         const val = value.trim()
         options.config?.set('doneStatusValue', val.length > 0 ? val : null)
         options.onFilterConfigChange()
+      })
+    })
+
+  new Setting(panel)
+    .setClass('routine-config-layout')
+    .setName('Layout')
+    .setDesc('Choose standard panel or compact bar')
+    .addDropdown((dropdown) => {
+      dropdown.addOption('standard', 'Standard')
+      dropdown.addOption('compact', 'Compact bar')
+      const raw = options.config?.get('layout')
+      dropdown.setValue(raw === 'compact' ? 'compact' : 'standard')
+      dropdown.onChange((value) => {
+        options.config?.set('layout', value === 'compact' ? 'compact' : null)
+        options.onLayoutChange?.()
       })
     })
 

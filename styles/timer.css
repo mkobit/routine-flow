@@ -564,3 +564,65 @@
 .routine-status-bar-item.is-paused {
   color: var(--routine-flow-accent-paused);
 }
+
+/* ---- Compact timer-bar layout (flow-gu1.82) ------------------------------------------------- */
+
+.routine-timer-view.is-compact {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--size-4-2);
+  padding: var(--size-4-2) var(--size-4-3);
+}
+
+.routine-timer-view.is-compact .routine-timer-panel {
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--size-4-2);
+  text-align: start;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.routine-timer-view.is-compact .routine-countdown {
+  flex-direction: row;
+  align-items: baseline;
+  gap: var(--size-4-2);
+  margin-block: 0;
+}
+
+.routine-timer-view.is-compact .routine-countdown-dial {
+  display: inline-flex;
+  width: auto;
+  height: auto;
+}
+
+.routine-timer-view.is-compact .routine-countdown-time {
+  font-size: var(--font-ui-large);
+}
+
+.routine-timer-view.is-compact .routine-progress-ring,
+.routine-timer-view.is-compact .routine-progress-fill-bar,
+.routine-timer-view.is-compact .routine-progress-battery-drain,
+.routine-timer-view.is-compact .routine-progress-tick-marks {
+  display: none;
+}
+
+.routine-timer-view.is-compact .routine-controls {
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: var(--size-4-1);
+}
+
+.routine-timer-view.is-compact .routine-config-bar {
+  width: auto;
+}
+
+.routine-timer-view.is-compact .routine-config-panel,
+.routine-timer-view.is-compact .routine-inert,
+.routine-timer-view.is-compact .routine-blitz-celebration {
+  flex-basis: 100%;
+}
