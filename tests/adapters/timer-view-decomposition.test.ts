@@ -2534,5 +2534,69 @@ describe('Timer view decomposition', () => {
       expect(findDescendant(containerEl, 'routine-stage-progress')).toBeDefined()
       expect(findDescendant(containerEl, 'routine-guidance-checklist')).toBeDefined()
     })
+
+    test('RoutineTimerView renders Start, Pause, Resume, and Switch routine transport labels', async () => {
+      const { EngineStore: StoreClass } = await import('../../src/timer/store')
+      const { DEFAULT_PHASE_GRAPH } = await import('../../src/timer/phase-graph-query')
+      const { PhaseGraphSchema: GraphSchema } = await import('../../src/domain/phase/phase-graph')
+      const { RoutineTimerView: RoutineTimerViewClass } = await import('../../src/views/timer-view')
+
+      const otherGraph = GraphSchema.parse({
+        ...DEFAULT_PHASE_GRAPH,
+        id: 'other-routine',
+        name: 'Other routine',
+      })
+
+      const store = new StoreClass(DEFAULT_PHASE_GRAPH)
+      const mockPlugin = {
+        app: new MockApp(),
+        store,
+        settings: {
+          defaultLayout: 'standard',
+          progressMeterStyle: 'ring',
+          clockSpeedMultiplier: 1,
+        },
+        ticker: { restart: () => {} },
+        formulaPredicateRegistry: { get: () => undefined },
+        taskSourceRegistry: {
+          register: () => {},
+          resolve: () => ({ getQueue: () => [] }),
+        },
+        fallbackTaskSourceManager: { setActiveSources: () => {} },
+        updateStatusBar: () => {},
+        syncActiveViewStatusConfig: () => {},
+        activateView: async () => {},
+      }
+
+      const containerEl = new MockElement()
+      const controller = {}
+      // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- mock view
+      const timerView = new RoutineTimerViewClass(controller as unknown as QueryController, asElement(containerEl), mockPlugin as unknown as RoutineFlowPlugin)
+      timerView.onload()
+
+      const primaryButtonText = (): string | undefined => {
+        const controls = findDescendant(containerEl, 'routine-controls')
+        return controls?.children.find(c => c.tagName === 'BUTTON')?.getText()
+      }
+
+      expect(primaryButtonText()).toBe('Start')
+
+      await store.dispatch({ type: 'start' })
+      expect(primaryButtonText()).toBe('Pause')
+
+      await store.dispatch({ type: 'pause' })
+      expect(primaryButtonText()).toBe('Resume')
+
+      // When another routine is active (running or paused), viewing an inactive routine shows Switch routine
+      store.setGraph(otherGraph)
+      await store.dispatch({ type: 'start' })
+      expect(primaryButtonText()).toBe('Switch routine')
+
+      await store.dispatch({ type: 'pause' })
+      expect(primaryButtonText()).toBe('Switch routine')
+
+      await store.dispatch({ type: 'stop' })
+      expect(primaryButtonText()).toBe('Start')
+    })
   })
 })

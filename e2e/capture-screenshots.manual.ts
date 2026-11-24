@@ -147,7 +147,7 @@ test.describe('capture screenshots for docs', () => {
     await selectBasesSubView(page, 'Workout')
     await expect(view).toHaveAttribute('data-view-graph-id', 'workout')
 
-    await page.locator('.workspace-leaf-content[data-type="bases"] .routine-controls').getByRole('button', { name: 'Start' }).click()
+    await page.locator('.workspace-leaf-content[data-type="bases"] .routine-controls').getByRole('button', { name: 'Switch routine' }).click()
     const modal = page.locator('.modal').filter({ hasText: 'Replace running routine?' })
     await expect(modal).toBeVisible()
 

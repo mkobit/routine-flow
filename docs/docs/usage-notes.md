@@ -36,9 +36,3 @@ The sound field is reserved for future audio cue integration.
 
 The side panel mirrors whichever routine is currently running and gives you Pause, Resume, Done, Clear, and Reset, but it has no Start control.
 Start a session from a Base's Routine Timer view first; the side panel then stays in sync with it.
-
-## Resuming from a pause is labeled differently depending on where you click
-
-The Base view's button always reads "Start," even when it's resuming a paused phase — it never relabels to "Resume."
-The side panel and the status bar do call it "Resume" (or toggle on click, for the status bar).
-Functionally identical either way, just an inconsistent label across the three surfaces.

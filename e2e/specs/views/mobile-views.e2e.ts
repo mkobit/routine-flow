@@ -218,7 +218,7 @@ test.describe('mobile routine replace confirmation modal', () => {
     const panel = page.locator('.workspace-leaf-content[data-type="bases"] .routine-timer-panel')
     const controls = page.locator('.workspace-leaf-content[data-type="bases"] .routine-controls')
 
-    await controls.getByRole('button', { name: 'Start' }).click()
+    await controls.getByRole('button', { name: 'Switch routine' }).click()
     const modal = replaceRoutineModalLocator(page)
     await expect(modal).toBeVisible()
     expect(page.context().pages()).toHaveLength(1)
@@ -234,7 +234,7 @@ test.describe('mobile routine replace confirmation modal', () => {
     const panel = page.locator('.workspace-leaf-content[data-type="bases"] .routine-timer-panel')
     const controls = page.locator('.workspace-leaf-content[data-type="bases"] .routine-controls')
 
-    await controls.getByRole('button', { name: 'Start' }).click()
+    await controls.getByRole('button', { name: 'Switch routine' }).click()
     const modal = replaceRoutineModalLocator(page)
     await expect(modal).toBeVisible()
     expect(page.context().pages()).toHaveLength(1)

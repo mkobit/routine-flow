@@ -1,5 +1,5 @@
 import { test, expect, describe } from 'bun:test'
-import { decideStartAction, resolveRoutineGraph } from '../../src/timer/routine-selection'
+import { decideStartAction, getPrimaryTransportLabel, resolveRoutineGraph } from '../../src/timer/routine-selection'
 import { PhaseGraphIdSchema } from '../../src/domain/phase/phase-graph'
 
 const defaultId = PhaseGraphIdSchema.parse('default')
@@ -78,5 +78,39 @@ describe('decideStartAction', () => {
   test('starts immediately when a different routine is only stopped (no progress to lose)', () => {
     const action = decideStartAction({ graphId: defaultId, status: 'stopped' }, standupId)
     expect(action).toBe('start')
+  })
+})
+
+describe('getPrimaryTransportLabel', () => {
+  test('returns Start when active routine is stopped', () => {
+    expect(getPrimaryTransportLabel(true, 'stopped')).toBe('Start')
+  })
+
+  test('returns Pause when active routine is running', () => {
+    expect(getPrimaryTransportLabel(true, 'running')).toBe('Pause')
+  })
+
+  test('returns Resume when active routine is paused', () => {
+    expect(getPrimaryTransportLabel(true, 'paused')).toBe('Resume')
+  })
+
+  test('returns Start when active routine is completed', () => {
+    expect(getPrimaryTransportLabel(true, 'completed')).toBe('Start')
+  })
+
+  test('returns Start when viewing an inactive routine and engine is stopped', () => {
+    expect(getPrimaryTransportLabel(false, 'stopped')).toBe('Start')
+  })
+
+  test('returns Switch routine when viewing an inactive routine while another is running', () => {
+    expect(getPrimaryTransportLabel(false, 'running')).toBe('Switch routine')
+  })
+
+  test('returns Switch routine when viewing an inactive routine while another is paused', () => {
+    expect(getPrimaryTransportLabel(false, 'paused')).toBe('Switch routine')
+  })
+
+  test('returns Switch routine when viewing an inactive routine while another is completed', () => {
+    expect(getPrimaryTransportLabel(false, 'completed')).toBe('Switch routine')
   })
 })

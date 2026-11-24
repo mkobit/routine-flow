@@ -215,8 +215,8 @@ test.describe('Structured review cadences execution (flow-1t1.6)', () => {
     await selectBasesSubView(page, 'Daily kickoff')
     await expect(view).toHaveAttribute('data-view-graph-id', 'daily-kickoff')
 
-    // Click Start -> prompts confirmation modal
-    await controls.getByRole('button', { name: 'Start' }).click()
+    // Click Switch routine -> prompts confirmation modal
+    await controls.getByRole('button', { name: 'Switch routine' }).click()
     const modal = page.locator('.modal').filter({ hasText: 'Replace running routine?' })
     await expect(modal).toBeVisible()
     await expect(modal).toContainText('Weekly GTD review')
@@ -229,8 +229,8 @@ test.describe('Structured review cadences execution (flow-1t1.6)', () => {
       '"Weekly GTD review" is currently active instead of this view\'s routine ("Daily kickoff routine").',
     )
 
-    // Click Start again and Replace switches to Daily kickoff
-    await controls.getByRole('button', { name: 'Start' }).click()
+    // Click Switch routine again and Replace switches to Daily kickoff
+    await controls.getByRole('button', { name: 'Switch routine' }).click()
     await expect(modal).toBeVisible()
     await modal.getByRole('button', { name: 'Replace' }).click()
     await expect(modal).toBeHidden()

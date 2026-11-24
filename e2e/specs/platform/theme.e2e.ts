@@ -117,7 +117,7 @@ test.describe('Theme adaptability and CSS styling', () => {
     // Trigger routine replace modal
     await controlsClick(page, 'Start')
     await selectBasesSubView(page, 'Workout')
-    await controlsClick(page, 'Start')
+    await controlsClick(page, 'Switch routine')
 
     const replaceModal = page.locator('.modal.routine-replace-modal')
     await expect(replaceModal).toBeVisible()
