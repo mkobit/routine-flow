@@ -36,7 +36,7 @@ export class RoutineReplaceModal extends Modal {
 
     new Setting(this.contentEl)
       .addButton(button => button.setButtonText('Cancel').onClick(() => this.close()))
-      .addButton(button => button.setButtonText('Replace').setWarning().onClick(() => this.confirm()))
+      .addButton(button => button.setButtonText('Replace').setDestructive().onClick(() => this.confirm()))
   }
 
   onClose(): void {
