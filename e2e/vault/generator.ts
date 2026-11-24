@@ -138,7 +138,6 @@ export function generateVault(seed: number = resolveVaultSeed()): readonly NoteD
 
 export async function rebuildGeneratedVault(baseDir: string, seed: number = resolveVaultSeed()): Promise<readonly Error[]> {
   await Promise.all(GENERATED_VAULT_FOLDERS.map(folder =>
-    fs.rm(path.join(baseDir, folder), { recursive: true, force: true }),
-  ))
+    fs.rm(path.join(baseDir, folder), { recursive: true, force: true })))
   return writeVault(baseDir, generateVault(seed))
 }

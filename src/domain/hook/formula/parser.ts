@@ -36,26 +36,26 @@ import { tokenize } from './tokenizer'
  * `boolean`, and `if`'s two branches must agree in type. A formula
  * must type as `boolean` overall to be registrable as a `Predicate`.
  */
-export type FormulaExpression
-  = | { readonly kind: 'number', readonly value: number }
-    | { readonly kind: 'string', readonly value: string }
-    | { readonly kind: 'boolean', readonly value: boolean }
-    | { readonly kind: 'fromPhaseId' }
-    | { readonly kind: 'visitCount', readonly phaseKey: string }
-    | { readonly kind: 'trackerProperty', readonly property: string }
-    | { readonly kind: 'comparison', readonly operator: ComparisonOperator, readonly left: FormulaExpression, readonly right: FormulaExpression }
-    | { readonly kind: 'and', readonly left: FormulaExpression, readonly right: FormulaExpression }
-    | { readonly kind: 'or', readonly left: FormulaExpression, readonly right: FormulaExpression }
-    | { readonly kind: 'not', readonly operand: FormulaExpression }
-    | { readonly kind: 'if', readonly condition: FormulaExpression, readonly thenBranch: FormulaExpression, readonly elseBranch: FormulaExpression }
+export type FormulaExpression =
+  | { readonly kind: 'number', readonly value: number }
+  | { readonly kind: 'string', readonly value: string }
+  | { readonly kind: 'boolean', readonly value: boolean }
+  | { readonly kind: 'fromPhaseId' }
+  | { readonly kind: 'visitCount', readonly phaseKey: string }
+  | { readonly kind: 'trackerProperty', readonly property: string }
+  | { readonly kind: 'comparison', readonly operator: ComparisonOperator, readonly left: FormulaExpression, readonly right: FormulaExpression }
+  | { readonly kind: 'and', readonly left: FormulaExpression, readonly right: FormulaExpression }
+  | { readonly kind: 'or', readonly left: FormulaExpression, readonly right: FormulaExpression }
+  | { readonly kind: 'not', readonly operand: FormulaExpression }
+  | { readonly kind: 'if', readonly condition: FormulaExpression, readonly thenBranch: FormulaExpression, readonly elseBranch: FormulaExpression }
 
-export type FormulaParseResult
-  = | { readonly ok: true, readonly expression: FormulaExpression }
-    | { readonly ok: false, readonly error: string }
+export type FormulaParseResult =
+  | { readonly ok: true, readonly expression: FormulaExpression }
+  | { readonly ok: false, readonly error: string }
 
-type Parsed<T>
-  = | { readonly ok: true, readonly value: T, readonly next: number }
-    | { readonly ok: false, readonly error: string }
+type Parsed<T> =
+  | { readonly ok: true, readonly value: T, readonly next: number }
+  | { readonly ok: false, readonly error: string }
 
 /** Result-monad bind for Parsed<T>: threads the next token index through a chain of parse steps without any conditional statement. */
 function andThen<T, U>(result: Parsed<T>, step: (value: T, next: number) => Parsed<U>): Parsed<U> {

@@ -5,9 +5,9 @@
  * ApplyMutationsResult's failure-only `mutation`/`cause`), keep a bespoke
  * type instead — this is for internal chains that don't need one.
  */
-export type Result<T, E>
-  = | { readonly success: true, readonly value: T }
-    | { readonly success: false, readonly error: E }
+export type Result<T, E> =
+  | { readonly success: true, readonly value: T }
+  | { readonly success: false, readonly error: E }
 
 /** Transforms a success value; a failure passes through untouched and fn is not called. */
 export function map<T, U, E>(result: Result<T, E>, fn: (value: T) => U): Result<U, E> {

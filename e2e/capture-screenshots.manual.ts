@@ -103,8 +103,7 @@ test.describe('capture screenshots for docs', () => {
         const file = app.vault.getFileByPath(args.path)
         const value: unknown = file ? app.metadataCache.getFileCache(file)?.frontmatter?.sessions : undefined
         return value
-      }, { path: TASK_PATH }),
-    ).toBe(3)
+      }, { path: TASK_PATH })).toBe(3)
 
     await dispatchAction(page, { type: 'start', filePath: TASK_PATH })
 

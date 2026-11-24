@@ -39,9 +39,9 @@ export interface ItemTouch {
  * (onEnter/onComplete/onSkip/onExit) produced it, since more than one event can fire for the
  * same instance.
  */
-export type PhaseInstanceHookFailure
-  = | { readonly event: HookEvent, readonly kind: 'invocationFailed', readonly cause: unknown }
-    | { readonly event: HookEvent, readonly kind: 'mutationFailed', readonly mutation: FileMutation, readonly cause: unknown }
+export type PhaseInstanceHookFailure =
+  | { readonly event: HookEvent, readonly kind: 'invocationFailed', readonly cause: unknown }
+  | { readonly event: HookEvent, readonly kind: 'mutationFailed', readonly mutation: FileMutation, readonly cause: unknown }
 
 /**
  * A concrete occurrence of a Phase within a Session. `phaseDisplayName`/`phaseKind` are

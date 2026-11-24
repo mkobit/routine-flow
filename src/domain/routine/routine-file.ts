@@ -19,13 +19,13 @@ export interface RoutineParseIssue {
 }
 
 /** Mirrors ApplyMutationsResult's resolved-result convention — never a thrown exception. */
-export type RoutineParseResult
-  = | { readonly success: true, readonly graph: PhaseGraph }
-    | { readonly success: false, readonly error: RoutineParseError }
+export type RoutineParseResult =
+  | { readonly success: true, readonly graph: PhaseGraph }
+  | { readonly success: false, readonly error: RoutineParseError }
 
-type JsonParseResult
-  = | { readonly success: true, readonly value: unknown }
-    | { readonly success: false }
+type JsonParseResult =
+  | { readonly success: true, readonly value: unknown }
+  | { readonly success: false }
 
 const FENCED_JSON_BLOCK = /```json[ \t]*\r?\n([\s\S]*?)\r?\n?```/gi
 

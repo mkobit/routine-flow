@@ -22,10 +22,10 @@ export interface FileMutationPort {
  * held to the strict functional-style lint rules (no throw, no classes, no
  * Promise.reject), unlike src/timer/** which the Obsidian API exempts.
  */
-export type ApplyMutationsResult
-  = | { readonly success: true }
+export type ApplyMutationsResult =
+  | { readonly success: true }
     /** `appliedCount` is how many leading mutations (by position, not identity) dispatched successfully before `mutation` failed -- lets a caller recover the successful prefix even if `mutations` contains the same FileMutation object more than once. */
-    | { readonly success: false, readonly mutation: FileMutation, readonly cause: unknown, readonly appliedCount: number }
+  | { readonly success: false, readonly mutation: FileMutation, readonly cause: unknown, readonly appliedCount: number }
 
 const dispatch = (port: FileMutationPort, mutation: FileMutation): Promise<void> =>
   mutation.kind === 'frontmatter'
@@ -55,9 +55,9 @@ type FileGroup = {
   readonly mutations: readonly [FrontmatterMutation, ...FrontmatterMutation[]]
 }
 
-type ExecutionStep
-  = | { readonly kind: 'single', readonly mutation: FileMutation }
-    | { readonly kind: 'batch', readonly filePath: string, readonly mutations: readonly [FrontmatterMutation, ...FrontmatterMutation[]] }
+type ExecutionStep =
+  | { readonly kind: 'single', readonly mutation: FileMutation }
+  | { readonly kind: 'batch', readonly filePath: string, readonly mutations: readonly [FrontmatterMutation, ...FrontmatterMutation[]] }
 
 const targetFilePath = (mutation: FrontmatterMutation): string =>
   mutation.kind === 'frontmatter' ? mutation.filePath : mutation.itemId
@@ -73,16 +73,14 @@ const addToGroups = (
     : groups.map((group, index) =>
         index === existingIndex
           ? { filePath: group.filePath, mutations: [...group.mutations, mutation] }
-          : group,
-      )
+          : group)
 }
 
 const flushGroups = (groups: readonly FileGroup[]): readonly ExecutionStep[] =>
   groups.map(group =>
     group.mutations.length === 1
       ? { kind: 'single', mutation: group.mutations[0] }
-      : { kind: 'batch', filePath: group.filePath, mutations: group.mutations },
-  )
+      : { kind: 'batch', filePath: group.filePath, mutations: group.mutations })
 
 type PlanAccumulator = {
   readonly steps: readonly ExecutionStep[]

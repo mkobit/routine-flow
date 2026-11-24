@@ -46,6 +46,6 @@ export interface HookRegistry {
  * is bare `{ success: true }` — recovering "which mutations actually wrote"
  * needs the original list, not just whether the whole batch succeeded.
  */
-export type HookInvocationOutcome
-  = | { readonly stage: 'applied', readonly mutations: readonly FileMutation[], readonly result: ApplyMutationsResult }
-    | { readonly stage: 'invocationFailed', readonly cause: unknown }
+export type HookInvocationOutcome =
+  | { readonly stage: 'applied', readonly mutations: readonly FileMutation[], readonly result: ApplyMutationsResult }
+  | { readonly stage: 'invocationFailed', readonly cause: unknown }

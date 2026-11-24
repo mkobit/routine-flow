@@ -1,9 +1,9 @@
 import { FuzzySuggestModal } from 'obsidian'
 import type { App, TFile } from 'obsidian'
 
-export type RoutinePickerChoice
-  = | { readonly kind: 'default', readonly label: string }
-    | { readonly kind: 'file', readonly label: string, readonly file: TFile }
+export type RoutinePickerChoice =
+  | { readonly kind: 'default', readonly label: string }
+  | { readonly kind: 'file', readonly label: string, readonly file: TFile }
 
 /**
  * Prompts the user to pick a routine definition (or the built-in default)

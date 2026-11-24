@@ -94,16 +94,14 @@ describe('QueueItemActionSchema', () => {
         id: '',
         label: 'Test',
         payload: { kind: 'markDone' },
-      }),
-    ).toThrow()
+      })).toThrow()
 
     expect(() =>
       QueueItemActionSchema.parse({
         id: 'test',
         label: '',
         payload: { kind: 'markDone' },
-      }),
-    ).toThrow()
+      })).toThrow()
   })
 
   test('fails validation on invalid style', () => {
@@ -113,8 +111,7 @@ describe('QueueItemActionSchema', () => {
         label: 'Test',
         style: 'invalid-style',
         payload: { kind: 'markDone' },
-      }),
-    ).toThrow()
+      })).toThrow()
   })
 
   test('fails validation on zero or negative deferDuration', () => {
@@ -123,8 +120,7 @@ describe('QueueItemActionSchema', () => {
         id: 'test',
         label: 'Test',
         payload: { kind: 'deferDuration', after: Temporal.Duration.from({ seconds: 0 }) },
-      }),
-    ).toThrow()
+      })).toThrow()
   })
 
   test('fails validation on empty setFrontmatter property', () => {
@@ -133,8 +129,7 @@ describe('QueueItemActionSchema', () => {
         id: 'test',
         label: 'Test',
         payload: { kind: 'setFrontmatter', property: '', value: 'val' },
-      }),
-    ).toThrow()
+      })).toThrow()
   })
 
   test('fails validation on empty deferDuration property or boxProperty', () => {
@@ -147,8 +142,7 @@ describe('QueueItemActionSchema', () => {
           after: Temporal.Duration.from({ days: 1 }),
           property: '',
         },
-      }),
-    ).toThrow()
+      })).toThrow()
 
     expect(() =>
       QueueItemActionSchema.parse({
@@ -159,8 +153,7 @@ describe('QueueItemActionSchema', () => {
           after: Temporal.Duration.from({ days: 1 }),
           boxProperty: '',
         },
-      }),
-    ).toThrow()
+      })).toThrow()
   })
 
   test('fails validation on negative or non-integer box on deferDuration', () => {
@@ -173,8 +166,7 @@ describe('QueueItemActionSchema', () => {
           after: Temporal.Duration.from({ days: 1 }),
           box: -1,
         },
-      }),
-    ).toThrow()
+      })).toThrow()
 
     expect(() =>
       QueueItemActionSchema.parse({
@@ -185,8 +177,7 @@ describe('QueueItemActionSchema', () => {
           after: Temporal.Duration.from({ days: 1 }),
           box: 2.5,
         },
-      }),
-    ).toThrow()
+      })).toThrow()
   })
 })
 

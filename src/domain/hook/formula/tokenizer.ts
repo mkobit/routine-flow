@@ -6,17 +6,17 @@ export type ComparisonOperator = '==' | '!=' | '>=' | '<=' | '>' | '<'
 
 type Punct = '(' | ')' | ',' | '.'
 
-export type Token
-  = | { readonly kind: 'number', readonly value: number, readonly position: number }
-    | { readonly kind: 'string', readonly value: string, readonly position: number }
-    | { readonly kind: 'identifier', readonly value: string, readonly position: number }
-    | { readonly kind: 'keyword', readonly value: Keyword, readonly position: number }
-    | { readonly kind: 'operator', readonly value: ComparisonOperator, readonly position: number }
-    | { readonly kind: 'punct', readonly value: Punct, readonly position: number }
+export type Token =
+  | { readonly kind: 'number', readonly value: number, readonly position: number }
+  | { readonly kind: 'string', readonly value: string, readonly position: number }
+  | { readonly kind: 'identifier', readonly value: string, readonly position: number }
+  | { readonly kind: 'keyword', readonly value: Keyword, readonly position: number }
+  | { readonly kind: 'operator', readonly value: ComparisonOperator, readonly position: number }
+  | { readonly kind: 'punct', readonly value: Punct, readonly position: number }
 
-export type TokenizeResult
-  = | { readonly ok: true, readonly tokens: readonly Token[] }
-    | { readonly ok: false, readonly error: string }
+export type TokenizeResult =
+  | { readonly ok: true, readonly tokens: readonly Token[] }
+  | { readonly ok: false, readonly error: string }
 
 const TOKEN_PATTERN
   = /(\s+)|([A-Za-z_][A-Za-z0-9_]*)|(\d+(?:\.\d+)?)|("(?:[^"\\]|\\.)*")|('(?:[^'\\]|\\.)*')|(==|!=|>=|<=|>|<|\(|\)|,|\.)|(.)/g
@@ -31,10 +31,10 @@ function unescapeStringBody(body: string): string {
   return body.replace(/\\(.)/g, '$1')
 }
 
-type Classified
-  = | { readonly kind: 'skip' }
-    | { readonly kind: 'token', readonly token: Token }
-    | { readonly kind: 'invalid', readonly char: string }
+type Classified =
+  | { readonly kind: 'skip' }
+  | { readonly kind: 'token', readonly token: Token }
+  | { readonly kind: 'invalid', readonly char: string }
 
 function classifyIdentifierOrKeyword(text: string, position: number): Classified {
   const keyword = toKeyword(text)

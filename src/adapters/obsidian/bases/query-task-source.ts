@@ -200,9 +200,9 @@ function readPriority(frontmatter: Record<string, unknown> | undefined): number 
   return typeof value === 'number' && Number.isFinite(value) ? value : 0
 }
 
-export type ExtraPropertiesLens
-  = | readonly string[]
-    | ((entry: BaseQueryEntry) => TaskQueueItemExtraProperties | undefined)
+export type ExtraPropertiesLens =
+  | readonly string[]
+  | ((entry: BaseQueryEntry) => TaskQueueItemExtraProperties | undefined)
 
 export interface BaseQuerySourceOptions {
   readonly now?: Temporal.Instant | (() => Temporal.Instant)
