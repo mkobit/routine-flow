@@ -19,7 +19,7 @@ Use `<dialog>` opened as a modal, declaratively with `command="show-modal"` (see
 
 <!-- MANDATORY: no role="dialog" or aria-modal; the native modal already provides them -->
 <dialog id="confirm" aria-labelledby="confirm-title">
-  <h2 id="confirm-title">Delete this item?</h2>
+  <h1 id="confirm-title">Delete this item?</h1>
   <form method="dialog">
     <button value="cancel" autofocus>Cancel</button>
     <button value="delete">Delete</button>
@@ -135,6 +135,8 @@ The default depends on how the dialog is opened. If `closedby` is absent or inva
 - **DON'T** add `role="dialog"`, `aria-modal`, a manual focus trap or `inert` toggling to a native modal.
 - **DO** use a native `<button>` with an accessible name for close controls.
 - **DO** use one consistent heading level for dialog titles.
+- **DO** use a level-1 heading for the main heading in modal dialogs, as it's the first heading in scope.
+- **DO** Ensure that non-modal dialogs are displayed where there is no or minimal content. To adhere to WCAG 2.4.11, ensure that focused elements are completely obscured by the non-modal dialog.
 
 ## Fallback strategies
 
@@ -200,22 +202,16 @@ With a bundler or import map:
 
 ```js
 // MANDATORY: Feature detect 'popover' on HTMLElement.prototype.
-if (!("popover" in HTMLElement.prototype)) {
+if (!Object.hasOwn(HTMLElement.prototype, "popover")) {
   import("@oddbird/popover-polyfill");
 }
 ```
 
-Without a bundler, import from a CDN inside a `<script type="module">`:
+If not using a package manager, import from a CDN, e.g. `"https://unpkg.com/@oddbird/popover-polyfill@latest/dist/popover.min.js"`.
 
-```html
-<script type="module">
-  if (!("popover" in HTMLElement.prototype)) {
-    import("https://unpkg.com/@oddbird/popover-polyfill@latest/dist/popover.min.js");
-  }
-</script>
-```
-
-**Styling caveat:** The polyfill cannot define the real `:popover-open` pseudo-class, so it applies a `.\:popover-open` class instead. **MANDATORY:** Combine the two with `:is()` or `:where()`, otherwise browsers that lack `:popover-open` discard the entire rule:
+Caveats when using the polyfill:
+- Do NOT use the `popover` IDL attribute for any code that may run before the polyfill is fully loaded. It will not be mirrored as an attribute, the popover will not be picked up by the polyfill, and the property will be shadowing the accessor the polyfill adds forever. Use `setAttribute()`/`removeAttribute()` instead.
+- **Styling caveat:** The polyfill cannot define the real `:popover-open` pseudo-class, so it applies a `.\:popover-open` class instead. **MANDATORY:** Combine the two with `:is()` or `:where()`, otherwise browsers that lack `:popover-open` discard the entire rule:
 
 ```css
 [popover]:is(:popover-open, .\:popover-open) {
@@ -223,4 +219,12 @@ Without a bundler, import from a CDN inside a `<script type="module">`:
 }
 ```
 
-Alternatively, for a legacy fallback without a polyfill, use `position: fixed` and manually calculate coordinates via `getBoundingClientRect()` or rely on default positioning with `inset: auto` if that's acceptable for the use case.
+To prevent popovers from showing before the polyfill loads, hide them with CSS:
+
+```css
+@supports not selector(:popover-open) {
+  [popover]:not(.\:popover-open) {
+    display: none;
+  }
+}
+```
