@@ -52,9 +52,8 @@ This keeps "what happened" logic in one testable place instead of duplicated acr
 Hooks fire sequentially, and one hook's failure does not stop the others or roll back the timer.
 The timer always moves on, matching how the rest of the engine treats failures as non-fatal.
 
-## Why a manualClear phase can get stuck
+## Why manualClear uses a dedicated completed status
 
-A `completionPolicy` of `manualClear` leaves a phase parked at completion with no UI control to advance past it, as [Usage notes & gotchas](./usage-notes) records.
-The design reason is that completion is a real, distinct `EngineStatus` of `completed`, not a boolean layered on top of `running`, `paused`, and `stopped`.
-That status was chosen over reusing `stopped`, which already means "reset to the graph's first phase" — a genuinely different state than sitting at a completed phase awaiting clear.
-Modeling completion as a first-class status was correct; the missing piece is only that the UI does not yet render a "Clear" affordance for it, tracked as separate follow-up work.
+A `completionPolicy` of `manualClear` parks a phase at completion until you click **Clear** on the timer view or side panel.
+Completion is a distinct `EngineStatus` (`completed`) rather than a boolean layered on top of `running`, `paused`, and `stopped`, because `stopped` already means "reset to the graph's first phase."
+Modeling completion as its own status keeps the transition to the next phase explicit via the **Clear** control.

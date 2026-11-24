@@ -18,11 +18,13 @@ Add a new view and pick the **Routine Timer** view type.
 
 ## Configure the focus and break queue
 
-The Routine Timer view exposes five options in Obsidian's Bases view-options UI:
+The Routine Timer view exposes eight options in Obsidian's Bases view-options UI:
 
 - **Focus task property** (pre-filled `note.type`) and **Focus task value** (pre-filled `work`) — together they decide which notes appear in the focus queue.
 - **Break task property** (pre-filled `note.type`) and **Break task value** (pre-filled `break`) — the same, for the break queue.
 - **Routine file** — optional; see [Point at a custom routine note](#optional-point-at-a-custom-routine-note).
+- **Status property** (placeholder `note.routine-status`) and **Done status value** (placeholder `done`) — optional `note.*` frontmatter property and target value used to mark queue items done.
+- **Layout** (pre-filled `Standard`) — switches between **Standard** (full timer and queue) and **Compact bar** (slim transport bar without the queue).
 
 Left at their defaults, a note with frontmatter `type: work` shows up in the focus queue, and a note with `type: break` shows up in the break queue.
 A note you want in the focus queue needs frontmatter like:
@@ -41,6 +43,8 @@ The controls:
 
 - **Start** begins the current phase, and also resumes from a pause — the label stays "Start", it does not change to "Resume".
 - **Pause** appears only while a phase is running.
+- **Done** appears while an untimed phase is running and completes the current phase.
+- **Clear** appears when a `manualClear`-policy phase reaches completion and advances to the next phase.
 - **Reset** opens a confirmation modal ("Reset routine? — its progress will be lost") and restarts the routine from the beginning.
 - Clicking a task in the queue list starts a session against that specific note.
 

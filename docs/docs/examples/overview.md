@@ -65,6 +65,8 @@ The following reference guides detail real-world topologies available in the tes
 | [Recurring routines and calendar scheduling](recurring-and-calendar-scheduling) | Daily schedule, Templater templates, Calendar timelines | Time-blocked daily note embeds, multi-routine day cadences, Templater automation |
 | [Multi-property filtering and dispatch](multi-property-filtering-and-dispatch) | Multi-property filters, Priority dispatch queues | Compound Bases filters, numeric priority sorting, lifecycle dispatch lanes |
 | [Audio chimes and desktop notifications](audio-chimes-and-notifications) | Web Audio synthesizer chimes, OS desktop alerts | Web Audio chord synthesis, in-app Notice toasts, milestone alert tones |
+| [Focus sandwich routine](focus-sandwich) | Focus sandwich | Untimed intention warm-up, 25-minute deep focus, untimed cooldown with `activeItem` write-back |
+| [Random task selector routine](random-task-selector) | Random task selector | Roulette selection wheel, randomized task promotion, timed focus and break intervals |
 | [Chore blitz execution](chore-blitz) | Chore blitz sprint, Rest and hydrate, Clean-up | `queueExhausted` early exit, rapid check-offs, `completedItems` batch write-back |
 | [Spaced repetition and Leitner box](spaced-repetition-and-leitner-box) | Leitner box spaced review | Expanding review intervals, grade action buttons, deferred status mutations |
 | [Structured review cadences](structured-review-cadences) | Weekly GTD review, Daily kickoff, Workday shutdown | Multi-query per-phase task switching, checklist guidance, `queueExhausted` transitions |
@@ -72,6 +74,6 @@ The following reference guides detail real-world topologies available in the tes
 
 ## Routine note format
 
-Routine definitions are stored in markdown notes as JSON code blocks or YAML frontmatter.
+Routine phase graphs live in fenced `json` code blocks inside markdown notes marked with `is-routine: true` in YAML frontmatter.
 Obsidian Bases views reference routines using the `routineFile` option.
 This decouples the visual timer view from the underlying routine topology, allowing multiple views to share a single routine definition.

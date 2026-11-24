@@ -17,7 +17,6 @@ Full docs, including a getting-started walkthrough, live at the [documentation s
 ## Requirements
 
 - Obsidian 1.15.1 or later.
-- Desktop only.
 
 ## Installation
 
@@ -46,6 +45,7 @@ The [screenshot gallery](https://mkobit.github.io/routine-flow/screenshots) has 
 
 ## Development
 
+Run `bun run vault:dev` to launch a sandboxed Obsidian testing vault, or `bun run vault:install` to install a local build into a vault.
 See [AGENTS.md](AGENTS.md) for the full command reference, architecture notes, and contribution conventions (strict TypeScript, functional-style domain code, bun-based tooling).
 
 ## License

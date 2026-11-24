@@ -11,10 +11,12 @@ The underlying model is a generic phase graph, not a hardcoded 25/5 cycle — a 
 
 - **[Getting started](./getting-started)** — install the plugin and set up your first routine.
 - **[Bases integration](./bases-integration)** — configure custom status properties, multi-view `.base` files, Kanban workflows, and dashboard embeds.
+- **[Routine topology patterns](./examples/overview)** — example phase graphs and routine configurations.
 - **[Design & decisions](./design-notes)** — why the plugin works the way it does.
 - **[Usage notes & gotchas](./usage-notes)** — things that trip people up.
 - **[Screenshots](./screenshots)** — what it looks like.
 - **[Demo](./demo)** — a short clip of it running.
 - **[Theme compatibility & CSS](./theme-compatibility)** — community themes and CSS snippet integration.
+- **[Changelog](./changelog)** — release history and changes.
 
 Source and issues: [github.com/mkobit/routine-flow](https://github.com/mkobit/routine-flow).
