@@ -558,4 +558,20 @@ describe('CSS class scoping & theme customization', () => {
     const hexColorMatches = linesWithoutComments.match(/#[0-9a-fA-F]{3,8}\b/g)
     expect(hexColorMatches).toBeNull()
   })
+
+  test('styles.css truncates long queue task names and keeps open-file button unshrunk (flow-6ji)', async () => {
+    const stylesPath = path.resolve(import.meta.dirname, '../../styles.css')
+    const content = await fs.readFile(stylesPath, 'utf8')
+
+    const taskNameRule = content.match(/\.routine-queue-item-row\s*>\s*button\.routine-task-name\s*\{[^}]*\}/)?.[0]
+    expect(taskNameRule).toBeDefined()
+    expect(taskNameRule).toContain('min-width: 0;')
+    expect(taskNameRule).toContain('overflow: hidden;')
+    expect(taskNameRule).toContain('text-overflow: ellipsis;')
+    expect(taskNameRule).toContain('white-space: nowrap;')
+
+    const openFileBtnRule = content.match(/\.routine-open-file-btn\s*\{[^}]*\}/)?.[0]
+    expect(openFileBtnRule).toBeDefined()
+    expect(openFileBtnRule).toContain('flex-shrink: 0;')
+  })
 })

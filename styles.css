@@ -596,6 +596,9 @@
   opacity: 0.4;
   cursor: not-allowed;
 }
+.routine-queue {
+  min-width: 0;
+}
 .routine-queue ul {
   display: flex;
   flex-direction: column;
@@ -607,15 +610,22 @@
 .routine-queue li {
   display: flex;
   flex-direction: column;
+  min-width: 0;
 }
 .routine-queue-item-row {
   display: flex;
   align-items: center;
   gap: var(--size-4-1);
   width: 100%;
+  min-width: 0;
 }
 .routine-queue-item-row > button.routine-task-name {
+  display: block;
   flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   text-align: start;
   transition:
     background-color 0.15s ease,
@@ -626,6 +636,7 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  flex-shrink: 0;
   padding: var(--size-4-1);
   color: var(--text-muted);
 }
@@ -635,6 +646,7 @@
 .routine-queue-badges {
   display: inline-flex;
   align-items: center;
+  flex-shrink: 0;
   gap: var(--size-4-1);
 }
 .routine-queue-badge {
