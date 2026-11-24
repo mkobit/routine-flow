@@ -27,8 +27,7 @@ export function scriptHookBindingsToListItems(
             .setTooltip('Re-confirm script content')
             .onClick(() => {
               onReconfirm(index)
-            }),
-        )
+            }))
       },
     }
   })

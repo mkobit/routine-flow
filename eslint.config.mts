@@ -11,10 +11,10 @@ import yml from 'eslint-plugin-yml'
 
 const jsFiles = ['**/*.ts', '**/*.tsx', '**/*.js', '**/*.mjs', '**/*.cjs', '**/*.mts', '**/*.cts']
 
-function restrictToJs(config: any) {
+function restrictToJs(config: unknown) {
   // Strip the `json` plugin from obsidianmd's bundled configs so our own @eslint/json
   // registration doesn't conflict with obsidianmd's bundled instance.
-  const plugins: Record<string, any> = config.plugins ?? {}
+  const plugins: Record<string, unknown> = config.plugins ?? {}
   const restPlugins = Object.fromEntries(Object.entries(plugins).filter(([k]) => k !== 'json'))
   const cleaned = { ...config, plugins: restPlugins }
   if (!cleaned.files) {
@@ -34,9 +34,9 @@ const packageJsonPlugin = {
         },
         fixable: 'code',
       },
-      create(context: any) {
+      create(context: unknown) {
         return {
-          'Member'(node: any) {
+          'Member'(node: unknown) {
             if (
               node.name
               && node.name.type === 'String'
@@ -44,7 +44,7 @@ const packageJsonPlugin = {
             ) {
               if (node.value && node.value.type === 'Object') {
                 const members = node.value.members
-                const memberNames = members.map((m: any) => m.name.value)
+                const memberNames = members.map((m: unknown) => m.name.value)
                 const sortedMemberNames = [...memberNames].sort()
 
                 const isSorted = memberNames.every((name: string, index: number) => name === sortedMemberNames[index])
@@ -53,8 +53,8 @@ const packageJsonPlugin = {
                   context.report({
                     node: node.value,
                     message: `Dependencies in '${node.name.value}' should be sorted alphabetically.`,
-                    fix(fixer: any) {
-                      const memberPairs = members.map((m: any) => {
+                    fix(fixer: unknown) {
+                      const memberPairs = members.map((m: unknown) => {
                         return {
                           name: m.name.value,
                           // We reconstruct the JSON string for the member
@@ -64,13 +64,13 @@ const packageJsonPlugin = {
                         }
                       })
 
-                      memberPairs.sort((a: any, b: any) => a.name.localeCompare(b.name))
+                      memberPairs.sort((a: unknown, b: unknown) => a.name.localeCompare(b.name))
 
                       // Reconstruct the object content with indentation
                       // Assuming standard package.json indentation (tabs)
                       // The object itself is indented by 1 tab, so members are 2 tabs.
                       const indentation = '\t\t'
-                      const content = memberPairs.map((p: any) => `${indentation}${p.key}: ${p.value}`).join(',\n')
+                      const content = memberPairs.map((p: unknown) => `${indentation}${p.key}: ${p.value}`).join(',\n')
 
                       // Wrap in braces with correct outer indentation
                       const newText = `{\n${content}\n\t}`

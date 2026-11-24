@@ -34,8 +34,7 @@ export async function assertBuiltArtifacts(buildHint = 'run `bun run build` firs
 export async function copyPluginArtifacts(pluginDir: string): Promise<void> {
   await fs.mkdir(pluginDir, { recursive: true })
   await Promise.all(PLUGIN_ARTIFACTS.map(file =>
-    fs.cp(path.join(ROOT_DIR, file), path.join(pluginDir, file)),
-  ))
+    fs.cp(path.join(ROOT_DIR, file), path.join(pluginDir, file))))
 }
 
 /**

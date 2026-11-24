@@ -410,8 +410,7 @@ export function generateReviewCadencesNotes(seed: number): readonly NoteDefiniti
           due: ANCHOR_DATE.add({ days: s.dueOffsetDays }),
         },
         `# ${s.title}\n\nUnprocessed inbox task captured for review cadence processing.\n`,
-      ),
-    ),
+      )),
     ...projectSamples.map((s, i) =>
       createNote(
         indexedPath('review-cadences', i + 3, s.title),
@@ -423,8 +422,7 @@ export function generateReviewCadencesNotes(seed: number): readonly NoteDefiniti
           due: ANCHOR_DATE.add({ days: s.dueOffsetDays }),
         },
         `# ${s.title}\n\nActive project item reviewed during GTD review cadence.\n`,
-      ),
-    ),
+      )),
     ...waitingSamples.map((s, i) =>
       createNote(
         indexedPath('review-cadences', i + 6, s.title),
@@ -436,7 +434,6 @@ export function generateReviewCadencesNotes(seed: number): readonly NoteDefiniti
           due: ANCHOR_DATE.add({ days: s.dueOffsetDays }),
         },
         `# ${s.title}\n\nDelegated item waiting on external party response.\n`,
-      ),
-    ),
+      )),
   ]
 }

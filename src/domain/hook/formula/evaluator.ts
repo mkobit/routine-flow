@@ -5,9 +5,9 @@ import { parseFormula } from './parser'
 
 export type FormulaValueType = 'number' | 'string' | 'boolean' | 'any'
 
-type TypeResult
-  = | { readonly ok: true, readonly type: FormulaValueType }
-    | { readonly ok: false, readonly error: string }
+type TypeResult =
+  | { readonly ok: true, readonly type: FormulaValueType }
+  | { readonly ok: false, readonly error: string }
 
 /** Result-monad bind for TypeResult, mirroring parser.ts's andThen. */
 function chainType(result: TypeResult, step: (type: FormulaValueType) => TypeResult): TypeResult {
@@ -176,9 +176,9 @@ function evaluateExpression(expr: FormulaExpression, context: EvaluationContext)
                         : evaluateExpression(expr.elseBranch, context)
 }
 
-export type CompiledFormula
-  = | { readonly ok: true, readonly predicate: Predicate }
-    | { readonly ok: false, readonly error: string }
+export type CompiledFormula =
+  | { readonly ok: true, readonly predicate: Predicate }
+  | { readonly ok: false, readonly error: string }
 
 function finishCompile(expression: FormulaExpression): CompiledFormula {
   const inferred = inferType(expression)

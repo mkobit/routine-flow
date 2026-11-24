@@ -8,9 +8,9 @@ export interface WriteBackFormValues {
   readonly value: number | string | boolean
 }
 
-export type WriteBackPromptResult
-  = | { readonly kind: 'submitted', readonly values: WriteBackFormValues }
-    | { readonly kind: 'cancelled' }
+export type WriteBackPromptResult =
+  | { readonly kind: 'submitted', readonly values: WriteBackFormValues }
+  | { readonly kind: 'cancelled' }
 
 /**
  * Shows the user a write-back's resolved defaults and lets them confirm or

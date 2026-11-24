@@ -54,8 +54,7 @@ export class FallbackTaskSourceManager {
         continue
       }
       const nextEntries = snapshot.entries.map(entry =>
-        entry.path === path ? { ...entry, frontmatter: copiedFrontmatter } : entry,
-      )
+        entry.path === path ? { ...entry, frontmatter: copiedFrontmatter } : entry)
       const { entries: _entries, ...options } = snapshot
       this.updateSource(id, nextEntries, options)
       changed = true
@@ -84,8 +83,7 @@ export class FallbackTaskSourceManager {
         continue
       }
       const nextEntries = snapshot.entries.map(entry =>
-        entry.path === oldPath ? { ...entry, path: newPath, basename: newBasename } : entry,
-      )
+        entry.path === oldPath ? { ...entry, path: newPath, basename: newBasename } : entry)
       const { entries: _entries, ...options } = snapshot
       this.updateSource(id, nextEntries, options)
       changed = true

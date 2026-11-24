@@ -65,6 +65,5 @@ export async function stripGitignoredVaultState(vaultDir: string): Promise<void>
     .map(line => line.replace(/\/$/, ''))
 
   await Promise.all(patterns.map(pattern =>
-    fs.rm(path.join(vaultDir, pattern), { recursive: true, force: true }),
-  ))
+    fs.rm(path.join(vaultDir, pattern), { recursive: true, force: true })))
 }

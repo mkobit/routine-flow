@@ -11,35 +11,35 @@ import { findPhaseById, resolveNextPhaseId } from './phase-graph-query'
 import type { EngineDeps } from './engine-deps'
 
 /** Actions dispatched by external callers (ticker, views) via EngineStore.dispatch. */
-export type EngineAction
-  = | { type: 'start', filePath?: string }
-    | { type: 'pause' }
-    | { type: 'resume' }
-    | { type: 'stop' }
-    | { type: 'tick' }
-    | { type: 'finish-phase' }
-    | { type: 'advance-phase' }
-    | { type: 'set-active-file', filePath: string | null }
-    | { type: 'set-queue-exhausted', exhausted: boolean }
-    | { type: 'set-tracker-frontmatter', trackerFrontmatter: Readonly<Record<string, unknown>> | undefined }
-    | { type: 'record-item-touch', item: ItemTouch }
-    | { type: 'record-item-completion', itemId?: TaskQueueItemId, completedAt?: Temporal.Instant }
-    | { type: 'record-hook-outcome', phaseInstanceId: PhaseInstanceId, event: HookEvent, outcome: HookInvocationOutcome }
+export type EngineAction =
+  | { type: 'start', filePath?: string }
+  | { type: 'pause' }
+  | { type: 'resume' }
+  | { type: 'stop' }
+  | { type: 'tick' }
+  | { type: 'finish-phase' }
+  | { type: 'advance-phase' }
+  | { type: 'set-active-file', filePath: string | null }
+  | { type: 'set-queue-exhausted', exhausted: boolean }
+  | { type: 'set-tracker-frontmatter', trackerFrontmatter: Readonly<Record<string, unknown>> | undefined }
+  | { type: 'record-item-touch', item: ItemTouch }
+  | { type: 'record-item-completion', itemId?: TaskQueueItemId, completedAt?: Temporal.Instant }
+  | { type: 'record-hook-outcome', phaseInstanceId: PhaseInstanceId, event: HookEvent, outcome: HookInvocationOutcome }
 
-export type StampedEngineAction
-  = | { type: 'start', filePath?: string, now: Temporal.Instant }
-    | { type: 'pause' }
-    | { type: 'resume' }
-    | { type: 'stop', now: Temporal.Instant }
-    | { type: 'tick', now: Temporal.Instant }
-    | { type: 'finish-phase', now: Temporal.Instant }
-    | { type: 'advance-phase', now: Temporal.Instant }
-    | { type: 'set-active-file', filePath: string | null }
-    | { type: 'set-queue-exhausted', exhausted: boolean, now: Temporal.Instant }
-    | { type: 'set-tracker-frontmatter', trackerFrontmatter: Readonly<Record<string, unknown>> | undefined }
-    | { type: 'record-item-touch', item: ItemTouch }
-    | { type: 'record-item-completion', itemId?: TaskQueueItemId, completedAt?: Temporal.Instant, now: Temporal.Instant }
-    | { type: 'record-hook-outcome', phaseInstanceId: PhaseInstanceId, event: HookEvent, outcome: HookInvocationOutcome }
+export type StampedEngineAction =
+  | { type: 'start', filePath?: string, now: Temporal.Instant }
+  | { type: 'pause' }
+  | { type: 'resume' }
+  | { type: 'stop', now: Temporal.Instant }
+  | { type: 'tick', now: Temporal.Instant }
+  | { type: 'finish-phase', now: Temporal.Instant }
+  | { type: 'advance-phase', now: Temporal.Instant }
+  | { type: 'set-active-file', filePath: string | null }
+  | { type: 'set-queue-exhausted', exhausted: boolean, now: Temporal.Instant }
+  | { type: 'set-tracker-frontmatter', trackerFrontmatter: Readonly<Record<string, unknown>> | undefined }
+  | { type: 'record-item-touch', item: ItemTouch }
+  | { type: 'record-item-completion', itemId?: TaskQueueItemId, completedAt?: Temporal.Instant, now: Temporal.Instant }
+  | { type: 'record-hook-outcome', phaseInstanceId: PhaseInstanceId, event: HookEvent, outcome: HookInvocationOutcome }
 
 /**
  * Build the initial stopped state for a given phase graph.

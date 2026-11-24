@@ -11,11 +11,11 @@ import type { EngineAction } from './reducer'
  * and "file read and parsed". `default` and `loading` are view/async-layer
  * concerns `parseRoutineFile` itself doesn't know about.
  */
-export type RoutineResolution
-  = | { readonly kind: 'default', readonly graph: PhaseGraph }
-    | { readonly kind: 'loading' }
-    | { readonly kind: 'loaded', readonly graph: PhaseGraph }
-    | { readonly kind: 'error', readonly error: RoutineParseError }
+export type RoutineResolution =
+  | { readonly kind: 'default', readonly graph: PhaseGraph }
+  | { readonly kind: 'loading' }
+  | { readonly kind: 'loaded', readonly graph: PhaseGraph }
+  | { readonly kind: 'error', readonly error: RoutineParseError }
 
 /** Parses an already-read routine file's content into a loaded routine or an inline-renderable error. */
 export function resolveRoutineGraph(fileContent: string): RoutineResolution {

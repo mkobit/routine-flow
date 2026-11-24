@@ -179,15 +179,13 @@ export class RoutineFlowSettingTab extends PluginSettingTab {
           .setPlaceholder('Name')
           .onChange((value) => {
             name = value
-          }),
-      )
+          }))
       .addText(text =>
         text
           .setPlaceholder('Condition')
           .onChange((value) => {
             formula = value
-          }),
-      )
+          }))
       .addButton(button =>
         button
           .setButtonText('Add')
@@ -209,8 +207,7 @@ export class RoutineFlowSettingTab extends PluginSettingTab {
               { name: parsedName.data, formula },
             ]
             await this.saveAndRefreshFormulaPredicates()
-          }),
-      )
+          }))
   }
 
   /** Refreshes the plugin's live MutableScriptHookRegistry from the current settings list, then re-renders this tab's declarative definitions. */
@@ -241,8 +238,7 @@ export class RoutineFlowSettingTab extends PluginSettingTab {
       return
     }
     this.plugin.settings.scriptHookBindings = this.plugin.settings.scriptHookBindings.map((b, i) =>
-      i === index ? { name: b.name, scriptPath: b.scriptPath, scriptSource: latestScriptSource } : b,
-    )
+      i === index ? { name: b.name, scriptPath: b.scriptPath, scriptSource: latestScriptSource } : b)
     await this.saveAndRefreshScriptHookBindings()
   }
 
@@ -257,8 +253,7 @@ export class RoutineFlowSettingTab extends PluginSettingTab {
           .setPlaceholder('Name')
           .onChange((value) => {
             name = value
-          }),
-      )
+          }))
       .addText((text) => {
         text
           .setPlaceholder('Script path')
@@ -298,7 +293,6 @@ export class RoutineFlowSettingTab extends PluginSettingTab {
               { name: parsedName.data, scriptPath, scriptSource },
             ]
             await this.saveAndRefreshScriptHookBindings()
-          }),
-      )
+          }))
   }
 }
