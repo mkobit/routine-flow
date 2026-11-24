@@ -10,7 +10,7 @@ import { deriveStageProgress } from '../domain/phase/stage-progress'
 import { findNextPhase, findPhaseById, DEFAULT_PHASE_GRAPH, SELECTOR_PHASE_KIND } from '../timer/phase-graph-query'
 import { handleSelectorWinner } from '../timer/selector-winner'
 import { formatCountdown } from '../timer/format'
-import { decideStartAction, resolveRoutineGraph } from '../timer/routine-selection'
+import { decideStartAction, getPrimaryTransportLabel, resolveRoutineGraph } from '../timer/routine-selection'
 import type { RoutineResolution } from '../timer/routine-selection'
 import { RoutineReplaceModal } from './routine-replace-modal'
 import { ResetConfirmModal } from './reset-confirm-modal'
@@ -424,7 +424,7 @@ export class RoutineTimerView extends BasesView {
       pauseBtn.addEventListener('click', () => void this.plugin.store.dispatch({ type: 'pause' }))
     }
     else {
-      const playBtn = controls.createEl('button', { text: 'Start' })
+      const playBtn = controls.createEl('button', { text: getPrimaryTransportLabel(isViewRoutineActive, state.status) })
       playBtn.addEventListener('click', () => void this.handleStart(viewGraph))
     }
 

@@ -41,7 +41,8 @@ The default routine runs 25 min focus, then 5 min break, repeating, with a 15 mi
 
 The controls:
 
-- **Start** begins the current phase, and also resumes from a pause — the label stays "Start", it does not change to "Resume".
+- **Start** begins the current phase; when paused, it relabels to **Resume**.
+- **Switch routine** appears when viewing a different routine while another routine is active, and prompts before replacing the running session.
 - **Pause** appears only while a phase is running.
 - **Done** appears while an untimed phase is running and completes the current phase.
 - **Clear** appears when a `manualClear`-policy phase reaches completion and advances to the next phase.

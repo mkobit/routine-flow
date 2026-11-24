@@ -37,6 +37,29 @@ export function decideStartAction(
   return sessionInProgress && !sameRoutine ? 'confirm' : 'start'
 }
 
+/**
+ * Resolves the primary transport button label for a RoutineTimerView leaf.
+ * - Active & running -> 'Pause'
+ * - Active & paused -> 'Resume' (matches RoutineSidePanelView)
+ * - Inactive while another routine holds progress -> 'Switch routine'
+ * - Otherwise -> 'Start'
+ */
+export function getPrimaryTransportLabel(
+  isViewRoutineActive: boolean,
+  status: EngineStatus,
+): 'Pause' | 'Resume' | 'Switch routine' | 'Start' {
+  if (isViewRoutineActive && status === 'running') {
+    return 'Pause'
+  }
+  if (isViewRoutineActive && status === 'paused') {
+    return 'Resume'
+  }
+  if (!isViewRoutineActive && status !== 'stopped') {
+    return 'Switch routine'
+  }
+  return 'Start'
+}
+
 export type CadenceLaunchResult = 'started' | 'cancelled' | 'no-match' | 'parse-error' | 'file-not-found'
 
 export interface CadenceLauncherDeps {

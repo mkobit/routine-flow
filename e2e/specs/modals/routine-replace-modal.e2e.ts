@@ -36,7 +36,7 @@ test.describe('routine replace confirmation modal', () => {
     const panel = page.locator('.workspace-leaf-content[data-type="bases"] .routine-timer-panel')
     const controls = page.locator('.workspace-leaf-content[data-type="bases"] .routine-controls')
 
-    await controls.getByRole('button', { name: 'Start' }).click()
+    await controls.getByRole('button', { name: 'Switch routine' }).click()
     const modal = page.locator('.modal').filter({ hasText: 'Replace running routine?' })
     await expect(modal).toBeVisible()
 
@@ -52,7 +52,7 @@ test.describe('routine replace confirmation modal', () => {
     const panel = page.locator('.workspace-leaf-content[data-type="bases"] .routine-timer-panel')
     const controls = page.locator('.workspace-leaf-content[data-type="bases"] .routine-controls')
 
-    await controls.getByRole('button', { name: 'Start' }).click()
+    await controls.getByRole('button', { name: 'Switch routine' }).click()
     const modal = page.locator('.modal').filter({ hasText: 'Replace running routine?' })
     await expect(modal).toBeVisible()
 
