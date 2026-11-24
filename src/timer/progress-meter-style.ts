@@ -1,6 +1,6 @@
 import { z } from 'zod'
 
-/** Built-in progress-meter visualizations for the timer panel's dial (see flow-gu1.19.15 family). */
+/** Built-in progress-meter visualizations for the timer panel's dial. */
 export const PROGRESS_METER_STYLES = ['radial', 'fill-bar', 'battery-drain', 'tick-marks'] as const
 
 export const ProgressMeterStyleSchema = z.enum(PROGRESS_METER_STYLES)

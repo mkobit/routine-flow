@@ -194,7 +194,7 @@ function readLastCycledAt(frontmatter: Record<string, unknown> | undefined): Tem
   }
 }
 
-/** Missing/non-numeric priority sorts as if it were 0 — see design.md decision 6. */
+/** Missing or non-numeric priority sorts as 0. */
 function readPriority(frontmatter: Record<string, unknown> | undefined): number {
   const value = frontmatter?.[PRIORITY_KEY]
   return typeof value === 'number' && Number.isFinite(value) ? value : 0

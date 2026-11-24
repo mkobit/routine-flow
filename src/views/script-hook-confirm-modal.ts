@@ -4,13 +4,9 @@ import type { App } from 'obsidian'
 export type ScriptHookConfirmResult = 'confirmed' | 'cancelled'
 
 /**
- * Reviews a script's current source before it becomes a resolvable,
- * ambiently-firing Hook -- the one-time bind-time trust gate design.md
- * requires (script-hook-source's confirmation requirement). Same
- * "Modal as an awaitable" pattern as WriteBackModal/ResetConfirmModal:
- * `waitForResult` both opens the modal and returns the one promise it will
- * ever resolve, regardless of which path (button, Escape, click-outside)
- * closes it.
+ * Reviews a script's current source before it becomes a resolvable Hook
+ * (one-time bind-time trust gate). `waitForResult` opens the modal and
+ * returns a single-resolution promise regardless of how it closes.
  */
 export class ScriptHookConfirmModal extends Modal {
   private confirmed = false

@@ -40,20 +40,17 @@ export interface TaskQueueItem {
 
 /**
  * Extension point: abstraction over where a phase's items come from.
- * Optional per-Phase, not core to Phase — several use cases (stretch
- * routine, standup) have no queue at all. BaseQuerySource (src/timer/) is the
- * concrete Bases-backed implementation.
+ * Optional per-Phase — routines without queues (e.g. stretch, standup) omit it.
+ * `createBaseQuerySource` (src/adapters/obsidian/bases/query-task-source.ts) is
+ * the concrete Bases-backed implementation.
  */
 export interface TaskSource {
   readonly getQueue: () => readonly TaskQueueItem[]
 }
 
 /**
- * Resolves a TaskSource by id. Resolve-only, matching HookRegistry/
- * PredicateRegistry's shape — mutability (register/unregister) lives in a
- * wider src/timer/-local type, since only the Obsidian-integration layer
- * needs to keep a baseQuery source's contents fresh as Bases live-query data
- * changes.
+ * Resolves a TaskSource by id. Resolve-only; mutability (register/unregister) lives
+ * in the timer-layer registry to keep live-query sources fresh as Bases data changes.
  */
 export interface TaskSourceRegistry {
   readonly resolve: (id: TaskSourceId) => TaskSource | undefined

@@ -3,7 +3,7 @@ import type { App, TFile } from 'obsidian'
 import type { WriteBackFormValues, WriteBackPromptPort, WriteBackPromptResult } from '../domain/mutation/write-back-prompt'
 import { coerceWriteBackValue } from '../domain/mutation/write-back-prompt'
 
-/** Vault-wide file suggest, not limited to LogTargetResolverRegistry-resolvable paths (see design.md decision 3). */
+/** Vault-wide file suggest, not limited to LogTargetResolverRegistry-resolvable paths. */
 class VaultFileSuggest extends AbstractInputSuggest<TFile> {
   getSuggestions(query: string): TFile[] {
     const q = query.trim().toLowerCase()
@@ -16,10 +16,8 @@ class VaultFileSuggest extends AbstractInputSuggest<TFile> {
 }
 
 /**
- * Prompts the user to confirm or edit a write-back's resolved defaults
- * before anything is applied. A `Modal` instance is single-use (can't be
- * reopened after `close()`), so `waitForResult` both opens it and returns
- * the one promise it will ever resolve — see design.md decision 2.
+ * Prompts the user to confirm or edit a write-back's resolved defaults before applying.
+ * `waitForResult` opens the single-use `Modal` and returns its one-shot promise.
  */
 export class WriteBackModal extends Modal {
   private submitted = false
@@ -95,8 +93,7 @@ export class WriteBackModal extends Modal {
     actions.createEl('button', { type: 'button', cls: 'mod-cta', text: 'Submit' })
       .addEventListener('click', () => this.submit())
 
-    // File is the highest-stakes field (design.md #6: wrong file = wrong note edited), so it
-    // keeps initial focus regardless of its position in the sentence's reading order.
+    // File is the highest-stakes field (wrong file edits the wrong note), so it keeps initial focus.
     fileInput.focus()
   }
 

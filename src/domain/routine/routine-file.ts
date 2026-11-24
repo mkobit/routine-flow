@@ -190,15 +190,10 @@ function parseExtractedJson(json: string): RoutineParseResult {
 }
 
 /**
- * Parses a routine file's raw note content into a PhaseGraph: extracts the
- * single fenced JSON block, parses it, converts ISO 8601 duration strings at
- * `phases[].duration` and `phases[].completionPolicy.after` (futureDate only)
- * to Temporal.Duration, then validates via PhaseGraphSchema unchanged. Also
- * rejects graphs that are schema-valid but referentially broken — duplicate
- * phase ids, dangling transition references, or a reachable phase with no
- * (or no unconditional) way out (flow-gu1.31, see checkPhaseGraphIntegrity).
- * Never throws — every failure path returns a RoutineParseError (see design.md
- * decisions 3-4).
+ * Parses a routine file's raw note content into a `PhaseGraph`, converting ISO 8601
+ * durations, validating against `PhaseGraphSchema`, and checking graph integrity
+ * (duplicate ids, dangling transitions, unreachable exits via `checkPhaseGraphIntegrity`).
+ * Never throws — every failure path returns a `RoutineParseError`.
  */
 export function parseRoutineFile(content: string): RoutineParseResult {
   const blockResult = extractJsonBlock(content)

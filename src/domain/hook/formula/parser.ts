@@ -3,9 +3,8 @@ import { tokenize } from './tokenizer'
 
 /**
  * Grammar for a `'custom'` TransitionCondition predicate formula, modeled on
- * (not calling into — see design.md) Obsidian Bases' own formula vocabulary.
- * Deliberately not Turing-complete: no assignment, no user-defined functions,
- * no loops/recursion, no I/O.
+ * Obsidian Bases' formula vocabulary (non-Turing-complete: no assignment,
+ * user-defined functions, loops/recursion, or I/O).
  *
  * ```
  * formula     = orExpr
@@ -20,21 +19,9 @@ import { tokenize } from './tokenizer'
  * reference   = "fromPhaseId" | "visitCounts" "." identifier | "tracker" "." identifier
  * ```
  *
- * `reference` is the grammar's entire identifier/member-access surface —
- * `fromPhaseId` resolves to the predicate's own `fromPhaseId` context field
- * (a string), `visitCounts.<name>` resolves to `visitCounts[name] ?? 0`, and
- * `tracker.<property>` resolves to `trackerFrontmatter?.[property] ?? 0`.
- * No other identifier or member-access target is resolvable; a property name
- * that could reach the prototype chain (`constructor`, `__proto__`, etc.) is
- * rejected here at parse time rather than left to evaluation.
- *
- * Types are inferred statically (see evaluator.ts's `inferType`) rather than
- * checked at evaluation time: `fromPhaseId` is always `string`,
- * `visitCounts.<name>` is always `number`, `tracker.<property>` can compare
- * against `number` or `string`, comparisons require compatible non-boolean
- * operands and produce `boolean`, `and`/`or`/`not` require and produce
- * `boolean`, and `if`'s two branches must agree in type. A formula
- * must type as `boolean` overall to be registrable as a `Predicate`.
+ * Prototype-chain property names (`constructor`, `__proto__`, etc.) are
+ * rejected at parse time. Types are inferred statically (evaluator.ts `inferType`);
+ * a formula must type as `boolean` overall to register as a `Predicate`.
  */
 export type FormulaExpression =
   | { readonly kind: 'number', readonly value: number }

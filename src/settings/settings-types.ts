@@ -28,11 +28,11 @@ export const RoutineFlowSettingsSchema = z.object({
   doneStatusValue: z.string().default('done'),
   /** Clock speedup multiplier for testing/dev fast-forwarding (1 to 60). */
   clockSpeedMultiplier: z.number().min(1).max(60).default(1),
-  /** Active built-in progress-meter visualization for the timer panel's dial (see flow-gu1.19.15 family). */
+  /** Active built-in progress-meter visualization for the timer panel's dial. */
   progressMeterStyle: ProgressMeterStyleSchema.default('radial'),
   /** Named formula-authored 'custom' TransitionCondition predicates, evaluated via MutableFormulaPredicateRegistry. */
   formulaPredicates: z.array(FormulaPredicateSettingSchema).default([]),
-  /** Vault folder .js script hooks are selected from — see script-hook-source. */
+  /** Vault folder .js script hooks are selected from. */
   scriptsFolder: z.string().default(''),
   /** Named, bind-time-confirmed script-hook bindings, resolved via MutableScriptHookRegistry. */
   scriptHookBindings: z.array(ScriptHookBindingSettingSchema).default([]),

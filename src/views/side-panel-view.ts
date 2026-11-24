@@ -57,10 +57,8 @@ function sidePanelSnapshotsMatch(a: SidePanelRenderSnapshot, b: SidePanelRenderS
 }
 
 /**
- * Workspace-wide side panel mirroring the shared EngineStore, closer to
- * RoutineTimerView's fidelity (phase + controls + queue) than the status
- * bar item, but not bound to any leaf's routineFile -- no viewGraph, no
- * Start button, no routine-selection UI (see design.md's Decisions).
+ * Workspace-wide side panel mirroring the shared EngineStore (phase, controls,
+ * and queue), without per-leaf `viewGraph`, Start button, or routine-selection UI.
  */
 export class RoutineSidePanelView extends ItemView {
   private unsubscribe: (() => void) | null = null
@@ -224,8 +222,7 @@ export class RoutineSidePanelView extends ItemView {
       doneBtn.addEventListener('click', () => void this.plugin.store.dispatch({ type: 'finish-phase' }))
     }
 
-    // status is only ever 'completed' for a manualClear-policy phase (every other policy advances
-    // immediately) -- without this, such a phase has no reachable UI path past it (flow-039).
+    // 'completed' only occurs for a manualClear-policy phase; without this, no UI path advances past it.
     if (state.status === 'completed') {
       const clearBtn = controls.createEl('button', { text: 'Clear' })
       clearBtn.addEventListener('click', () => void this.plugin.store.dispatch({ type: 'advance-phase' }))

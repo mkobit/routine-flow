@@ -206,10 +206,7 @@ export class RoutineTimerView extends BasesView {
       }
     }
 
-    // Test-observable marker: routineResolution settles asynchronously (loadRoutineFile reads the
-    // routine file), one or more renders after a Bases sub-view switch. Without this, an e2e click
-    // on "Start" can race ahead of the load and land on the previous sub-view's still-attached
-    // button (flow-6v7).
+    // Test-observable marker: routineResolution settles asynchronously after a sub-view switch.
     this.containerEl.dataset.routineState = this.routineResolution.kind
     if (this.routineResolution.kind === 'default' || this.routineResolution.kind === 'loaded') {
       this.containerEl.dataset.viewGraphId = this.routineResolution.graph.id
@@ -255,8 +252,7 @@ export class RoutineTimerView extends BasesView {
 
     const isViewRoutineActive = graph.id === viewGraph.id
 
-    // This leaf is a bystander to a routine running elsewhere -- the header/queue below belong to
-    // that *other* routine, not this view's own (see design.md surface #4).
+    // This leaf is a bystander to a routine running elsewhere.
     const isInert = !isViewRoutineActive && state.status !== 'stopped'
     const nextPhase = findNextPhase(graph, state, this.plugin.formulaPredicateRegistry)
 
@@ -437,8 +433,7 @@ export class RoutineTimerView extends BasesView {
       doneBtn.addEventListener('click', () => void this.plugin.store.dispatch({ type: 'finish-phase' }))
     }
 
-    // status is only ever 'completed' for a manualClear-policy phase (every other policy advances
-    // immediately) -- without this, such a phase has no reachable UI path past it (flow-039).
+    // 'completed' only occurs for a manualClear-policy phase; without this, no UI path advances past it.
     if (isViewRoutineActive && state.status === 'completed') {
       const clearBtn = controls.createEl('button', { text: 'Clear' })
       clearBtn.addEventListener('click', () => void this.plugin.store.dispatch({ type: 'advance-phase' }))
@@ -578,10 +573,8 @@ export class RoutineTimerView extends BasesView {
   }
 
   /**
-   * Registers a TaskSource for every phase in `viewGraph` that has a taskSourceId, not just
-   * whichever phase happens to be currently active — otherwise a not-currently-rendered phase's
-   * source is stale or missing entirely (flow-gu1.29; needed by e.g. flow-6ed's proposed
-   * queueExhausted TransitionCondition, which can ask about a phase other than the active one).
+   * Registers a TaskSource for every phase in `viewGraph` with a `taskSourceId`
+   * so inactive phases' sources (e.g. for `queueExhausted` transitions) stay current.
    */
   private registerTaskSources(viewGraph: PhaseGraph): void {
     const entries = this.data?.data ?? []

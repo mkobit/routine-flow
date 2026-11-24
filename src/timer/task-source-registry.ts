@@ -31,13 +31,7 @@ function mergeTaskSources(sources: Iterable<TaskSource>): TaskSource {
   }
 }
 
-/**
- * A class, not a closure-returning factory: eslint-plugin-functional's
- * `ignoreClasses` exemption (see eslint.config.mts's `src/timer/**` override,
- * and ObsidianFileMutationPort's identical rationale) only covers mutation
- * inside an actual `class` — a closure over a `Map` trips
- * `functional/immutable-data` on `.set()`/`.delete()` with no such exemption.
- */
+/** Class wrapper so `ignoreClasses` covers internal Map/Set updates. */
 class TaskSourceRegistryImpl implements MutableTaskSourceRegistry {
   private readonly sources = new Map<TaskSourceId, Map<unknown, TaskSource>>()
   private readonly listeners = new Set<() => void>()
