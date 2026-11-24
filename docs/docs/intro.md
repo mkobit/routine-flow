@@ -18,5 +18,6 @@ The underlying model is a generic phase graph, not a hardcoded 25/5 cycle — a 
 - **[Demo](./demo)** — a short clip of it running.
 - **[Theme compatibility & CSS](./theme-compatibility)** — community themes and CSS snippet integration.
 - **[Changelog](./changelog)** — release history and changes.
+- **[Reference](./reference)** — routine JSON schema, plugin settings, commands, predicate formulas, and script hooks.
 
 Source and issues: [github.com/mkobit/routine-flow](https://github.com/mkobit/routine-flow).
