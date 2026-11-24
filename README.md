@@ -16,7 +16,7 @@ Full docs, including a getting-started walkthrough, live at the [documentation s
 
 ## Requirements
 
-- Obsidian 1.12.7 or later.
+- Obsidian 1.15.1 or later.
 - Desktop only.
 
 ## Installation
