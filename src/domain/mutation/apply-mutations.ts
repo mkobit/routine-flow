@@ -16,12 +16,7 @@ export interface FileMutationPort {
   writeFrontmatterBatch?: (filePath: string, mutations: readonly FrontmatterMutation[]) => Promise<void>
 }
 
-/**
- * Outcome of applyMutations. Mirrors zod's safeParse convention (a resolved
- * result object rather than a thrown/rejected error) — this domain module is
- * held to the strict functional-style lint rules (no throw, no classes, no
- * Promise.reject), unlike src/timer/** which the Obsidian API exempts.
- */
+/** Outcome of `applyMutations`, returning a resolved result object instead of throwing. */
 export type ApplyMutationsResult =
   | { readonly success: true }
     /** `appliedCount` is how many leading mutations (by position, not identity) dispatched successfully before `mutation` failed -- lets a caller recover the successful prefix even if `mutations` contains the same FileMutation object more than once. */

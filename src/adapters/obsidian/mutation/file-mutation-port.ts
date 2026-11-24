@@ -67,10 +67,8 @@ export function resolveFile(vault: { getFileByPath(path: string): VaultFile | nu
 /**
  * Real, Obsidian-backed `FileMutationPort`.
  *
- * A class, not a factory function, so `functional/immutable-data`'s
- * `ignoreClasses` exemption (see eslint.config.mts's `src/timer/**`
- * override) covers the frontmatter-callback mutation `processFrontMatter`
- * requires — that Obsidian API has no non-mutating shape.
+ * Class wrapper so `ignoreClasses` covers the frontmatter-callback mutation
+ * required by `processFrontMatter`.
  */
 export class ObsidianFileMutationPort implements FileMutationPort {
   constructor(private readonly deps: ObsidianFileMutationPortDeps) {}
@@ -88,10 +86,8 @@ export class ObsidianFileMutationPort implements FileMutationPort {
   }
 
   /**
-   * Writes a `routine-priority` sort key: a live Base query can't be
-   * reordered in place, so "reorder" means writing a value the user's own
-   * Base sort config orders by. Epoch-millis (negated for 'front'), computed
-   * locally with no sibling-queue lookup — see design.md decision 6.
+   * Writes a `routine-priority` sort key using epoch-millis (negated for `'front'`),
+   * computed locally with no sibling-queue lookup.
    */
   async reorderQueueItem(mutation: Extract<FileMutation, { kind: 'queueReorder' }>): Promise<void> {
     const file = resolveFile(this.deps.vault, mutation.itemId)

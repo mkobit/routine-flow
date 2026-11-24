@@ -8,18 +8,14 @@ export interface FormulaPredicateSetting {
 }
 
 /**
- * Widens PredicateRegistry with setFormulas — unlike the plugin's static
- * write-back Hook, formula-authored predicates are settings-driven and can
- * change at runtime (add/edit/remove in the settings tab), so this registry
- * rebuilds its resolvable set wholesale from the current settings list
- * rather than being populated once at plugin load (see design.md's Migration
- * Plan and MutableTaskSourceRegistry's identical "populated once" contrast).
+ * Widens PredicateRegistry with `setFormulas` so settings-driven formula predicates
+ * can be rebuilt wholesale at runtime when settings change.
  */
 export interface MutableFormulaPredicateRegistry extends PredicateRegistry {
   readonly setFormulas: (formulas: readonly FormulaPredicateSetting[]) => void
 }
 
-/** A class, not a closure-returning factory — same rationale as TaskSourceRegistryImpl (eslint.config.mts's src/timer/** ignoreClasses exemption covers mutation inside a class, not a closure over a Map). */
+/** Class wrapper so `ignoreClasses` covers internal Map updates. */
 class FormulaPredicateRegistryImpl implements MutableFormulaPredicateRegistry {
   private predicates = new Map<PredicateName, Predicate>()
 

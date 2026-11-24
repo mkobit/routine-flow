@@ -5,11 +5,9 @@ import type { BaseQueryEntry } from './query-task-source'
 import { isDeferredInFuture, resolveNow } from './query-task-source'
 
 /**
- * getViewOptions' declared `default: 'note.type'` for focusProperty/breakProperty is only used
- * by Obsidian's settings UI to pre-fill the field — config.getAsPropertyId() returns null until a
- * user explicitly sets it in the .base file, with no fallback to that declared default applied
- * automatically. Without this, an unconfigured view's propId resolution silently fails and the
- * queue filter falls through to "show every vault note" (found via e2e, flow-djx).
+ * `getViewOptions` declares `default: 'note.type'` only to pre-fill Obsidian's settings UI;
+ * `config.getAsPropertyId()` returns null until explicitly set in the `.base` file. Fallback
+ * prevents unconfigured views from failing property resolution and matching every vault note.
  */
 const DEFAULT_QUEUE_PROPERTY_ID: BasesPropertyId = 'note.type'
 

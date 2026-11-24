@@ -13,9 +13,8 @@ export type WriteBackPromptResult =
   | { readonly kind: 'cancelled' }
 
 /**
- * Shows the user a write-back's resolved defaults and lets them confirm or
- * edit before anything is applied. Kept separate from FrontmatterReader
- * (read-only) and FileMutationPort (apply-only) — see design.md decision 1.
+ * Prompts the user to confirm or edit write-back defaults before applying.
+ * Kept separate from `FrontmatterReader` (read-only) and `FileMutationPort` (apply-only).
  */
 export interface WriteBackPromptPort {
   readonly prompt: (defaults: WriteBackFormValues) => Promise<WriteBackPromptResult>

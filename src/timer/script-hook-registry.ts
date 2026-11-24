@@ -28,7 +28,7 @@ export interface MutableScriptHookRegistry extends HookRegistry {
   readonly setBindings: (bindings: readonly ScriptHookBindingSetting[]) => void
 }
 
-/** A class, not a closure-returning factory -- same rationale as FormulaPredicateRegistryImpl (eslint.config.mts's src/timer/** ignoreClasses exemption covers mutation inside a class, not a closure over a Map). */
+/** Class wrapper so `ignoreClasses` covers internal Map updates. */
 class ScriptHookRegistryImpl implements MutableScriptHookRegistry {
   private hooks = new Map<HookName, Hook>()
 

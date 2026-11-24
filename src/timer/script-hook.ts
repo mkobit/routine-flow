@@ -4,12 +4,7 @@ import type { Hook, HookContext } from '../domain/hook/hook'
 import { FileMutationSchema } from '../domain/mutation/file-mutation'
 
 /**
- * HookContext plus the active file's pre-resolved, read-only frontmatter --
- * the one enrichment a script-backed Hook gets beyond what every Hook
- * already receives. Scoped to this module rather than widening the shared
- * HookContext type: no other Hook (e.g. write-back) needs it, and every
- * existing Hook already resolves what it needs itself via its own injected
- * deps -- see design.md's script-hook-execution requirements.
+ * HookContext enriched with the active file's read-only frontmatter.
  */
 export interface ScriptHookContext extends HookContext {
   readonly activeFileFrontmatter: Readonly<Record<string, unknown>> | null
@@ -31,12 +26,7 @@ export interface ScriptHookDeps {
   readonly timers?: ScriptHookTimers
   /**
    * Milliseconds before an invocation still awaiting its script's promise is
-   * treated as failed. Does not stop the script itself -- there is no
-   * in-process mechanism to preempt a script's execution once started
-   * (no Worker, no isolation; see design.md's 2026-07-28 Decisions). A
-   * timed-out script keeps running with the same host access it always had;
-   * "treated as failed" describes what this Hook resolves with, not a
-   * guarantee that the script has stopped.
+   * treated as failed. Does not preempt an already-started in-process script.
    */
   readonly timeoutMs?: number
 }
@@ -70,25 +60,19 @@ async function raceWithTimeout<T>(promise: Promise<T>, timers: ScriptHookTimers,
 }
 
 /**
- * Compiles a script source string into an invocable function. `new
- * Function`, executed in-process on the main thread, is the deliberate
- * mechanism this design settled on (see design.md's 2026-07-28 Decisions) --
- * no runtime sandbox, no Node/host isolation. The bind-time confirmation
- * gate (script-hook-source) is the only trust boundary; a script bound and
- * confirmed there has the same host access as any other in-process code.
+ * Compiles a script source string into an in-process function via `new Function`.
+ * Bind-time confirmation (`ScriptHookConfirmModal`) is the trust boundary.
  */
 function compileScript(source: string): (context: ScriptHookContext) => Promise<unknown> {
-  // eslint-disable-next-line @typescript-eslint/no-implied-eval -- vault-authored scripts are this feature, gated by the bind-time confirmation (script-hook-source), not a code-injection bug; see design.md. obsidianmd/rule-custom-message (covers no-new-func) is off for this file only -- see eslint.config.mts.
+  // eslint-disable-next-line @typescript-eslint/no-implied-eval -- vault-authored scripts are gated by bind-time confirmation (ScriptHookConfirmModal).
   const scriptFn = new Function('context', `return (async () => {\n${source}\n})();`)
   return scriptFn.bind(undefined)
 }
 
 /**
  * Builds the Hook adapter for one script binding: enriches HookContext with
- * the active file's current frontmatter, invokes the compiled script under a
- * soft timeout, and validates its resolved value against FileMutation[] --
- * see specs/script-hook-execution/spec.md. This is what a
- * MutableScriptHookRegistry entry resolves to.
+ * the active file's frontmatter, invokes the script under a soft timeout,
+ * and validates its resolved value against `FileMutation[]`.
  */
 export function createScriptHook(scriptSource: string, deps: ScriptHookDeps): Hook {
   const invoke = compileScript(scriptSource)

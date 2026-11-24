@@ -23,11 +23,8 @@ export interface HookContext {
 }
 
 /**
- * A hook is pure(ish): given context, it returns the FileMutation intents it
- * wants applied, rather than mutating the vault directly. Keeps hooks
- * testable and gives the engine a single choke point for applying them.
- * Always Promise-returning — some hooks (e.g. write-back) must await an
- * interactive prompt before they know what, if anything, to return.
+ * A hook returns `FileMutation` intents rather than mutating the vault directly.
+ * Always Promise-returning so interactive hooks (e.g. write-back) can await prompts.
  */
 export type Hook = (context: HookContext) => Promise<readonly FileMutation[]>
 
@@ -37,14 +34,9 @@ export interface HookRegistry {
 }
 
 /**
- * Outcome of invoking one resolved hook. 'invocationFailed' covers a hook
- * that threw synchronously or whose returned promise rejected — distinct
- * from 'applied', where the hook ran to completion and its (possibly empty)
- * FileMutation[] went through applyMutations, which has its own independent
- * success/failure outcome. 'applied' carries the hook's raw returned
- * `mutations` alongside `result`, since `ApplyMutationsResult`'s success case
- * is bare `{ success: true }` — recovering "which mutations actually wrote"
- * needs the original list, not just whether the whole batch succeeded.
+ * Outcome of invoking one resolved hook: `'invocationFailed'` if the hook threw or
+ * rejected; `'applied'` if it resolved and its mutations ran through `applyMutations`.
+ * `'applied'` retains `mutations` because `ApplyMutationsResult` does not echo them.
  */
 export type HookInvocationOutcome =
   | { readonly stage: 'applied', readonly mutations: readonly FileMutation[], readonly result: ApplyMutationsResult }

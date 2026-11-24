@@ -17,10 +17,9 @@ export type PhaseInstanceId = z.infer<typeof PhaseInstanceIdSchema>
 export type PhaseInstanceEndReason = 'completed' | 'skipped' | 'abandoned'
 
 /**
- * A lightweight snapshot of a TaskQueueItem, captured at the moment it becomes a PhaseInstance's
- * active item. Deliberately excludes the mutable cycleStatus/timeSpent/lastCycledAt — a bare
- * TaskQueueItemId from a live, mutable Bases-query-backed queue isn't guaranteed re-resolvable
- * later (the note can be renamed, moved, or drop out of the query).
+ * Lightweight snapshot of a `TaskQueueItem` captured when it becomes active.
+ * Excludes mutable queue state (`cycleStatus`, `timeSpent`, `lastCycledAt`)
+ * since live Bases-query items may rename, move, or leave the query later.
  */
 export type ItemTouchStatus = 'viewed' | 'completed'
 
@@ -44,16 +43,10 @@ export type PhaseInstanceHookFailure =
   | { readonly event: HookEvent, readonly kind: 'mutationFailed', readonly mutation: FileMutation, readonly cause: unknown }
 
 /**
- * A concrete occurrence of a Phase within a Session. `phaseDisplayName`/`phaseKind` are
- * snapshotted from the firing Phase at open time (alongside `plannedDuration`), so a closed
- * instance survives that Phase later being renamed, re-kinded, or deleted. The current active
- * item is the tail of `itemsTouched`, when non-empty — not separately tracked.
- *
- * `mutationsApplied`/`hookFailures` accumulate across every hook event fired for this instance
- * (onEnter/onComplete/onSkip/onExit can each contribute), in firing order, folded on by
- * EngineStore after each hook settles — see EngineStore.dispatch's hook-invocation loop. Both
- * start empty and only ever grow; a mutation that failed to apply lands in `hookFailures`, not
- * `mutationsApplied`.
+ * A concrete occurrence of a `Phase` within a `Session`. Snapshots display name,
+ * kind, and planned duration at open time. The current active item is the tail of
+ * `itemsTouched`. `mutationsApplied` and `hookFailures` accumulate across all hook
+ * events for this instance in firing order.
  */
 export interface PhaseInstance {
   readonly id: PhaseInstanceId
@@ -103,10 +96,8 @@ export function openPhaseInstance(phase: Phase, now: Temporal.Instant): PhaseIns
 }
 
 /**
- * Closes an in-progress PhaseInstance: stamps its end fields, leaving everything else untouched.
- * `actualDuration` is the wall-clock span from `startedAt` to `now`, inclusive of any time spent
- * paused -- EngineState carries no separate paused-time accumulator, so a tick-derived
- * excluding-pauses figure isn't available to compute here.
+ * Closes an in-progress `PhaseInstance` at `now`. `actualDuration` is wall-clock
+ * time from `startedAt` to `now` (including pauses).
  */
 export function closePhaseInstance(instance: PhaseInstance, now: Temporal.Instant, endReason: PhaseInstanceEndReason): PhaseInstance {
   return {

@@ -25,10 +25,8 @@ export function resolveRoutineGraph(fileContent: string): RoutineResolution {
 
 /**
  * Whether clicking Start should load+start immediately, or confirm first.
- * "Session in progress" is any status other than 'stopped' (the fresh state
- * setGraph itself produces) — a paused or completed session still holds
- * meaningful progress a silent switch would discard, not just a literal
- * EngineStatus 'running' check (see design.md's Risks section).
+ * Any status other than `'stopped'` (including paused or completed) holds
+ * session progress that switching routines would discard.
  */
 export function decideStartAction(
   active: { readonly graphId: PhaseGraphId, readonly status: EngineStatus },

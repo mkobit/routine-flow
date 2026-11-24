@@ -53,9 +53,8 @@ export class RoutineReplaceModal extends Modal {
   }
 
   /**
-   * Lucide renamed alert-triangle -> triangle-alert; setIcon no-ops on an unknown name, so listing
-   * both absorbs the rename across Obsidian versions (see DESIGN.md iconography; timer-view.ts's
-   * renderStateIcon does the same for its own state icons).
+   * Lucide renamed `alert-triangle` -> `triangle-alert`; `setIcon` no-ops on unknown
+   * names, so listing both absorbs the rename across Obsidian versions.
    */
   private renderWarningIcon(parent: HTMLElement): void {
     const iconEl = parent.createSpan({ cls: 'routine-state-icon' })
