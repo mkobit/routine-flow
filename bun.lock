@@ -30,7 +30,7 @@
         "fast-check": "^4.10.3",
         "globals": "17.14.0",
         "jiti": "^2.7.0",
-        "modern-web-guidance": "^0.0.205",
+        "modern-web-guidance": "^1.0.1",
         "obsidian-launcher": "^3.5.0",
         "ts-node": "^10.9.2",
         "tslib": "2.9.1",
@@ -655,7 +655,7 @@
 
     "minimist": ["minimist@1.2.8", "", {}, "sha512-2yyAR8qBkN3YuheJanUpWC5U3bb5osDywNB8RzDVlDwDHbocAJveqqj1u8+SVD7jkWT4yvsHCpWqqWqAxb0zCA=="],
 
-    "modern-web-guidance": ["modern-web-guidance@0.0.205", "", { "bin": { "modern-web-guidance": "skills/modern-web-guidance/modern-web.mjs" } }, "sha512-b1OipAUini1LxFNI4+zidanjkXX27rCnMI0OdZm0cXLUIl9swpvf8T+OlS4AMJttlEqABJrr0YXVLnInXAACRg=="],
+    "modern-web-guidance": ["modern-web-guidance@1.0.1", "", { "bin": { "modern-web-guidance": "skills/modern-web-guidance/modern-web.mjs" } }, "sha512-5ztUh5F1p2PewnSkA6EhsGUXqomaZY9qe6iWJCU4JbIQxHTky7s5lMJcPE4EbD1uhbQZIhl0HROH0+s6fIiGzg=="],
 
     "module-error": ["module-error@1.0.2", "", {}, "sha512-0yuvsqSCv8LbaOKhnsQ/T5JhyFlCYLPXK3U2sgV10zoKQwzs/MyfuQUOZQ1V/6OCOJsK/TRgNVrPuPDqtdMFtA=="],
 
