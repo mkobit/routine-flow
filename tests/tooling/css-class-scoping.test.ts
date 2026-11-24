@@ -193,6 +193,7 @@ void mock.module('obsidian', () => {
         const btn = {
           setButtonText: () => btn,
           setCta: () => btn,
+          setDestructive: () => btn,
           setWarning: () => btn,
           onClick: () => btn,
         }

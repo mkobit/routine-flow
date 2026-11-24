@@ -33,7 +33,7 @@ export class ResetConfirmModal extends Modal {
 
     new Setting(this.contentEl)
       .addButton(button => button.setButtonText('Cancel').onClick(() => this.close()))
-      .addButton(button => button.setButtonText('Reset').setWarning().onClick(() => this.confirm()))
+      .addButton(button => button.setButtonText('Reset').setDestructive().onClick(() => this.confirm()))
   }
 
   onClose(): void {

@@ -5,7 +5,7 @@ import functional from 'eslint-plugin-functional'
 import promise from 'eslint-plugin-promise'
 import stylistic from '@stylistic/eslint-plugin'
 import unicorn from 'eslint-plugin-unicorn'
-import { globalIgnores } from 'eslint/config'
+import { defineConfig, globalIgnores } from 'eslint/config'
 import json from '@eslint/json'
 import yml from 'eslint-plugin-yml'
 
@@ -88,7 +88,7 @@ const packageJsonPlugin = {
   },
 }
 
-export default tseslint.config(
+export default defineConfig(
   {
     ignores: [
       // Example vault files and user scripts — excluded from plugin project linting
