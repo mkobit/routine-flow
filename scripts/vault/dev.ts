@@ -1,9 +1,10 @@
 #!/usr/bin/env bun
-// Usage: bun run vault:dev [-- --theme <light|dark>]  (defaults to dark)
+// Usage: bun run vault:dev [-- --theme <light|dark>] [--no-build] [--no-generated]
 // --theme presets Obsidian's base color scheme before launch (ported from
 // bases-chartkit's scripts/vault-dev.ts, same obsidian-launcher harness).
 // Requires copying the vault first -- see the setupVault call below.
 import ObsidianLauncher from 'obsidian-launcher'
+import { spawn } from 'node:child_process'
 import * as fs from 'node:fs/promises'
 import * as net from 'node:net'
 import { Command, Option } from 'commander'
@@ -11,7 +12,7 @@ import { rebuildGeneratedVault, resolveVaultSeed, stripGitignoredVaultState } fr
 import { applyViewMode } from '../appearance'
 import type { ViewMode } from '../appearance'
 import { applyInitialWorkspace } from '../initial-workspace'
-import { CACHE_DIR, ROOT_DIR, VAULT_PATH, runCli } from './shared'
+import { CACHE_DIR, ROOT_DIR, VAULT_PATH, assertBuiltArtifacts, runCli } from './shared'
 
 import obsidianVersion from '../../e2e/obsidian-version.json' with { type: 'json' }
 
@@ -101,22 +102,66 @@ async function resizeWindowWhenReady(cdpPort: number, attemptsRemaining = 20): P
   await resizeWindowWhenReady(cdpPort, attemptsRemaining - 1)
 }
 
-interface DevOptions {
+export interface DevOptions {
+  readonly build: boolean
   readonly generated: boolean
   readonly headless: boolean
   readonly theme: ViewMode
   readonly open: string
 }
 
-async function runDev({ generated, headless, theme, open }: DevOptions): Promise<void> {
-  if (generated) {
-    const seed = resolveVaultSeed()
-    const errors = await rebuildGeneratedVault(VAULT_PATH, seed)
-    if (errors.length > 0) {
-      throw new AggregateError(errors, `Failed to write ${errors.length} generated vault note(s)`)
-    }
-    console.log(`Rebuilt generated vault notes in ${VAULT_PATH} (seed=${seed})`)
+async function runBuild(): Promise<void> {
+  const proc = Bun.spawn(['bun', 'run', 'build'], {
+    cwd: ROOT_DIR,
+    stdout: 'inherit',
+    stderr: 'inherit',
+  })
+  const exitCode = await proc.exited
+  if (exitCode !== 0) {
+    throw new Error(`Plugin build failed with exit code ${exitCode}`)
   }
+}
+
+async function cleanupDirs(dirs: readonly string[]): Promise<void> {
+  await Promise.allSettled(dirs.map(dir => fs.rm(dir, { recursive: true, force: true })))
+}
+
+export function buildCleanupWatcherScript(): string {
+  return [
+    'const fs = require("node:fs/promises");',
+    'const [pidStr, ...dirs] = process.argv.slice(1);',
+    'const pid = Number(pidStr);',
+    'if (!Number.isInteger(pid) || pid <= 0) process.exit(1);',
+    'const timer = setInterval(async () => {',
+    '  try {',
+    '    process.kill(pid, 0);',
+    '  } catch (err) {',
+    '    if (err && typeof err === "object" && "code" in err && err.code === "EPERM") return;',
+    '    clearInterval(timer);',
+    '    await Promise.allSettled(dirs.map(dir => fs.rm(dir, { recursive: true, force: true })));',
+    '    process.exit(0);',
+    '  }',
+    '}, 2000);',
+  ].join('\n')
+}
+
+function spawnTmpdirCleanupWatcher(pid: number, dirs: readonly string[]): void {
+  if (!Number.isInteger(pid) || pid <= 0) {
+    return
+  }
+  const watcher = spawn(
+    process.execPath,
+    ['-e', buildCleanupWatcherScript(), String(pid), ...dirs],
+    { detached: true, stdio: 'ignore' },
+  )
+  watcher.unref()
+}
+
+async function runDev({ build, generated, headless, theme, open }: DevOptions): Promise<void> {
+  if (build) {
+    await runBuild()
+  }
+  await assertBuiltArtifacts()
 
   const launcher = new ObsidianLauncher({ cacheDir: CACHE_DIR })
 
@@ -127,20 +172,35 @@ async function runDev({ generated, headless, theme, open }: DevOptions): Promise
   // fixture strips it -- otherwise a local leftover interactive-session
   // state would leak into a supposedly-fresh launch. Done as its own
   // setupVault() call (rather than via launch()'s copy:true) so there's a
-  // copied-but-not-yet-launched vault to write the --theme preset into
-  // before Obsidian ever sees it.
+  // copied-but-not-yet-launched vault to generate demo notes and write the
+  // --theme/--open presets into before Obsidian ever sees it.
   const copiedVault = await launcher.setupVault({ vault: VAULT_PATH, copy: true })
-  await stripGitignoredVaultState(copiedVault)
-  await applyViewMode(copiedVault, theme)
-  await applyInitialWorkspace(copiedVault, open)
+
+  try {
+    await stripGitignoredVaultState(copiedVault)
+    if (generated) {
+      const seed = resolveVaultSeed()
+      const errors = await rebuildGeneratedVault(copiedVault, seed)
+      if (errors.length > 0) {
+        throw new AggregateError(errors, `Failed to write ${errors.length} generated vault note(s)`)
+      }
+      console.log(`Rebuilt generated vault notes in ${copiedVault} (seed=${seed})`)
+    }
+    await applyViewMode(copiedVault, theme)
+    await applyInitialWorkspace(copiedVault, open)
+  }
+  catch (err) {
+    await cleanupDirs([copiedVault])
+    throw err
+  }
 
   const cdpPort = await getFreePort()
   const { proc, configDir, vault } = await launcher.launch({
     appVersion: obsidianVersion.appVersion,
     installerVersion: obsidianVersion.installerVersion,
     vault: copiedVault,
-    // Already copied and theme-preset above -- copy:false here avoids a
-    // redundant second copy of the vault.
+    // Already copied, demo-populated, and preset above -- copy:false here
+    // avoids a redundant second copy of the vault.
     copy: false,
     plugins: [ROOT_DIR],
     // See e2e/fixtures/obsidian.ts's identical GPU-workaround args for the
@@ -163,6 +223,9 @@ async function runDev({ generated, headless, theme, open }: DevOptions): Promise
     spawnOptions: { stdio: 'ignore', detached: !headless },
   })
 
+  const activeVault = vault ?? copiedVault
+  const tmpDirs = [configDir, activeVault]
+
   void resizeWindowWhenReady(cdpPort)
 
   if (headless) {
@@ -174,37 +237,60 @@ async function runDev({ generated, headless, theme, open }: DevOptions): Promise
     // that's about to disappear (flow-9vx).
     process.on('SIGINT', () => proc.kill('SIGINT'))
     process.on('SIGTERM', () => proc.kill('SIGTERM'))
-    console.log(`Obsidian launched under Xvfb (pid ${proc.pid}) — vault: ${vault ?? copiedVault}. Waiting for exit...`)
+    console.log(`Obsidian launched under Xvfb (pid ${proc.pid}) — vault: ${activeVault}. Waiting for exit...`)
     await new Promise<void>(resolve => proc.on('exit', () => resolve()))
-    // obsidian-launcher doesn't clean up the per-launch configDir/vault-copy
-    // tmpdirs it creates -- this path already blocks for the whole run, so it
-    // can safely remove them once Obsidian has exited (mirrors
-    // e2e/fixtures/obsidian.ts's cleanupObsidianTmpdirs, fixed there under
-    // flow-i43).
-    await Promise.allSettled([
-      fs.rm(configDir, { recursive: true, force: true }),
-      fs.rm(vault ?? copiedVault, { recursive: true, force: true }),
-    ])
+    await cleanupDirs(tmpDirs)
     return
   }
 
   // Real-display mode detaches and hands the shell back immediately (by design,
-  // see AGENTS.md), so this invocation exits before Obsidian does and has no
-  // way to observe when it's safe to remove configDir/the vault copy -- those
-  // tmpdirs are accepted as a leak here (bun run vault:dev:headless does not
-  // have this issue) rather than adding a detached watcher process to close
-  // them (flow-t91).
+  // see AGENTS.md). Spawn a tiny detached watcher that polls for Obsidian's
+  // exit and removes the per-launch configDir/vault-copy tmpdirs afterwards.
   proc.unref()
-  console.log(`Obsidian launched in the background (pid ${proc.pid}) — vault: ${vault ?? copiedVault}`)
+  if (proc.pid !== undefined) {
+    spawnTmpdirCleanupWatcher(proc.pid, tmpDirs)
+  }
+  console.log(`Obsidian launched in the background (pid ${proc.pid}) — vault: ${activeVault}`)
 }
 
-const program = new Command()
-  .name('vault-dev')
-  .description('Launch a provisioned Obsidian against the example vault. Opens on the real display -- for headless (Xvfb) launches, run `bun run vault:dev:headless` instead.')
-  .option('--generated', 'rebuild the vault\'s per-routine notes (dev-docs/examples/) before launching', false)
-  .option('--headless', 'wait for Obsidian to exit instead of detaching -- required under xvfb-run, which tears down the virtual display as soon as the wrapped command exits', false)
-  .addOption(new Option('--theme <mode>', 'preset Obsidian\'s color scheme before launch').choices(['light', 'dark']).default('dark'))
-  .addOption(new Option('--open <target>', 'preset initial open view or file on launch (e.g. default, standup, workout, chore-list, manual-clear, table, shared-routines, or a vault path)').default('default'))
-  .action(runDev)
+function toDevOptions(raw: Record<string, unknown>): DevOptions {
+  const theme = raw.theme === 'light' ? 'light' : 'dark'
+  return {
+    build: raw.build !== false,
+    generated: raw.generated !== false,
+    headless: raw.headless === true,
+    theme,
+    open: typeof raw.open === 'string' ? raw.open : 'default',
+  }
+}
 
-runCli('vault-dev', () => program.parseAsync())
+export function createDevProgram(onAction?: (options: DevOptions) => Promise<void> | void): Command {
+  const program = new Command()
+    .name('vault-dev')
+    .description('Launch a provisioned Obsidian against the example vault. Opens on the real display -- for headless (Xvfb) launches, run `bun run vault:dev:headless` instead.')
+    .option('--build', 'build the plugin before launching', true)
+    .option('--no-build', 'skip building the plugin before launching')
+    .option('--generated', 'rebuild the vault\'s generated demo notes before launching', true)
+    .option('--no-generated', 'skip rebuilding the vault\'s generated demo notes before launching')
+    .option('--headless', 'wait for Obsidian to exit instead of detaching -- required under xvfb-run, which tears down the virtual display as soon as the wrapped command exits', false)
+    .addOption(new Option('--theme <mode>', 'preset Obsidian\'s color scheme before launch').choices(['light', 'dark']).default('dark'))
+    .addOption(new Option('--open <target>', 'preset initial open view or file on launch (e.g. default, standup, workout, chore-list, manual-clear, table, shared-routines, or a vault path)').default('default'))
+
+  if (onAction) {
+    program.action(() => onAction(toDevOptions(program.opts())))
+  }
+
+  return program
+}
+
+export function parseDevOptions(argv: readonly string[]): DevOptions {
+  const program = createDevProgram()
+  program.exitOverride()
+  program.configureOutput({ writeErr: () => {} })
+  program.parse([...argv], { from: 'user' })
+  return toDevOptions(program.opts())
+}
+
+if (import.meta.main) {
+  runCli('vault-dev', () => createDevProgram(runDev).parseAsync())
+}
