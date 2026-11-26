@@ -8,6 +8,7 @@ on:
 
 jobs:
     build:
+        name: Build plugin
         runs-on: ubuntu-latest
         outputs:
             artifact-name: ${{ steps.set-artifact-name.outputs.artifact-name }}
