@@ -1,10 +1,18 @@
 name: Release
 
 on:
-  push:
-    tags:
-      - '[0-9]+.[0-9]+.[0-9]+'
-  workflow_dispatch: {}
+  workflow_call:
+    inputs:
+      tag:
+        description: 'Existing release tag to build and publish'
+        required: true
+        type: string
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Existing release tag to build and publish'
+        required: true
+        type: string
 
 permissions: {}
 
@@ -19,8 +27,22 @@ jobs:
     timeout-minutes: 15
     permissions:
       contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      RELEASE_TAG: ${{ inputs.tag }}
     steps:
       - uses: actions/checkout@v7.0.1
+        with:
+          ref: refs/tags/${{ inputs.tag }}
+          persist-credentials: false
+
+      - name: Verify draft and version
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash scripts/release/validate-calver.sh "$RELEASE_TAG"
+          jq -e --arg tag "$RELEASE_TAG" '.version == $tag' manifest.json > /dev/null
+          [[ $(gh release view "$RELEASE_TAG" --json isDraft --jq .isDraft) == true ]]
 
       - name: Setup environment
         uses: $/.github/actions/setup-env
@@ -28,8 +50,8 @@ jobs:
       - name: Build
         run: bun run build
 
-      - name: Attach artifacts to GitHub release
-        if: github.event_name == 'push'
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: gh release upload "${{ github.ref_name }}" main.js manifest.json styles.css
+      - name: Attach assets to the draft
+        run: gh release upload "$RELEASE_TAG" main.js manifest.json styles.css --clobber
+
+      - name: Publish release
+        run: gh release edit "$RELEASE_TAG" --draft=false
