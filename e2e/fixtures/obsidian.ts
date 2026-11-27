@@ -1,6 +1,8 @@
 import { test as base, expect, chromium } from '@playwright/test'
 import type { Browser, Page } from '@playwright/test'
 import type { ChildProcess } from 'node:child_process'
+import { once } from 'node:events'
+import { setTimeout as delay } from 'node:timers/promises'
 import ObsidianLauncher from 'obsidian-launcher'
 import * as path from 'node:path'
 import * as net from 'node:net'
@@ -66,6 +68,31 @@ async function cleanupObsidianTmpdirs(configDir: string, vaultPath: string): Pro
     if (result.status === 'rejected') {
       process.stderr.write(`obsidian tmpdir cleanup failed: ${String(result.reason)}\n`)
     }
+  }
+}
+
+async function stopObsidian(proc: ChildProcess, listenPort: number): Promise<void> {
+  if (proc.exitCode !== null || proc.signalCode !== null) {
+    return
+  }
+
+  try {
+    const browser = await chromium.connectOverCDP(`http://localhost:${listenPort}`, { timeout: 2000 })
+    try {
+      const session = await browser.newBrowserCDPSession()
+      // The CDP transport can disconnect before it acknowledges shutdown.
+      const closeRequested = session.send('Browser.close').catch(() => undefined)
+      await Promise.race([closeRequested, delay(2000, undefined, { ref: false })])
+    }
+    finally {
+      await browser.close()
+    }
+    if (proc.exitCode === null && proc.signalCode === null) {
+      await once(proc, 'exit', { signal: AbortSignal.timeout(5000) })
+    }
+  }
+  catch {
+    await terminateProcess(proc)
   }
 }
 
@@ -160,19 +187,30 @@ async function acquireObsidian(
     return { proc, browser, page, vaultPath, configDir }
   }
   catch (err) {
-    await terminateProcess(proc)
-    await cleanupObsidianTmpdirs(configDir, vaultPath)
+    try {
+      await stopObsidian(proc, listenPort)
+    }
+    finally {
+      await cleanupObsidianTmpdirs(configDir, vaultPath)
+    }
     throw err
   }
 }
 
-async function releaseObsidian({ proc, browser, configDir, vaultPath }: ObsidianResources): Promise<void> {
+async function releaseObsidian(
+  { proc, browser, configDir, vaultPath }: ObsidianResources,
+  listenPort: number,
+): Promise<void> {
   try {
     await browser.close()
   }
   finally {
-    await terminateProcess(proc)
-    await cleanupObsidianTmpdirs(configDir, vaultPath)
+    try {
+      await stopObsidian(proc, listenPort)
+    }
+    finally {
+      await cleanupObsidianTmpdirs(configDir, vaultPath)
+    }
   }
 }
 
@@ -190,7 +228,7 @@ export const test = base.extend<ObsidianFixtures>({
       await use({ page: resources.page, vaultPath: resources.vaultPath })
     }
     finally {
-      await releaseObsidian(resources)
+      await releaseObsidian(resources, port)
     }
   },
   mobileObsidianPage: async ({ obsidianPage }, use) => {
